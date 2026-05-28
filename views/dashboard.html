@@ -17,33 +17,34 @@
     .upd{color:#a7d9c2;font-size:11px}
     main{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
 
-    /* ── 5 stat cards ─────────────────────────────────────────────── */
-    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
-    .stat{background:#fff;border-radius:12px;padding:16px 18px;border-left:4px solid var(--c);cursor:pointer;transition:box-shadow .15s;position:relative;overflow:hidden}
-    .stat::after{content:'';position:absolute;inset:0;background:var(--c);opacity:0;transition:opacity .15s}
-    .stat:hover::after{opacity:.04}
+    /* ── Stat cards: row 1 = 5 cards, row 2 = 4 cards ── */
+    .stats-r1{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px}
+    .stats-r2{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+    .stat{background:#fff;border-radius:12px;padding:14px 18px;border-left:4px solid var(--c);cursor:pointer;transition:box-shadow .15s;position:relative}
     .stat:hover{box-shadow:0 4px 14px rgba(0,0,0,.1)}
-    .stat.active{box-shadow:0 0 0 2.5px var(--c);background:#fafffe}
-    .stat-lbl{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-    .stat-val{font-size:28px;font-weight:800;color:#111827;line-height:1}
-    .stat-sub{font-size:11px;color:#9ca3af;margin-top:4px}
-    .stat-click{font-size:10px;color:var(--c);margin-top:4px;font-weight:600}
-    .s1{--c:#f59e0b}.s2{--c:#006747}.s3{--c:#ef4444}.s4{--c:#3b82f6}.s5{--c:#8b5cf6}
+    .stat.active{box-shadow:0 0 0 2.5px var(--c)}
+    .stat.nocursor{cursor:default}
+    .stat-lbl{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+    .stat-val{font-size:26px;font-weight:800;color:#111827;line-height:1}
+    .stat-sub{font-size:10px;color:#9ca3af;margin-top:3px}
+    .stat-click{font-size:10px;color:var(--c);margin-top:3px;font-weight:600}
+    .s1{--c:#f59e0b}.s2{--c:#006747}.s3{--c:#ef4444}.s4{--c:#3b82f6}.s5{--c:#6b7280}
+    .s6{--c:#4ade80}.s7{--c:#f87171}.s8{--c:#8b5cf6}.s9{--c:#06b6d4}
 
-    /* ── Capacity bar ─────────────────────────────────────────────── */
+    /* Capacity bar */
     .cap-bar{background:#fff;border-radius:10px;padding:12px 20px;margin-bottom:20px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:14px}
-    .cap-lbl{font-size:13px;font-weight:600;color:#374151;white-space:nowrap;min-width:120px}
+    .cap-lbl{font-size:13px;font-weight:600;color:#374151;white-space:nowrap;min-width:130px}
     .cap-track{flex:1;background:#f3f4f6;border-radius:20px;height:10px;overflow:hidden}
     .cap-fill{height:100%;border-radius:20px;background:#006747;transition:width .5s}
     .cap-fill.warn{background:#f59e0b}.cap-fill.full{background:#ef4444}
     .cap-num{font-size:13px;font-weight:700;color:#111827;white-space:nowrap}
 
-    /* ── Active filter banner ─────────────────────────────────────── */
+    /* Filter banner */
     .fbanner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 16px;margin-bottom:16px;display:none;align-items:center;justify-content:space-between;font-size:13px;color:#1d4ed8;font-weight:500}
     .fbanner.show{display:flex}
     .fbanner button{background:none;border:none;color:#1d4ed8;cursor:pointer;font-weight:700;font-size:13px}
 
-    /* ── Pending cards ────────────────────────────────────────────── */
+    /* Pending cards */
     .sec-hd{font-size:14px;font-weight:700;color:#111827;margin-bottom:12px;display:flex;align-items:center;gap:8px}
     .cbadge{background:#f59e0b;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
     .cbadge.z{background:#e5e7eb;color:#9ca3af}
@@ -63,48 +64,50 @@
     .b-dn:hover{background:#fef2f2}
     .b-ed{background:#fff;color:#2563eb;border:1.5px solid #93c5fd;border-radius:8px;padding:8px 11px;font-size:13px;cursor:pointer}
 
-    /* ── Pills ────────────────────────────────────────────────────── */
+    /* Pills */
     .pill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;white-space:nowrap}
-    .pp{background:#fef3c7;color:#b45309}.pa{background:#dcfce7;color:#15803d}.pd{background:#fee2e2;color:#b91c1c}.pau{background:#dbeafe;color:#1d4ed8}
+    .pp{background:#fef3c7;color:#b45309}.pa{background:#dcfce7;color:#15803d}
+    .pd{background:#fee2e2;color:#b91c1c}.pau{background:#dbeafe;color:#1d4ed8}
+    .db-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;display:inline-block;margin-top:2px}
+    .db-pending{background:#ede9fe;color:#6d28d9}.db-received{background:#dcfce7;color:#15803d}
 
-    /* ── Filter row ───────────────────────────────────────────────── */
+    /* Filters */
     .frow{background:#fff;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;border:1px solid #e5e7eb}
     .fg{display:flex;flex-direction:column;gap:4px}
     .fg label{font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
-    .fg input,.fg select{padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;outline:none;font-family:inherit;min-width:140px}
+    .fg input,.fg select{padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;outline:none;font-family:inherit}
     .fg input:focus,.fg select:focus{border-color:#006747}
-    .fg.grow{flex:1}
-    .fg.grow input{width:100%}
+    .fg.grow{flex:1}.fg.grow input{width:100%}
     .clr-btn{padding:7px 14px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer;align-self:flex-end}
-    .clr-btn:hover{background:#e5e7eb}
 
-    /* ── Table ────────────────────────────────────────────────────── */
+    /* Table */
     .twrap{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden}
     .tbar{display:flex;border-bottom:1px solid #e5e7eb;padding:0 16px;align-items:center}
     .ttab{padding:11px 13px;font-size:13px;font-weight:500;color:#9ca3af;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
     .ttab.active{color:#006747;border-bottom-color:#006747}
     .trec{font-size:11px;color:#9ca3af;margin-left:auto;padding-right:4px}
     .tscroll{overflow-x:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th{text-align:left;padding:10px 13px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-bottom:1px solid #e5e7eb}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{text-align:left;padding:9px 12px;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-bottom:1px solid #e5e7eb;white-space:nowrap}
     td{padding:9px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
-    .db-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px}
-    .db-pending{background:#ede9fe;color:#6d28d9}.db-received{background:#dcfce7;color:#15803d}.db-na{display:none}
     tr:last-child td{border-bottom:none}
     tr:hover td{background:#f9fafb}
     .acts{display:flex;gap:4px;flex-wrap:wrap}
     .tb{padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:none;text-decoration:none;white-space:nowrap}
-    .tap{background:#dcfce7;color:#15803d}.tdn{background:#fee2e2;color:#b91c1c}.ted{background:#dbeafe;color:#1d4ed8}.tde{background:#fef3c7;color:#92400e}
+    .tap{background:#dcfce7;color:#15803d}.tdn{background:#fee2e2;color:#b91c1c}
+    .ted{background:#dbeafe;color:#1d4ed8}.tde{background:#fef3c7;color:#92400e}
+    .tdb{background:#ede9fe;color:#6d28d9}.trs{background:#f3f4f6;color:#6b7280}
     .tb:hover{filter:brightness(.9)}
     .empty{text-align:center;padding:40px 20px;color:#9ca3af}
     .ei{font-size:28px;margin-bottom:8px}
 
-    /* ── Modals ───────────────────────────────────────────────────── */
+    /* Edit modal */
     .ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
     .ovl.show{display:flex}
-    .modal{background:#fff;border-radius:16px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto}
+    .modal{background:#fff;border-radius:16px;padding:28px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto}
     .modal h3{font-size:16px;font-weight:700;color:#111827;margin-bottom:18px}
-    .mg{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+    .msec{font-size:11px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid #f3f4f6}
+    .mg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .mg .full{grid-column:1/-1}
     .modal label{display:block;font-size:11px;font-weight:600;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
     .modal input,.modal select,.modal textarea{width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;font-family:inherit;outline:none}
@@ -113,6 +116,8 @@
     .msave{flex:1;background:#006747;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer}
     .msave:hover{background:#004d34}
     .mcancel{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:11px 20px;font-size:14px;cursor:pointer}
+
+    /* PIN modal */
     .pin-box{background:#fff;border-radius:16px;padding:28px;max-width:360px;width:100%;text-align:center}
     .pin-box h3{font-size:16px;font-weight:700;color:#111827;margin-bottom:8px}
     .pin-box p{font-size:13px;color:#6b7280;margin-bottom:18px}
@@ -122,8 +127,8 @@
     .pin-err.show{display:block}
     .pdel{width:100%;background:#b91c1c;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px}
 
-    @media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:640px){.stats{grid-template-columns:1fr 1fr}.frow{flex-direction:column}.mg{grid-template-columns:1fr}}
+    @media(max-width:1000px){.stats-r1,.stats-r2{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:640px){.stats-r1,.stats-r2{grid-template-columns:1fr 1fr}.frow{flex-direction:column}.mg{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -139,8 +144,8 @@
 </header>
 <main>
 
-  <!-- 5 stat cards -->
-  <div class="stats">
+  <!-- Row 1: 5 main stats -->
+  <div class="stats-r1">
     <div class="stat s1" onclick="clickStat('pending')" id="c-pending">
       <div class="stat-lbl">Pending</div>
       <div class="stat-val" id="v-pending">–</div>
@@ -150,7 +155,7 @@
     <div class="stat s2" onclick="clickStat('today')" id="c-today">
       <div class="stat-lbl">Today's Reservations</div>
       <div class="stat-val" id="v-today">–</div>
-      <div class="stat-sub" id="v-today-date">reservations for today</div>
+      <div class="stat-sub" id="v-today-sub">for today</div>
       <div class="stat-click">Click to filter ↓</div>
     </div>
     <div class="stat s3" onclick="clickStat('denied')" id="c-denied">
@@ -159,44 +164,41 @@
       <div class="stat-sub">Total ever denied</div>
       <div class="stat-click">Click to filter ↓</div>
     </div>
-    <div class="stat s4">
+    <div class="stat s4 nocursor">
       <div class="stat-lbl">Slots Left Today</div>
       <div class="stat-val" id="v-slots">–</div>
-      <div class="stat-sub" id="v-slots-sub">of 30 daily limit</div>
+      <div class="stat-sub" id="v-slots-sub">of 60 covers</div>
     </div>
     <div class="stat s5" onclick="clickStat('all')" id="c-all">
-      <div class="stat-lbl">Total Reservations</div>
+      <div class="stat-lbl">Total All Time</div>
       <div class="stat-val" id="v-all">–</div>
-      <div class="stat-sub">All time</div>
+      <div class="stat-sub">All reservations</div>
       <div class="stat-click">Click to filter ↓</div>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
-    <div class="stat" style="--c:#4ade80">
-      <div class="stat-lbl">Checked in today</div>
+
+  <!-- Row 2: attendance + direct bill -->
+  <div class="stats-r2">
+    <div class="stat s6 nocursor">
+      <div class="stat-lbl">Checked In Today</div>
       <div class="stat-val" id="v-checkin" style="color:#4ade80">–</div>
+      <div class="stat-sub">Guests who showed up</div>
     </div>
-    <div class="stat" style="--c:#f87171">
-      <div class="stat-lbl">No-shows today</div>
+    <div class="stat s7 nocursor">
+      <div class="stat-lbl">No-Shows Today</div>
       <div class="stat-val" id="v-noshow" style="color:#f87171">–</div>
+      <div class="stat-sub">Reservation, didn't come</div>
     </div>
-    <div class="stat" onclick="clickStat('directbill')" id="c-directbill" style="--c:#8b5cf6;cursor:pointer">
+    <div class="stat s8" onclick="clickStat('directbill')" id="c-directbill">
       <div class="stat-lbl">Direct Bill Pending</div>
       <div class="stat-val" id="v-directbill" style="color:#8b5cf6">–</div>
       <div class="stat-sub">Docs not received</div>
       <div class="stat-click">Click to filter ↓</div>
     </div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-    <div class="stat" style="--c:#4ade80">
-      <div class="stat-lbl">Checked in today</div>
-      <div class="stat-val" id="v-checkin" style="color:#4ade80">–</div>
-      <div class="stat-sub">Guests who showed up</div>
-    </div>
-    <div class="stat" style="--c:#f87171">
-      <div class="stat-lbl">No-shows today</div>
-      <div class="stat-val" id="v-noshow" style="color:#f87171">–</div>
-      <div class="stat-sub">Reservation but didn't come</div>
+    <div class="stat s9 nocursor">
+      <div class="stat-lbl">People Today</div>
+      <div class="stat-val" id="v-people" style="color:#06b6d4">–</div>
+      <div class="stat-sub">Total covers booked</div>
     </div>
   </div>
 
@@ -204,7 +206,7 @@
   <div class="cap-bar">
     <span class="cap-lbl">Today's capacity:</span>
     <div class="cap-track"><div class="cap-fill" id="cap-fill" style="width:0%"></div></div>
-    <span class="cap-num" id="cap-num">0 / 30</span>
+    <span class="cap-num" id="cap-num">0 / 60 covers</span>
   </div>
 
   <!-- Active filter banner -->
@@ -217,22 +219,12 @@
   <div class="sec-hd">Pending approvals <span class="cbadge z" id="pcnt">0</span></div>
   <div class="pgrid" id="pgrid"><div class="empty"><div class="ei">⏳</div><p>Loading…</p></div></div>
 
-  <!-- Filters -->
+  <!-- Search filters -->
   <div class="frow">
     <div class="fg grow"><label>Search</label><input id="fs" placeholder="Name or email…" oninput="applyF()"></div>
-    <div class="fg">
-      <label>Reservation date</label>
-      <input type="date" id="fd" onchange="applyF()">
-    </div>
-    <div class="fg">
-      <label>Type</label>
-      <select id="ft" onchange="applyF()">
-        <option value="">All types</option>
-        <option value="faculty">Faculty</option>
-        <option value="student">Student</option>
-      </select>
-    </div>
-    <button class="clr-btn" onclick="clearF()">✕ Clear all</button>
+    <div class="fg"><label>Reservation date</label><input type="date" id="fd" onchange="applyF()"></div>
+    <div class="fg"><label>Type</label><select id="ft" onchange="applyF()"><option value="">All types</option><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
+    <button class="clr-btn" onclick="clearF()">✕ Clear</button>
   </div>
 
   <!-- Table -->
@@ -248,7 +240,10 @@
     <div class="tscroll">
       <table>
         <thead><tr>
-          <th>Name</th><th>Status</th><th>Table #</th><th>Reservation Date &amp; Time</th><th>Party</th><th>Department</th><th>Seating</th><th>Payment</th><th>UID</th><th>Email</th><th>Via</th><th>Submitted</th><th>Actions</th>
+          <th>Name / Type</th><th>Status</th><th>Reservation Date & Time</th>
+          <th>Party</th><th>Department</th><th>Payment</th>
+          <th>Seating</th><th>Table</th><th>UID</th><th>Email</th>
+          <th>Submitted</th><th>Actions</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -256,24 +251,37 @@
   </div>
 </main>
 
-<!-- Edit Modal -->
+<!-- ── EDIT MODAL ─────────────────────────────────────────────────────────── -->
 <div class="ovl" id="eovl">
   <div class="modal">
     <h3>✏️ Edit Reservation</h3>
     <input type="hidden" id="eid">
+
+    <div class="msec">Guest Information</div>
     <div class="mg">
-      <div class="full"><label>Full Name</label><input id="en"></div>
-      <div><label>Department</label><input id="edept" placeholder="e.g. Nursing"></div>
-      <div><label>Phone / Ext</label><input id="ephx" placeholder="optional"></div>
+      <div class="full"><label>Full Name</label><input id="en" type="text"></div>
+      <div><label>Department</label><input id="edept" type="text" placeholder="e.g. Nursing"></div>
+      <div><label>Phone / Ext</label><input id="ephx" type="text" placeholder="optional"></div>
       <div><label>Guest Type</label><select id="et"><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
       <div><label>Status</label><select id="es"><option value="pending_approval">Pending</option><option value="approved">Approved</option><option value="denied">Denied</option></select></div>
-      <div><label>USF UID</label><input id="eu" maxlength="9"></div>
+      <div><label>USF UID</label><input id="eu" type="text" maxlength="9"></div>
       <div><label>Party Size</label><input id="ep" type="number" min="1" max="50"></div>
       <div class="full"><label>Email</label><input id="ee" type="email"></div>
-      <div class="full"><label>Reservation Date &amp; Time (display)</label><input id="edt" placeholder="May 27, 2026 7:00 PM"></div>
-      <div><label>Table Number</label><input id="etbl" placeholder="e.g. T-5 or 12"></div>
+    </div>
+
+    <div class="msec">Reservation Details</div>
+    <div class="mg">
+      <div class="full"><label>Date & Time (display)</label><input id="edt" type="text" placeholder="May 28, 2026 12:30 PM"></div>
+      <div><label>Table / Seating Assigned</label><input id="etbl" type="text" placeholder="e.g. Window, Private Room A"></div>
+      <div><label>Seating Preference</label><select id="eseat">
+        <option value="">— No preference —</option>
+        <option>Window</option><option>Middle</option><option>Bench</option>
+        <option>Private Room A</option><option>Private Room B</option><option>Private Room C</option>
+      </select></div>
+      <div class="full"><label>Payment Method</label><input id="epay" type="text" placeholder="e.g. CC/Cash, USF Card, Direct Bill"></div>
       <div class="full"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
     </div>
+
     <div class="mf">
       <button class="mcancel" onclick="closeEdit()">Cancel</button>
       <button class="msave" onclick="saveEdit()">Save Changes</button>
@@ -281,7 +289,7 @@
   </div>
 </div>
 
-<!-- PIN Delete Modal -->
+<!-- ── PIN DELETE MODAL ───────────────────────────────────────────────────── -->
 <div class="ovl" id="povl">
   <div class="pin-box">
     <h3>🔐 Confirm Delete</h3>
@@ -302,40 +310,40 @@ async function loadAll(){
   try{
     const[s,d]=await Promise.all([fetch('/api/stats').then(r=>r.json()),fetch('/api/reservations').then(r=>r.json())]);
     allData=d;
-    // Stats
+
+    // Row 1
     document.getElementById('v-pending').textContent = s.pending;
     document.getElementById('v-today').textContent   = s.total_today;
-    document.getElementById('v-today-date').textContent = 'for '+todayFmt;
+    document.getElementById('v-today-sub').textContent = 'for '+todayFmt;
     document.getElementById('v-denied').textContent  = s.denied_all;
     document.getElementById('v-slots').textContent   = s.slots_left;
-    document.getElementById('v-slots-sub').textContent = `of ${s.daily_limit} daily limit`;
+    document.getElementById('v-slots-sub').textContent = `of ${s.daily_limit} covers`;
     document.getElementById('v-all').textContent     = s.total_all;
-    document.getElementById('v-checkin').textContent  = s.checked_in_today ?? '–';
-    document.getElementById('v-noshow').textContent   = s.no_show_today  ?? '–';
-    document.getElementById('v-directbill').textContent = s.direct_bill_pending ?? '0';
-    document.getElementById('v-checkin').textContent = s.checked_in_today ?? '–';
-    document.getElementById('v-noshow').textContent  = s.no_show_today  ?? '–';
+    // Row 2
+    document.getElementById('v-checkin').textContent   = s.checked_in_today ?? 0;
+    document.getElementById('v-noshow').textContent    = s.no_show_today    ?? 0;
+    document.getElementById('v-directbill').textContent= s.direct_bill_pending ?? 0;
+    document.getElementById('v-people').textContent    = s.people_today     ?? 0;
+
     // Capacity bar
-    const pct = Math.min(100,Math.round((s.daily_count/s.daily_limit)*100));
-    const f = document.getElementById('cap-fill');
-    f.style.width = pct+'%';
-    f.className = 'cap-fill'+(pct>=100?' full':pct>=80?' warn':'');
-    document.getElementById('cap-num').textContent = `${s.daily_count} / ${s.daily_limit} booked today`;
+    const pct=Math.min(100,Math.round((s.daily_count/s.daily_limit)*100));
+    const f=document.getElementById('cap-fill');
+    f.style.width=pct+'%';
+    f.className='cap-fill'+(pct>=100?' full':pct>=80?' warn':'');
+    document.getElementById('cap-num').textContent=`${s.daily_count} / ${s.daily_limit} covers today`;
 
     renderPending(d.filter(r=>r.status==='pending_approval'));
     renderTable(filtered());
-    document.getElementById('upd').textContent = 'Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('upd').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   }catch(e){console.error(e)}
 }
 
 function filtered(){
   let d = atab==='all' ? allData : allData.filter(r=>r.status===atab);
-  // Stat card override
-  if(activeStat==='pending') d = allData.filter(r=>r.status==='pending_approval');
-  else if(activeStat==='today') d = allData.filter(r=>r.reservation_date===todayISO && r.status!=='denied');
-  else if(activeStat==='denied') d = allData.filter(r=>r.status==='denied');
-  else if(activeStat==='directbill') d = allData.filter(r=>r.direct_bill_status==='pending_document');
-  // Search filters
+  if(activeStat==='pending')    d=allData.filter(r=>r.status==='pending_approval');
+  else if(activeStat==='today') d=allData.filter(r=>r.reservation_date===todayISO&&r.status!=='denied');
+  else if(activeStat==='denied')d=allData.filter(r=>r.status==='denied');
+  else if(activeStat==='directbill')d=allData.filter(r=>r.direct_bill_status==='pending_document');
   const s=document.getElementById('fs').value.toLowerCase();
   const dt=document.getElementById('fd').value;
   const tp=document.getElementById('ft').value;
@@ -351,17 +359,12 @@ function clickStat(type){
   document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));
   const map={pending:'c-pending',today:'c-today',denied:'c-denied',all:'c-all',directbill:'c-directbill'};
   if(map[type]) document.getElementById(map[type]).classList.add('active');
-  const lbl={pending:'All pending approvals',today:'All reservations for today ('+todayFmt+')',denied:'All denied reservations (ever)',all:'All reservations'};
-  document.getElementById('fbanner-txt').textContent = '🔍 '+lbl[type];
+  const lbl={pending:'All pending approvals',today:'Today\'s reservations ('+todayFmt+')',denied:'All denied reservations',all:'All reservations',directbill:'Direct Bill — awaiting document'};
+  document.getElementById('fbanner-txt').textContent='🔍 '+lbl[type];
   document.getElementById('fbanner').classList.add('show');
   renderTable(filtered());
 }
-function clearStat(){
-  activeStat=null;
-  document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));
-  document.getElementById('fbanner').classList.remove('show');
-  renderTable(filtered());
-}
+function clearStat(){activeStat=null;document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));document.getElementById('fbanner').classList.remove('show');renderTable(filtered())}
 function applyF(){clearStat();renderTable(filtered())}
 function clearF(){document.getElementById('fs').value='';document.getElementById('fd').value='';document.getElementById('ft').value='';clearStat();renderTable(filtered())}
 function swTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTable(filtered())}
@@ -369,15 +372,18 @@ function swTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.clas
 function renderPending(p){
   const g=document.getElementById('pgrid'),b=document.getElementById('pcnt');
   b.textContent=p.length;b.className='cbadge'+(p.length?'':' z');
-  if(!p.length){g.innerHTML='<div class="empty"><div class="ei">✓</div><p>No pending approvals — all clear!</p></div>';return}
+  if(!p.length){g.innerHTML='<div class="empty"><div class="ei">✓</div><p>No pending approvals!</p></div>';return}
   g.innerHTML=p.map(r=>`<div class="pcard">
     <div class="pc-top"><div><div class="pc-name">${x(r.name)}</div><div class="pc-ago">${ago(r.created_at)}</div></div><span class="pill pp">Pending</span></div>
     <div class="pc-body">
-      <div class="pc-row"><span class="pc-k">Reservation date</span><span class="pc-v">${x(r.datetime)}</span></div>
+      <div class="pc-row"><span class="pc-k">Date & time</span><span class="pc-v">${x(r.datetime)}</span></div>
       <div class="pc-row"><span class="pc-k">Party</span><span class="pc-v">${r.party} guest${r.party===1?'':'s'}</span></div>
+      <div class="pc-row"><span class="pc-k">Department</span><span class="pc-v">${x(r.department||'—')}</span></div>
       <div class="pc-row"><span class="pc-k">UID</span><span class="pc-v" style="font-family:monospace">${x(r.uid)}</span></div>
       <div class="pc-row"><span class="pc-k">Email</span><span class="pc-v">${x(r.email)}</span></div>
+      <div class="pc-row"><span class="pc-k">Payment</span><span class="pc-v">${x(r.payment_method||'—')}</span></div>
       ${r.notes?`<div class="pc-row"><span class="pc-k">Notes</span><span class="pc-v">${x(r.notes)}</span></div>`:''}
+      ${r.direct_bill_status==='pending_document'?'<div style="background:#ede9fe;border-radius:6px;padding:5px 8px;font-size:11px;color:#6d28d9;margin-top:5px">📄 Direct Bill — document pending</div>':''}
     </div>
     <div class="pc-acts">
       <a class="b-ap" href="/manager/approve/${r.id}">✓ Approve</a>
@@ -390,54 +396,87 @@ function renderPending(p){
 function renderTable(data){
   const tb=document.getElementById('tbody');
   document.getElementById('trec').textContent=data.length+' record'+(data.length!==1?'s':'');
-  if(!data.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="ei">📋</div><p>No reservations found.</p></div></td></tr>';return}
+  if(!data.length){tb.innerHTML='<tr><td colspan="12"><div class="empty"><div class="ei">📋</div><p>No reservations found.</p></div></td></tr>';return}
   const pm={pending_approval:'<span class="pill pp">Pending</span>',approved:'<span class="pill pa">Approved</span>',auto_approved:'<span class="pill pau">Auto</span>',denied:'<span class="pill pd">Denied</span>'};
-  const te=t=>t==='faculty'?'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px">Faculty</span>':'<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px">Student</span>';
+  const te=t=>t==='faculty'?'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px">Faculty</span>':'<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px">Student</span>';
   tb.innerHTML=data.map(r=>`<tr>
     <td><strong>${x(r.name)}</strong><br>${te(r.guest_status)}</td>
     <td>${pm[r.status]||r.status}</td>
-    <td style="font-weight:700;color:#006747;font-size:14px">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
-    <td style="white-space:nowrap;font-size:12px">${x(r.datetime)}</td>
+    <td style="white-space:nowrap">${x(r.datetime)}</td>
     <td>${r.party}</td>
-    <td style="font-size:12px">${x(r.department||'—')}</td>
-    <td style="font-size:12px">${x(r.seating_preference||'—')}</td>
-    <td style="font-size:11px">${x(r.payment_method||'—')}<br>${r.direct_bill_status&&r.direct_bill_status!=='na'?`<span class="db-badge db-${r.direct_bill_status==='pending_document'?'pending':'received'}">${r.direct_bill_status==='pending_document'?'Doc pending':'Doc received'}</span>`:''}</td>
-    <td style="font-family:monospace;font-size:12px">${x(r.uid)}</td>
-    <td style="font-size:12px">${x(r.email)}</td>
-    <td style="font-size:11px;color:#9ca3af">${x(r.channel||'form')}</td>
+    <td style="font-size:11px">${x(r.department||'—')}</td>
+    <td style="font-size:11px">${x(r.payment_method||'—')}<br>${r.direct_bill_status==='pending_document'?'<span class="db-badge db-pending">Doc pending</span>':r.direct_bill_status==='document_received'?'<span class="db-badge db-received">Doc received</span>':''}</td>
+    <td style="font-size:11px">${x(r.seating_preference||'—')}</td>
+    <td style="font-weight:700;color:#006747;font-size:13px">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
+    <td style="font-family:monospace;font-size:11px">${x(r.uid)}</td>
+    <td style="font-size:11px">${x(r.email)}</td>
     <td style="white-space:nowrap;font-size:11px;color:#9ca3af">${fmt(r.created_at)}</td>
     <td><div class="acts">
       ${r.status==='pending_approval'?`<a class="tb tap" href="/manager/approve/${r.id}">Approve</a><a class="tb tdn" href="/manager/deny/${r.id}">Deny</a>`:''}
       <button class="tb ted" onclick="openEdit('${r.id}')">Edit</button>
-      ${r.direct_bill_status==='pending_document'?`<button class="tb" style="background:#ede9fe;color:#6d28d9" onclick="markDocReceived('${r.id}')">Doc ✓</button>`:''}
-      ${r.direct_bill_status==='pending_document'?`<button class="tb" style="background:#f3f4f6;color:#6b7280" onclick="resendDirectBill('${r.id}')">Resend</button>`:''}
+      ${r.direct_bill_status==='pending_document'?`<button class="tb tdb" onclick="markDocReceived('${r.id}')">Doc ✓</button><button class="tb trs" onclick="resendDB('${r.id}')">Resend</button>`:''}
       <button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>
     </div></td>
   </tr>`).join('');
 }
 
-// Edit
+// ── Edit modal ─────────────────────────────────────────────────────────────
 function openEdit(id){
-  const r=allData.find(r=>r.id===id);if(!r)return;
-  document.getElementById('eid').value=r.id;document.getElementById('en').value=r.name;
-  document.getElementById('et').value=r.guest_status;document.getElementById('es').value=r.status;
-  document.getElementById('eu').value=r.uid;document.getElementById('ep').value=r.party;
-  document.getElementById('ee').value=r.email;document.getElementById('edt').value=r.datetime;
-  document.getElementById('etbl').value=r.table_number||'';
-  document.getElementById('eseat').value=r.seating_preference||'';
-  document.getElementById('epay').value=r.payment_method||'';document.getElementById('eno').value=r.notes||'';
+  const r=allData.find(r=>r.id===id);
+  if(!r){ alert('Record not found — try refreshing'); return; }
+  document.getElementById('eid').value   = r.id;
+  document.getElementById('en').value    = r.name||'';
+  document.getElementById('edept').value = r.department||'';
+  document.getElementById('ephx').value  = r.phone_ext||'';
+  document.getElementById('et').value    = r.guest_status||'student';
+  document.getElementById('es').value    = r.status||'pending_approval';
+  document.getElementById('eu').value    = r.uid||'';
+  document.getElementById('ep').value    = r.party||'';
+  document.getElementById('ee').value    = r.email||'';
+  document.getElementById('edt').value   = r.datetime||'';
+  document.getElementById('etbl').value  = r.table_number||'';
+  document.getElementById('eseat').value = r.seating_preference||'';
+  document.getElementById('epay').value  = r.payment_method||'';
+  document.getElementById('eno').value   = r.notes||'';
   document.getElementById('eovl').classList.add('show');
 }
-function closeEdit(){document.getElementById('eovl').classList.remove('show')}
+function closeEdit(){ document.getElementById('eovl').classList.remove('show'); }
 async function saveEdit(){
-  const id=document.getElementById('eid').value;
-  const b={name:document.getElementById('en').value.trim(),department:document.getElementById('edept').value.trim(),phone_ext:document.getElementById('ephx').value.trim(),guest_status:document.getElementById('et').value,status:document.getElementById('es').value,uid:document.getElementById('eu').value.trim(),party:parseInt(document.getElementById('ep').value),email:document.getElementById('ee').value.trim(),datetime:document.getElementById('edt').value.trim(),table_number:document.getElementById('etbl').value.trim(),seating_preference:document.getElementById('eseat').value,payment_method:document.getElementById('epay').value.trim(),notes:document.getElementById('eno').value.trim()};
-  const r=await fetch(`/api/reservations/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
-  if(!r.ok){alert('Save failed');return}
-  closeEdit();await loadAll();toast('Saved ✓');
+  const id = document.getElementById('eid').value;
+  if(!id){ alert('No record selected'); return; }
+  const b={
+    name:           document.getElementById('en').value.trim(),
+    department:     document.getElementById('edept').value.trim(),
+    phone_ext:      document.getElementById('ephx').value.trim(),
+    guest_status:   document.getElementById('et').value,
+    status:         document.getElementById('es').value,
+    uid:            document.getElementById('eu').value.trim(),
+    party:          parseInt(document.getElementById('ep').value)||1,
+    email:          document.getElementById('ee').value.trim(),
+    datetime:       document.getElementById('edt').value.trim(),
+    table_number:   document.getElementById('etbl').value.trim(),
+    seating_preference: document.getElementById('eseat').value,
+    payment_method: document.getElementById('epay').value.trim(),
+    notes:          document.getElementById('eno').value.trim()
+  };
+  try{
+    const r=await fetch(`/api/reservations/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+    if(!r.ok){const e=await r.json();alert('Save failed: '+(e.error||r.status));return;}
+    closeEdit();await loadAll();toast('Saved ✓');
+  }catch(e){alert('Save failed: '+e.message);}
 }
 
-// Delete
+// ── Direct bill ────────────────────────────────────────────────────────────
+async function markDocReceived(id){
+  await fetch(`/api/reservations/${id}/directbill`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({direct_bill_status:'document_received'})});
+  await loadAll();toast('Document marked as received ✓');
+}
+async function resendDB(id){
+  await fetch(`/api/reservations/${id}/resend-directbill`,{method:'POST',headers:{'Content-Type':'application/json'}});
+  toast('Direct bill form resent ✓');
+}
+
+// ── PIN delete ─────────────────────────────────────────────────────────────
 function openPin(id,name){delId=id;document.getElementById('del-name').textContent=name;document.getElementById('pin').value='';document.getElementById('perr').classList.remove('show');document.getElementById('povl').classList.add('show');setTimeout(()=>document.getElementById('pin').focus(),80)}
 function closePin(){document.getElementById('povl').classList.remove('show');delId=''}
 async function doDel(){
@@ -452,21 +491,13 @@ document.getElementById('eovl').addEventListener('click',e=>{if(e.target===docum
 document.getElementById('povl').addEventListener('click',e=>{if(e.target===document.getElementById('povl'))closePin()});
 document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')doDel()});
 
-async function markDocReceived(id){
-  const r=await fetch(`/api/reservations/${id}/directbill`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({direct_bill_status:'document_received'})});
-  if(r.ok){await loadAll();toast('Document marked as received ✓');}
-}
-async function resendDirectBill(id){
-  const r=await fetch(`/api/reservations/${id}/resend-directbill`,{method:'POST',headers:{'Content-Type':'application/json'}});
-  if(r.ok){toast('Direct bill form resent to guest ✓');}else{toast('Failed to resend');}
-}
 function toast(m){let t=document.getElementById('_t');if(!t){t=document.createElement('div');t.id='_t';t.style.cssText='position:fixed;bottom:24px;right:24px;background:#111;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:opacity .25s';document.body.appendChild(t)}t.textContent=m;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',3000)}
 function ago(i){const s=Math.floor((Date.now()-new Date(i))/1000);return s<60?'just now':s<3600?Math.floor(s/60)+'m ago':s<86400?Math.floor(s/3600)+'h ago':Math.floor(s/86400)+'d ago'}
 function fmt(i){return new Date(i).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
 function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+async function logout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login?type=manager';}
 
 loadAll();setInterval(loadAll,30000);
-async function logout(){ await fetch('/api/logout',{method:'POST'}); window.location.href='/login?type=manager'; }
 </script>
 </body>
 </html>

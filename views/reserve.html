@@ -31,11 +31,7 @@
     .radio-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
     .radio-opt label{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:#374151;transition:all .15s}
     .radio-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
-    /* Seating checkboxes */
-    .check-group{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .check-opt{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;color:#374151;transition:all .15s}
-    .check-opt:has(input:checked){border-color:#006747;background:#f0fdf4;color:#006747}
-    .check-opt input{width:15px;height:15px;margin:0;accent-color:#006747}
+
     /* Payment multi-select */
     .payment-group{display:flex;flex-direction:column;gap:8px}
     .pay-opt{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;color:#374151;transition:all .15s}
@@ -161,17 +157,7 @@
       </select>
     </div>
 
-    <!-- Seating -->
-    <div class="section-title">Seating Preference</div>
-    <div class="check-group">
-      <label class="check-opt"><input type="radio" name="seating" value="Window"> Window</label>
-      <label class="check-opt"><input type="radio" name="seating" value="Middle"> Middle</label>
-      <label class="check-opt"><input type="radio" name="seating" value="Bench"> Bench</label>
-      <label class="check-opt"><input type="radio" name="seating" value="Private Room A"> Private Room A</label>
-      <label class="check-opt"><input type="radio" name="seating" value="Private Room B"> Private Room B</label>
-      <label class="check-opt"><input type="radio" name="seating" value="Private Room C"> Private Room C</label>
-    </div>
-    <div class="hint" style="margin-top:6px">Subject to availability — not guaranteed</div>
+    <!-- Seating preference is assigned by staff at POS, not selected by guests -->
 
     <!-- Payment -->
     <div class="section-title">Method of Payment</div>
@@ -247,7 +233,7 @@
     const date  = document.getElementById('f-date').value;
     const time  = document.getElementById('f-time').value;
     const party = document.getElementById('f-party').value;
-    const seating = document.querySelector('input[name="seating"]:checked')?.value || '';
+    const seating = ''; // Assigned by staff at POS
     const payments = [...document.querySelectorAll('input[name="payment"]:checked')].map(x=>x.value);
     const notes = document.getElementById('f-notes').value.trim();
 
@@ -319,7 +305,7 @@
     document.getElementById('success-screen').classList.remove('show');
     ['f-name','f-dept','f-phone','f-uid','f-email','f-notes'].forEach(id=>document.getElementById(id).value='');
     ['f-date','f-time','f-party'].forEach(id=>document.getElementById(id).value='');
-    document.querySelectorAll('input[name="guest_type"],input[name="seating"],input[name="payment"]').forEach(i=>i.checked=false);
+    document.querySelectorAll('input[name="guest_type"],input[name="payment"]').forEach(i=>i.checked=false);
     document.getElementById('direct-bill-notice').classList.remove('show');
     document.getElementById('err-msg').classList.remove('show');
     const btn = document.getElementById('submit-btn');
