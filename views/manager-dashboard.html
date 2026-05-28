@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reservation Manager — Top of the Palms</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:      #006747;
+      --green-dark: #004d34;
+      --green-pale: #f0fdf4;
+      --gold:       #CFC493;
+      --amber:      #d97706;
+      --amber-pale: #fffbeb;
+      --red:        #b91c1c;
+      --red-pale:   #fef2f2;
+      --blue:       #2563eb;
+      --gray-50:    #f9fafb;
+      --gray-100:   #f3f4f6;
+      --gray-200:   #e5e7eb;
+      --gray-400:   #9ca3af;
+      --gray-600:   #4b5563;
+      --gray-900:   #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--gray-100);
+      color: var(--gray-900);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      background: var(--green);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-logo {
+      width: 38px; height: 38px; background: rgba(255,255,255,.15);
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 20px;
+    }
+    .header-title { color: #fff; font-size: 16px; font-weight: 700; }
+    .header-sub   { color: var(--gold); font-size: 12px; margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .refresh-badge {
+      background: rgba(255,255,255,.12); color: var(--gold);
+      font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 500;
+    }
+    .refresh-btn {
+      background: rgba(255,255,255,.15); color: #fff; border: none;
+      padding: 7px 14px; border-radius: 8px; font-size: 13px;
+      cursor: pointer; font-weight: 500;
+    }
+    .refresh-btn:hover { background: rgba(255,255,255,.25); }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    main { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    /* ── Stats row ──────────────────────────────────────────── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+    .stat-card {
+      background: #fff; border-radius: 12px; padding: 20px 24px;
+      border: 1px solid var(--gray-200); position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      right: 0; height: 3px; background: var(--accent, var(--green));
+    }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: var(--gray-900); line-height: 1; }
+    .stat-card.pending  { --accent: var(--amber); }
+    .stat-card.approved { --accent: var(--green); }
+    .stat-card.denied   { --accent: var(--red); }
+    .stat-card.total    { --accent: var(--blue); }
+
+    /* ── Section headers ────────────────────────────────────── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; margin-top: 8px;
+    }
+    .section-title { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+    .count-badge {
+      background: var(--amber); color: #fff;
+      font-size: 11px; font-weight: 700; padding: 3px 9px;
+      border-radius: 10px; margin-left: 8px;
+    }
+    .count-badge.zero { background: var(--gray-200); color: var(--gray-600); }
+
+    /* ── Pending cards grid ─────────────────────────────────── */
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+    .res-card {
+      background: #fff; border-radius: 12px; border: 1px solid var(--gray-200);
+      overflow: hidden; transition: box-shadow .15s;
+    }
+    .res-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.09); }
+    .card-header {
+      padding: 16px 20px 12px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: flex-start; justify-content: space-between;
+    }
+    .card-name { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+    .card-time { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+    .status-pill {
+      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;
+      white-space: nowrap; flex-shrink: 0; margin-left: 8px;
+    }
+    .status-pending  { background: #fef3c7; color: #b45309; }
+    .status-approved { background: #dcfce7; color: #15803d; }
+    .status-denied   { background: #fee2e2; color: #b91c1c; }
+    .status-auto     { background: #dbeafe; color: #1d4ed8; }
+
+    .card-body { padding: 14px 20px; }
+    .card-row  { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+    .card-key  { color: var(--gray-400); }
+    .card-val  { color: var(--gray-900); font-weight: 500; text-align: right; max-width: 60%; word-break: break-word; }
+    .mono      { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+
+    .card-actions {
+      padding: 12px 20px 16px; display: flex; gap: 8px;
+    }
+    .btn-approve, .btn-deny {
+      flex: 1; padding: 9px 0; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; border: none; text-align: center;
+      text-decoration: none; display: block; transition: opacity .12s;
+    }
+    .btn-approve { background: var(--green); color: #fff; }
+    .btn-approve:hover { opacity: .88; }
+    .btn-deny    { background: #fff; color: var(--red); border: 1.5px solid var(--red); }
+    .btn-deny:hover { background: var(--red-pale); }
+
+    /* ── All reservations table ─────────────────────────────── */
+    .table-wrapper {
+      background: #fff; border-radius: 12px; border: 1px solid var(--gray-200);
+      overflow: hidden; margin-top: 32px;
+    }
+    .tab-bar {
+      display: flex; border-bottom: 1px solid var(--gray-200); padding: 0 20px;
+    }
+    .tab-btn {
+      padding: 12px 16px; font-size: 13px; font-weight: 500;
+      border: none; background: none; cursor: pointer; color: var(--gray-400);
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
+    .tab-btn:hover:not(.active) { color: var(--gray-900); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; padding: 11px 16px; font-size: 11px; font-weight: 600;
+      color: var(--gray-400); text-transform: uppercase; letter-spacing: .05em;
+      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+    }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gray-50); }
+
+    /* ── Empty states ───────────────────────────────────────── */
+    .empty {
+      text-align: center; padding: 48px 20px; color: var(--gray-400);
+    }
+    .empty-icon { font-size: 32px; margin-bottom: 12px; }
+    .empty p { font-size: 14px; }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; background: var(--gray-900);
+      color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px;
+      opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 100;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── Spinner ────────────────────────────────────────────── */
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid var(--gray-200);
+      border-top-color: var(--green); border-radius: 50%;
+      animation: spin .6s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      header { padding: 0 16px; }
+      main   { padding: 20px 12px 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-logo">🌴</div>
+    <div>
+      <div class="header-title">Reservation Manager</div>
+      <div class="header-sub">Top of the Palms · USF Dining</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="refresh-badge" id="last-updated">Loading…</span>
+    <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Stats row -->
+  <div class="stats">
+    <div class="stat-card pending">
+      <div class="stat-label">Pending approval</div>
+      <div class="stat-value" id="stat-pending"><span class="spinner"></span></div>
+    </div>
+    <div class="stat-card approved">
+      <div class="stat-label">Approved today</div>
+      <div class="stat-value" id="stat-approved">–</div>
+    </div>
+    <div class="stat-card denied">
+      <div class="stat-label">Denied today</div>
+      <div class="stat-value" id="stat-denied">–</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-label">Total today</div>
+      <div class="stat-value" id="stat-total">–</div>
+    </div>
+  </div>
+
+  <!-- Pending section -->
+  <div class="section-header">
+    <div style="display:flex;align-items:center">
+      <span class="section-title">Pending approvals</span>
+      <span class="count-badge zero" id="pending-count">0</span>
+    </div>
+  </div>
+  <div class="cards-grid" id="pending-grid">
+    <div class="empty"><div class="spinner"></div></div>
+  </div>
+
+  <!-- All reservations table -->
+  <div class="table-wrapper" style="margin-top:36px">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('all', this)">All reservations</button>
+      <button class="tab-btn" onclick="switchTab('approved', this)">Approved</button>
+      <button class="tab-btn" onclick="switchTab('pending_approval', this)">Pending</button>
+      <button class="tab-btn" onclick="switchTab('denied', this)">Denied</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Date & time</th>
+            <th>Party</th>
+            <th>UID</th>
+            <th>Email</th>
+            <th>Requested</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="res-tbody">
+          <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray-400)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+  let allData = [];
+  let currentTab = 'all';
+
+  // ── Data loading ───────────────────────────────────────────────────────────
+
+  async function loadAll() {
+    try {
+      const [stats, reservations] = await Promise.all([
+        fetch('/api/stats').then(r => r.json()),
+        fetch('/api/reservations').then(r => r.json())
+      ]);
+
+      allData = reservations;
+      renderStats(stats);
+      renderPendingCards(reservations.filter(r => r.status === 'pending_approval'));
+      renderTable(filteredData());
+      updateTimestamp();
+    } catch (err) {
+      showToast('Failed to load data — retrying in 30s');
+      console.error(err);
+    }
+  }
+
+  function filteredData() {
+    if (currentTab === 'all') return allData;
+    return allData.filter(r => r.status === currentTab);
+  }
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+
+  function renderStats(s) {
+    document.getElementById('stat-pending').textContent  = s.pending;
+    document.getElementById('stat-approved').textContent = s.approved_today;
+    document.getElementById('stat-denied').textContent   = s.denied_today;
+    document.getElementById('stat-total').textContent    = s.total_today;
+  }
+
+  // ── Pending cards ──────────────────────────────────────────────────────────
+
+  function renderPendingCards(pending) {
+    const grid  = document.getElementById('pending-grid');
+    const badge = document.getElementById('pending-count');
+    badge.textContent = pending.length;
+    badge.className   = 'count-badge' + (pending.length ? '' : ' zero');
+
+    if (!pending.length) {
+      grid.innerHTML = `<div class="empty"><div class="empty-icon">✓</div><p>No pending approvals — you're all caught up!</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = pending.map(r => `
+      <div class="res-card" id="card-${r.id}">
+        <div class="card-header">
+          <div>
+            <div class="card-name">${esc(r.name)}</div>
+            <div class="card-time">Requested ${timeAgo(r.created_at)}</div>
+          </div>
+          <span class="status-pill status-pending">Pending</span>
+        </div>
+        <div class="card-body">
+          <div class="card-row"><span class="card-key">Date & time</span><span class="card-val">${esc(r.datetime)}</span></div>
+          <div class="card-row"><span class="card-key">Party size</span><span class="card-val">${r.party} ${r.party === 1 ? 'guest' : 'guests'}</span></div>
+          <div class="card-row"><span class="card-key">USF UID</span><span class="card-val mono">${esc(r.uid)}</span></div>
+          <div class="card-row"><span class="card-key">Email</span><span class="card-val">${esc(r.email)}</span></div>
+          <div class="card-row"><span class="card-key">Caller</span><span class="card-val">${esc(r.caller_number) || '—'}</span></div>
+        </div>
+        <div class="card-actions">
+          <a class="btn-approve" href="/manager/approve/${r.id}">✓ Approve</a>
+          <a class="btn-deny" href="/manager/deny/${r.id}">✕ Deny</a>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Table ──────────────────────────────────────────────────────────────────
+
+  function renderTable(data) {
+    const tbody = document.getElementById('res-tbody');
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">📋</div><p>No reservations found.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(r => {
+      const statusLabel = {
+        pending_approval: '<span class="status-pill status-pending">Pending</span>',
+        approved:         '<span class="status-pill status-approved">Approved</span>',
+        auto_approved:    '<span class="status-pill status-auto">Auto-approved</span>',
+        denied:           '<span class="status-pill status-denied">Denied</span>'
+      }[r.status] || r.status;
+
+      const guestBadge = r.guest_status === 'faculty'
+        ? '<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px">Faculty</span>'
+        : '<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px">Student</span>';
+
+      const actionCell = r.status === 'pending_approval'
+        ? `<a href="/manager/approve/${r.id}" style="color:var(--green);font-weight:600;text-decoration:none;font-size:12px;margin-right:10px">Approve</a>
+           <a href="/manager/deny/${r.id}" style="color:var(--red);font-weight:600;text-decoration:none;font-size:12px">Deny</a>`
+        : `<span style="color:var(--gray-400);font-size:12px">—</span>`;
+
+      return `<tr>
+        <td><strong>${esc(r.name)}</strong><br><span style="font-size:11px;color:var(--gray-400)">${guestBadge}</span></td>
+        <td>${statusLabel}</td>
+        <td style="white-space:nowrap">${esc(r.datetime)}</td>
+        <td>${r.party}</td>
+        <td class="mono" style="font-size:12px">${esc(r.uid)}</td>
+        <td style="font-size:12px">${esc(r.email)}</td>
+        <td style="white-space:nowrap;font-size:12px;color:var(--gray-400)">${formatDate(r.created_at)}</td>
+        <td>${actionCell}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+
+  function switchTab(tab, el) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderTable(filteredData());
+  }
+
+  // ── Utilities ──────────────────────────────────────────────────────────────
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function timeAgo(iso) {
+    const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (secs < 60)   return 'just now';
+    if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
+    if (secs < 86400)return `${Math.floor(secs/3600)}h ago`;
+    return `${Math.floor(secs/86400)}d ago`;
+  }
+
+  function formatDate(iso) {
+    return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  function updateTimestamp() {
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // ── Init & auto-refresh ────────────────────────────────────────────────────
+
+  loadAll();
+  setInterval(loadAll, 30000); // Auto-refresh every 30 seconds
+</script>
+
+</body>
+</html>
