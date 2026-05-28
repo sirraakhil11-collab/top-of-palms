@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manager Dashboard — Top of the Palms</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh}
+    header{background:#006747;height:56px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+    .brand{color:#fff;font-size:15px;font-weight:700}
+    .brand small{color:#a7d9c2;font-size:12px;font-weight:400;margin-left:6px}
+    .hnav{display:flex;align-items:center;gap:10px}
+    .hnav a{color:rgba(255,255,255,.75);font-size:13px;text-decoration:none;padding:6px 12px;border-radius:6px}
+    .hnav a:hover{background:rgba(255,255,255,.15);color:#fff}
+    .rbtn{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:13px;cursor:pointer}
+    .upd{color:#a7d9c2;font-size:12px}
+    main{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
+    /* Stats */
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+    .stat{background:#fff;border-radius:10px;padding:14px 18px;border-top:3px solid var(--c,#e5e7eb)}
+    .stat-lbl{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+    .stat-val{font-size:26px;font-weight:700;color:#111827}
+    .stat-sub{font-size:11px;color:#9ca3af;margin-top:2px}
+    .sp{--c:#f59e0b}.sa{--c:#006747}.sd{--c:#ef4444}.st{--c:#3b82f6}.sl{--c:#8b5cf6}
+    /* Limit bar */
+    .limit-bar{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:20px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:14px}
+    .lb-label{font-size:13px;font-weight:600;color:#374151;white-space:nowrap}
+    .lb-track{flex:1;background:#f3f4f6;border-radius:20px;height:10px;overflow:hidden}
+    .lb-fill{height:100%;border-radius:20px;background:#006747;transition:width .4s}
+    .lb-fill.warn{background:#f59e0b}
+    .lb-fill.full{background:#ef4444}
+    .lb-count{font-size:13px;font-weight:700;color:#111827;white-space:nowrap}
+    /* Filters */
+    .filters{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border:1px solid #e5e7eb}
+    .flbl{font-size:12px;font-weight:600;color:#6b7280}
+    .finput,.fsel{padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;outline:none;font-family:inherit}
+    .finput:focus,.fsel:focus{border-color:#006747}
+    .fsearch{flex:1;min-width:180px;padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+    .fsearch:focus{border-color:#006747}
+    .clrbtn{padding:7px 14px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer}
+    /* Cards */
+    .sec-title{font-size:15px;font-weight:700;color:#111827;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+    .cbadge{background:#f59e0b;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+    .cbadge.zero{background:#e5e7eb;color:#9ca3af}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:32px}
+    .card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden}
+    .card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+    .ctop{padding:14px 18px 10px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:flex-start}
+    .cname{font-size:15px;font-weight:700;color:#111827}
+    .cago{font-size:11px;color:#9ca3af;margin-top:2px}
+    .cbody{padding:12px 18px}
+    .crow{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+    .ck{color:#9ca3af}.cv{color:#111827;font-weight:500;max-width:58%;text-align:right;word-break:break-word}
+    .cacts{padding:10px 18px 14px;display:flex;gap:8px}
+    .bap{flex:1;background:#006747;color:#fff;border:none;border-radius:8px;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:block;text-align:center}
+    .bap:hover{background:#004d34}
+    .bdn{flex:1;background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:8px;padding:8px 0;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:block;text-align:center}
+    .bdn:hover{background:#fef2f2}
+    .bed{background:#fff;color:#2563eb;border:1.5px solid #93c5fd;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer}
+    /* Pills */
+    .pill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;white-space:nowrap}
+    .pp{background:#fef3c7;color:#b45309}.pa{background:#dcfce7;color:#15803d}.pd{background:#fee2e2;color:#b91c1c}.pau{background:#dbeafe;color:#1d4ed8}
+    /* Table */
+    .twrap{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden}
+    .tbar{display:flex;border-bottom:1px solid #e5e7eb;padding:0 18px}
+    .ttab{padding:11px 14px;font-size:13px;font-weight:500;color:#9ca3af;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+    .ttab.active{color:#006747;border-bottom-color:#006747}
+    .tscroll{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;background:#f9fafb;border-bottom:1px solid #e5e7eb}
+    td{padding:10px 14px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#f9fafb}
+    .acts{display:flex;gap:5px;flex-wrap:wrap}
+    .tb{padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;text-decoration:none;white-space:nowrap}
+    .tap{background:#dcfce7;color:#15803d}.tdn{background:#fee2e2;color:#b91c1c}.ted{background:#dbeafe;color:#1d4ed8}.tde{background:#fef3c7;color:#92400e}
+    .tb:hover{filter:brightness(.92)}
+    .empty{text-align:center;padding:48px 20px;color:#9ca3af}
+    .empty-icon{font-size:32px;margin-bottom:10px}
+    /* Modals */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+    .overlay.show{display:flex}
+    .modal{background:#fff;border-radius:16px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto}
+    .modal h3{font-size:17px;font-weight:700;color:#111827;margin-bottom:20px}
+    .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .mgrid .full{grid-column:1/-1}
+    .modal label{display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:5px}
+    .modal input,.modal select,.modal textarea{width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;font-family:inherit;outline:none}
+    .modal input:focus,.modal select:focus,.modal textarea:focus{border-color:#006747}
+    .mfoot{display:flex;gap:10px;margin-top:20px}
+    .msave{flex:1;background:#006747;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer}
+    .mcancel{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:11px 20px;font-size:14px;cursor:pointer}
+    /* PIN modal */
+    .pin-modal{background:#fff;border-radius:16px;padding:28px;max-width:360px;width:100%;text-align:center}
+    .pin-modal h3{font-size:17px;font-weight:700;color:#111827;margin-bottom:8px}
+    .pin-modal p{font-size:13px;color:#6b7280;margin-bottom:20px}
+    .pin-input{width:100%;padding:12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:18px;text-align:center;letter-spacing:8px;outline:none;font-family:monospace;margin-bottom:16px}
+    .pin-input:focus{border-color:#006747}
+    .pin-err{color:#b91c1c;font-size:13px;margin-bottom:12px;display:none}
+    .pin-err.show{display:block}
+    .pdel-btn{width:100%;background:#b91c1c;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px}
+    @media(max-width:640px){.stats{grid-template-columns:1fr 1fr}.filters{flex-direction:column}.mgrid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">🌴 Manager Dashboard<small>Top of the Palms · USF Dining</small></div>
+  <div class="hnav">
+    <a href="/reserve">Guest Form</a>
+    <a href="/pos">POS Board →</a>
+    <span class="upd" id="upd">Loading…</span>
+    <button class="rbtn" onclick="loadAll()">↻ Refresh</button>
+  </div>
+</header>
+<main>
+  <div class="stats">
+    <div class="stat sp"><div class="stat-lbl">Pending</div><div class="stat-val" id="s0">–</div></div>
+    <div class="stat sa"><div class="stat-lbl">Approved today</div><div class="stat-val" id="s1">–</div></div>
+    <div class="stat sd"><div class="stat-lbl">Denied today</div><div class="stat-val" id="s2">–</div></div>
+    <div class="stat st"><div class="stat-lbl">Total today</div><div class="stat-val" id="s3">–</div></div>
+    <div class="stat sl"><div class="stat-lbl">Slots left today</div><div class="stat-val" id="s4">–</div><div class="stat-sub" id="s4-sub"></div></div>
+  </div>
+  <!-- Daily limit bar -->
+  <div class="limit-bar">
+    <span class="lb-label">Daily capacity:</span>
+    <div class="lb-track"><div class="lb-fill" id="lb-fill" style="width:0%"></div></div>
+    <span class="lb-count" id="lb-count">0 / 30</span>
+  </div>
+  <!-- Pending cards -->
+  <div class="sec-title">Pending approvals <span class="cbadge zero" id="pcnt">0</span></div>
+  <div class="cards" id="pcards"><div class="empty"><div class="empty-icon">⏳</div><p>Loading…</p></div></div>
+  <!-- Filters -->
+  <div class="filters">
+    <span class="flbl">Filter:</span>
+    <input class="fsearch" id="fs" placeholder="Search name or email…" oninput="applyF()">
+    <input class="finput" type="date" id="fd" onchange="applyF()">
+    <select class="fsel" id="ft" onchange="applyF()">
+      <option value="">All types</option>
+      <option value="faculty">Faculty</option>
+      <option value="student">Student</option>
+    </select>
+    <button class="clrbtn" onclick="clearF()">✕ Clear</button>
+  </div>
+  <!-- Table -->
+  <div class="twrap">
+    <div class="tbar">
+      <button class="ttab active" onclick="switchTab('all',this)">All</button>
+      <button class="ttab" onclick="switchTab('approved',this)">Approved</button>
+      <button class="ttab" onclick="switchTab('pending_approval',this)">Pending</button>
+      <button class="ttab" onclick="switchTab('denied',this)">Denied</button>
+      <button class="ttab" onclick="switchTab('auto_approved',this)">Auto-approved</button>
+    </div>
+    <div class="tscroll">
+      <table>
+        <thead><tr>
+          <th>Name</th><th>Status</th><th>Table</th><th>Date &amp; Time</th>
+          <th>Party</th><th>UID</th><th>Email</th><th>Via</th><th>Submitted</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Edit Modal -->
+<div class="overlay" id="edit-overlay">
+  <div class="modal">
+    <h3>✏️ Edit Reservation</h3>
+    <input type="hidden" id="eid">
+    <div class="mgrid">
+      <div class="full"><label>Full Name</label><input id="en" type="text"></div>
+      <div><label>Guest Type</label><select id="et"><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
+      <div><label>Status</label><select id="es"><option value="pending_approval">Pending</option><option value="approved">Approved</option><option value="denied">Denied</option></select></div>
+      <div><label>USF UID</label><input id="eu" type="text" maxlength="9"></div>
+      <div><label>Party Size</label><input id="ep" type="number" min="1" max="50"></div>
+      <div class="full"><label>Email</label><input id="ee" type="email"></div>
+      <div class="full"><label>Date &amp; Time</label><input id="edt" type="text" placeholder="Jun 7 2026 6:00 PM"></div>
+      <div><label>Table Number</label><input id="etbl" type="text" placeholder="e.g. T-5 or 12"></div>
+      <div class="full"><label>Notes / Special Requests</label><textarea id="eno" rows="2"></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="mcancel" onclick="closeEdit()">Cancel</button>
+      <button class="msave" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN Delete Modal -->
+<div class="overlay" id="pin-overlay">
+  <div class="pin-modal">
+    <h3>🔐 Delete Reservation</h3>
+    <p>Enter your manager PIN to confirm deletion of <strong id="del-name"></strong></p>
+    <input class="pin-input" type="password" id="pin-input" maxlength="6" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'')">
+    <div class="pin-err" id="pin-err">Incorrect PIN. Deletion not allowed.</div>
+    <button class="pdel-btn" onclick="confirmDelete()">Delete Reservation</button>
+    <button class="mcancel" style="width:100%;margin-top:0" onclick="closePin()">Cancel</button>
+  </div>
+</div>
+
+<script>
+let allData=[],atab='all',pendingDelId='';
+
+async function loadAll(){
+  try{
+    const[stats,data]=await Promise.all([fetch('/api/stats').then(r=>r.json()),fetch('/api/reservations').then(r=>r.json())]);
+    allData=data;
+    document.getElementById('s0').textContent=stats.pending;
+    document.getElementById('s1').textContent=stats.approved_today;
+    document.getElementById('s2').textContent=stats.denied_today;
+    document.getElementById('s3').textContent=stats.total_today;
+    document.getElementById('s4').textContent=stats.slots_left;
+    document.getElementById('s4-sub').textContent=`of ${stats.daily_limit} limit`;
+    // Limit bar
+    const pct=Math.min(100,Math.round((stats.daily_count/stats.daily_limit)*100));
+    const fill=document.getElementById('lb-fill');
+    fill.style.width=pct+'%';
+    fill.className='lb-fill'+(pct>=100?' full':pct>=80?' warn':'');
+    document.getElementById('lb-count').textContent=`${stats.daily_count} / ${stats.daily_limit} reservations today`;
+    renderPending(data.filter(r=>r.status==='pending_approval'));
+    renderTable(filtered());
+    document.getElementById('upd').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){console.error(e)}
+}
+
+function filtered(){
+  let d=atab==='all'?allData:allData.filter(r=>r.status===atab);
+  const s=document.getElementById('fs').value.toLowerCase();
+  const dt=document.getElementById('fd').value;
+  const tp=document.getElementById('ft').value;
+  if(s)  d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
+  if(dt) d=d.filter(r=>r.created_at.startsWith(dt));
+  if(tp) d=d.filter(r=>r.guest_status===tp);
+  return d;
+}
+function applyF(){renderTable(filtered())}
+function clearF(){document.getElementById('fs').value='';document.getElementById('fd').value='';document.getElementById('ft').value='';renderTable(filtered())}
+function switchTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTable(filtered())}
+
+function renderPending(p){
+  const g=document.getElementById('pcards'),b=document.getElementById('pcnt');
+  b.textContent=p.length;b.className='cbadge'+(p.length?'':' zero');
+  if(!p.length){g.innerHTML='<div class="empty"><div class="empty-icon">✓</div><p>No pending approvals — all clear!</p></div>';return}
+  g.innerHTML=p.map(r=>`<div class="card">
+    <div class="ctop"><div><div class="cname">${x(r.name)}</div><div class="cago">${ago(r.created_at)}</div></div><span class="pill pp">Pending</span></div>
+    <div class="cbody">
+      <div class="crow"><span class="ck">Date &amp; time</span><span class="cv">${x(r.datetime)}</span></div>
+      <div class="crow"><span class="ck">Party</span><span class="cv">${r.party} guest${r.party===1?'':'s'}</span></div>
+      <div class="crow"><span class="ck">UID</span><span class="cv" style="font-family:monospace">${x(r.uid)}</span></div>
+      <div class="crow"><span class="ck">Email</span><span class="cv">${x(r.email)}</span></div>
+      ${r.notes?`<div class="crow"><span class="ck">Notes</span><span class="cv">${x(r.notes)}</span></div>`:''}
+    </div>
+    <div class="cacts">
+      <a class="bap" href="/manager/approve/${r.id}">✓ Approve</a>
+      <a class="bdn" href="/manager/deny/${r.id}">✕ Deny</a>
+      <button class="bed" onclick="openEdit('${r.id}')">✏️ Edit</button>
+    </div>
+  </div>`).join('');
+}
+
+function renderTable(data){
+  const tb=document.getElementById('tbody');
+  if(!data.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">📋</div><p>No reservations found.</p></div></td></tr>';return}
+  const pm={pending_approval:'<span class="pill pp">Pending</span>',approved:'<span class="pill pa">Approved</span>',auto_approved:'<span class="pill pau">Auto-approved</span>',denied:'<span class="pill pd">Denied</span>'};
+  const te=t=>t==='faculty'?'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px">Faculty</span>':'<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px">Student</span>';
+  tb.innerHTML=data.map(r=>`<tr>
+    <td><strong>${x(r.name)}</strong><br>${te(r.guest_status)}</td>
+    <td>${pm[r.status]||r.status}</td>
+    <td style="font-weight:600;color:#006747">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
+    <td style="white-space:nowrap">${x(r.datetime)}</td>
+    <td>${r.party}</td>
+    <td style="font-family:monospace;font-size:12px">${x(r.uid)}</td>
+    <td style="font-size:12px">${x(r.email)}</td>
+    <td style="font-size:11px;color:#9ca3af">${x(r.channel||'form')}</td>
+    <td style="white-space:nowrap;font-size:12px;color:#9ca3af">${fmt(r.created_at)}</td>
+    <td><div class="acts">
+      ${r.status==='pending_approval'?`<a class="tb tap" href="/manager/approve/${r.id}">Approve</a><a class="tb tdn" href="/manager/deny/${r.id}">Deny</a>`:''}
+      <button class="tb ted" onclick="openEdit('${r.id}')">Edit</button>
+      <button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+// ── Edit modal ────────────────────────────────────────────────────────────
+function openEdit(id){
+  const r=allData.find(r=>r.id===id);if(!r)return;
+  document.getElementById('eid').value=r.id;
+  document.getElementById('en').value=r.name;
+  document.getElementById('et').value=r.guest_status;
+  document.getElementById('es').value=r.status;
+  document.getElementById('eu').value=r.uid;
+  document.getElementById('ep').value=r.party;
+  document.getElementById('ee').value=r.email;
+  document.getElementById('edt').value=r.datetime;
+  document.getElementById('etbl').value=r.table_number||'';
+  document.getElementById('eno').value=r.notes||'';
+  document.getElementById('edit-overlay').classList.add('show');
+}
+function closeEdit(){document.getElementById('edit-overlay').classList.remove('show')}
+async function saveEdit(){
+  const id=document.getElementById('eid').value;
+  const body={
+    name:document.getElementById('en').value.trim(),
+    guest_status:document.getElementById('et').value,
+    status:document.getElementById('es').value,
+    uid:document.getElementById('eu').value.trim(),
+    party:parseInt(document.getElementById('ep').value),
+    email:document.getElementById('ee').value.trim(),
+    datetime:document.getElementById('edt').value.trim(),
+    table_number:document.getElementById('etbl').value.trim(),
+    notes:document.getElementById('eno').value.trim()
+  };
+  const resp=await fetch(`/api/reservations/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!resp.ok){alert('Save failed');return}
+  closeEdit();await loadAll();toast('Saved ✓');
+}
+
+// ── PIN delete modal ──────────────────────────────────────────────────────
+function openPin(id,name){
+  pendingDelId=id;
+  document.getElementById('del-name').textContent=name;
+  document.getElementById('pin-input').value='';
+  document.getElementById('pin-err').classList.remove('show');
+  document.getElementById('pin-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('pin-input').focus(),100);
+}
+function closePin(){document.getElementById('pin-overlay').classList.remove('show');pendingDelId=''}
+async function confirmDelete(){
+  const pin=document.getElementById('pin-input').value;
+  if(!pin){document.getElementById('pin-err').textContent='Please enter your PIN.';document.getElementById('pin-err').classList.add('show');return}
+  const resp=await fetch(`/api/reservations/${pendingDelId}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
+  if(resp.status===403){document.getElementById('pin-err').textContent='Incorrect PIN. Deletion not allowed.';document.getElementById('pin-err').classList.add('show');document.getElementById('pin-input').value='';return}
+  if(!resp.ok){alert('Delete failed');return}
+  closePin();await loadAll();toast('Deleted');
+}
+
+// Close overlays on background click
+document.getElementById('edit-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('edit-overlay'))closeEdit()});
+document.getElementById('pin-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('pin-overlay'))closePin()});
+// Enter key in PIN field
+document.getElementById('pin-input').addEventListener('keydown',e=>{if(e.key==='Enter')confirmDelete()});
+
+function toast(msg){let t=document.getElementById('_t');if(!t){t=document.createElement('div');t.id='_t';t.style.cssText='position:fixed;bottom:24px;right:24px;background:#111;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:opacity .25s';document.body.appendChild(t)}t.textContent=msg;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',3000)}
+function ago(iso){const s=Math.floor((Date.now()-new Date(iso))/1000);return s<60?'just now':s<3600?Math.floor(s/60)+'m ago':s<86400?Math.floor(s/3600)+'h ago':Math.floor(s/86400)+'d ago'}
+function fmt(iso){return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+loadAll();setInterval(loadAll,30000);
+</script>
+</body>
+</html>

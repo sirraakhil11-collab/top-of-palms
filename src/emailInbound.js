@@ -1,118 +1,134 @@
 /**
- * Email inbound channel — SendGrid Inbound Parse
+ * INBOUND EMAIL HANDLER
  *
  * How it works:
- *   Guest emails reservations@topofthepalms.usf.edu
- *   SendGrid parses the email and POSTs form-data to /email/incoming
- *   We reply via SendGrid (outbound), continuing the conversation
- *   Session is keyed by the guest's email address
+ *   1. Guest sends email to your address
+ *   2. SendGrid receives it and POSTs the email data to /email/incoming
+ *   3. We extract the text, run it through the AI agent
+ *   4. We reply to the guest via SendGrid outbound
+ *   5. Conversation continues until all 6 fields are collected
+ *   6. Reservation is saved and routed (faculty = auto, student = manager)
  *
  * SendGrid Inbound Parse setup:
- *   Settings → Inbound Parse → Add Host & URL
- *   Hostname: topofthepalms.usf.edu  (or subdomain)
- *   URL: https://your-server.com/email/incoming
- *   Also add MX record:  mx.sendgrid.net  pointing at your domain
+ *   sendgrid.com → Settings → Inbound Parse → Add Host & URL
+ *   URL: https://your-ngrok-url.ngrok-free.app/email/incoming
  */
 
 const sgMail = require('@sendgrid/mail');
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const { getAgentReply } = require('./agent');
+const { getEmailReply }     = require('./agent');
 const { processReservation } = require('./reservations');
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
-const FROM_NAME  = 'Top of the Palms Reservations';
+// Sessions keyed by sender email address
+const sessions = {};
 
-let _sessions;
-function init(sessions) { _sessions = sessions; }
-
-function stripQuotedReply(text) {
-  // Remove common quoted reply sections
+function cleanEmailBody(text) {
+  if (!text) return '';
   return text
-    .replace(/\r/g, '')
+    .replace(/\r\n/g, '\n')
     .split('\n')
-    .filter(line => !line.startsWith('>'))
+    .filter(line => !line.startsWith('>'))        // Remove quoted replies
     .join('\n')
-    .replace(/On .+? wrote:/s, '')
-    .replace(/_{5,}/g, '')
+    .replace(/On .+?wrote:/gs, '')                // Remove "On X wrote:" headers
+    .replace(/_{3,}/g, '')                        // Remove divider lines
+    .replace(/\n{3,}/g, '\n\n')                   // Collapse blank lines
     .trim();
 }
 
-async function handleIncoming(req, res) {
-  // SendGrid sends multipart form data
-  const from    = req.body.from    || '';
-  const subject = req.body.subject || 'Reservation Request';
-  const text    = stripQuotedReply(req.body.text || req.body.html || '');
+function extractSenderEmail(from) {
+  if (!from) return '';
+  const match = from.match(/<([^>]+)>/);
+  return (match ? match[1] : from).trim().toLowerCase();
+}
 
-  // Extract sender email
-  const emailMatch = from.match(/<([^>]+)>/) || [null, from];
-  const senderEmail = emailMatch[1].trim().toLowerCase();
+async function handleIncomingEmail(req, res) {
+  // SendGrid sends form data — respond 200 immediately so it doesn't retry
+  res.sendStatus(200);
+
+  const from        = req.body.from    || '';
+  const subject     = req.body.subject || 'Reservation Request';
+  const rawText     = req.body.text    || req.body.html || '';
+  const cleanedText = cleanEmailBody(rawText);
+  const senderEmail = extractSenderEmail(from);
+
+  if (!senderEmail) {
+    console.log('[Email] Could not extract sender email — skipping');
+    return;
+  }
+
+  console.log(`\n[Email] From: ${senderEmail}`);
+  console.log(`[Email] Subject: ${subject}`);
+  console.log(`[Email] Body: "${cleanedText.slice(0, 120)}..."`);
+
+  // Get or create session for this email address
   const key = `email:${senderEmail}`;
-
-  console.log(`\n[Email] From: ${senderEmail} — Subject: "${subject}"`);
-  console.log(`[Email] Body: "${text.slice(0, 100)}..."`);
-
-  // Start or retrieve session
-  if (!_sessions[key]) {
-    _sessions[key] = {
-      channel: 'email',
-      callerNumber: senderEmail,
-      callSid: key,
-      messages: [],
-      collected: null,
-      replyTo: senderEmail,
-      subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`
+  if (!sessions[key]) {
+    sessions[key] = {
+      channel:     'email',
+      replyTo:     senderEmail,
+      replySubject: subject.toLowerCase().startsWith('re:') ? subject : `Re: ${subject}`,
+      messages:    [],
+      collected:   null
     };
   }
 
-  const session = _sessions[key];
+  const session = sessions[key];
 
-  // Add this email as user turn
+  // Add this email as a user message
   const userContent = session.messages.length === 0
-    ? `I would like to make a reservation. Here is my request: ${text}`
-    : text;
+    ? `I would like to make a reservation. Here is my message: ${cleanedText}`
+    : cleanedText;
 
   session.messages.push({ role: 'user', content: userContent });
 
   try {
-    const aiReply = await getAgentReply(session, 'email');
+    const aiReply = await getEmailReply(session.messages);
     session.messages.push({ role: 'assistant', content: aiReply.text });
 
-    // Send reply email
+    // Send reply email back to guest
     if (process.env.SENDGRID_API_KEY) {
       await sgMail.send({
         to:      session.replyTo,
-        from:    { email: FROM_EMAIL, name: FROM_NAME },
-        subject: session.subject,
+        from:    { email: process.env.FROM_EMAIL, name: 'Top of the Palms Reservations' },
+        subject: session.replySubject,
         text:    aiReply.text,
-        html:    `<div style="font-family:sans-serif;font-size:15px;line-height:1.6;color:#111">${aiReply.text.replace(/\n/g,'<br>')}</div>`
+        html:    `<div style="font-family:-apple-system,sans-serif;font-size:15px;line-height:1.7;color:#111827;max-width:560px">${aiReply.text.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}</div>`
       });
-      console.log(`[Email] Replied to ${senderEmail}`);
+      console.log(`[Email] Reply sent to ${session.replyTo}`);
     } else {
-      console.log(`[Email] Would reply to ${senderEmail}:\n${aiReply.text}`);
+      console.log(`\n[Email] Would reply to ${session.replyTo}:\n---\n${aiReply.text}\n---`);
     }
 
+    // If conversation is complete, process the reservation
     if (aiReply.complete && aiReply.collected) {
-      session.collected = aiReply.collected;
-      // Override email if guest provided it in conversation vs. sender
-      if (!session.collected.email) {
-        session.collected.email = senderEmail;
-      }
-      delete _sessions[key];
+      session.collected          = aiReply.collected;
+      session.collected.email    = session.collected.email || senderEmail;
+      session.collected.channel  = 'email';
+
+      delete sessions[key]; // Clean up session
+
       setImmediate(() =>
         processReservation(session).catch(err =>
-          console.error('[Email Reservation] Error:', err)
+          console.error('[Email] Reservation processing error:', err)
         )
       );
     }
-  } catch (err) {
-    console.error('[Email] Agent error:', err);
-  }
 
-  // SendGrid needs a 200 quickly
-  res.sendStatus(200);
+  } catch (err) {
+    console.error('[Email] Agent error:', err.message);
+
+    // Send error reply so the guest knows something went wrong
+    if (process.env.SENDGRID_API_KEY) {
+      await sgMail.send({
+        to:      senderEmail,
+        from:    { email: process.env.FROM_EMAIL, name: 'Top of the Palms Reservations' },
+        subject: session.replySubject,
+        text:    "We're sorry, we experienced a technical issue. Please reply to this email and we'll assist you with your reservation."
+      });
+    }
+  }
 }
 
-module.exports = { init, handleIncoming };
+// Export sessions so server.js can clear them if needed
+module.exports = { handleIncomingEmail, sessions };

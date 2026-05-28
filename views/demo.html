@@ -3,418 +3,326 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Top of the Palms — Reservation Demo</title>
+  <title>Top of the Palms — Email Reservation Demo</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --green: #006747; --green-dark: #004d34; --green-pale: #f0fdf4;
-      --gold: #CFC493; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
-      --gray-400: #9ca3af; --gray-600: #4b5563; --gray-900: #111827;
-    }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-100); min-height: 100vh; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; min-height: 100vh; }
 
-    header {
-      background: var(--green); padding: 0 24px; height: 56px;
-      display: flex; align-items: center; justify-content: space-between;
-      box-shadow: 0 2px 8px rgba(0,0,0,.2);
-    }
-    .header-brand { display: flex; align-items: center; gap: 10px; }
-    .header-brand span:first-child { font-size: 20px; }
-    .header-brand strong { color: #fff; font-size: 15px; }
-    .header-brand small { color: var(--gold); font-size: 12px; display: block; margin-top: 1px; }
-    .header-links a { color: rgba(255,255,255,.75); font-size: 13px; text-decoration: none; margin-left: 20px; }
-    .header-links a:hover { color: #fff; }
+    /* Header */
+    .header { background: #006747; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand strong { color: #fff; font-size: 15px; }
+    .brand small { color: #a7d9c2; font-size: 11px; display: block; }
+    .header a { color: rgba(255,255,255,.7); font-size: 13px; text-decoration: none; }
+    .header a:hover { color: #fff; }
 
-    .page { max-width: 1100px; margin: 0 auto; padding: 32px 20px; display: grid; grid-template-columns: 1fr 420px; gap: 28px; }
+    /* Layout */
+    .page { max-width: 1000px; margin: 0 auto; padding: 28px 20px; display: grid; grid-template-columns: 1fr 420px; gap: 24px; }
 
-    /* ── Left: explainer ── */
-    .explainer h1 { font-size: 28px; font-weight: 800; color: var(--gray-900); margin-bottom: 8px; }
-    .explainer p  { color: var(--gray-600); font-size: 15px; line-height: 1.6; margin-bottom: 20px; }
+    /* Left side */
+    .left h1 { font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 6px; }
+    .left p  { color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
 
-    .channels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 28px; }
-    .channel-card {
-      background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 18px 16px;
-      text-align: center; cursor: pointer; transition: all .15s;
-    }
-    .channel-card:hover { border-color: var(--green); box-shadow: 0 0 0 3px rgba(0,103,71,.08); }
-    .channel-card.active { border-color: var(--green); background: var(--green-pale); }
-    .channel-icon { font-size: 28px; margin-bottom: 8px; }
-    .channel-name { font-size: 14px; font-weight: 600; color: var(--gray-900); }
-    .channel-desc { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+    .steps-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
+    .steps-card h3 { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 14px; }
+    .step { display: flex; gap: 12px; margin-bottom: 12px; }
+    .step:last-child { margin-bottom: 0; }
+    .step-num { width: 24px; height: 24px; min-width: 24px; background: #006747; color: #fff; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .step-text { font-size: 13px; color: #374151; line-height: 1.5; padding-top: 3px; }
+    .step-text strong { color: #111827; }
+    .step-text code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; font-size: 12px; color: #006747; font-family: monospace; }
 
-    .setup-box {
-      background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px 24px;
-    }
-    .setup-box h3 { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 12px; }
-    .setup-step { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
-    .step-num {
-      width: 24px; height: 24px; background: var(--green); color: #fff; border-radius: 50%;
-      font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .step-text { font-size: 13px; color: var(--gray-600); line-height: 1.5; }
-    .step-text strong { color: var(--gray-900); }
-    .step-text code {
-      background: var(--gray-100); padding: 1px 6px; border-radius: 4px;
-      font-size: 12px; font-family: 'SF Mono', Consolas, monospace; color: var(--green-dark);
-    }
+    .info-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; }
+    .info-box h4 { font-size: 13px; font-weight: 600; color: #15803d; margin-bottom: 6px; }
+    .info-box p  { font-size: 13px; color: #374151; line-height: 1.5; }
 
-    /* ── Right: phone/chat simulator ── */
-    .phone-frame {
-      background: #1a1a2e; border-radius: 40px; padding: 14px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.4); position: sticky; top: 20px;
-    }
-    .phone-screen {
-      background: #fff; border-radius: 28px; overflow: hidden;
-      height: 640px; display: flex; flex-direction: column;
-    }
+    .warn-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 18px; }
+    .warn-box h4 { font-size: 13px; font-weight: 600; color: #b45309; margin-bottom: 6px; }
+    .warn-box p  { font-size: 13px; color: #374151; line-height: 1.5; }
 
-    /* SMS status bar */
-    .phone-status {
-      background: #f2f2f7; padding: 10px 16px 6px; display: flex;
-      align-items: center; justify-content: space-between;
-    }
-    .status-left  { font-size: 11px; font-weight: 600; color: #1c1c1e; }
-    .status-right { font-size: 11px; color: #1c1c1e; display: flex; gap: 4px; align-items: center; }
+    /* Email simulator */
+    .email-frame { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.1); overflow: hidden; }
 
-    /* Conversation header */
-    .chat-header {
-      background: #f2f2f7; padding: 8px 16px 12px;
-      text-align: center; border-bottom: 0.5px solid #e0e0e5;
-    }
-    .avatar {
-      width: 42px; height: 42px; background: var(--green); border-radius: 50%;
-      margin: 0 auto 4px; display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    .chat-name  { font-size: 13px; font-weight: 600; color: #1c1c1e; }
-    .chat-sub   { font-size: 11px; color: #8e8e93; }
+    .email-toolbar { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.r { background: #ef4444; }
+    .dot.y { background: #f59e0b; }
+    .dot.g { background: #22c55e; }
+    .toolbar-title { margin-left: 8px; font-size: 13px; color: #6b7280; font-weight: 500; }
 
-    /* Channel tabs */
-    .channel-tabs {
-      display: flex; background: #f2f2f7; padding: 0 12px;
-      border-bottom: 0.5px solid #e0e0e5;
-    }
-    .ch-tab {
-      flex: 1; padding: 8px 0; font-size: 12px; font-weight: 500;
-      text-align: center; color: #8e8e93; cursor: pointer; border: none;
-      background: none; border-bottom: 2px solid transparent;
-    }
-    .ch-tab.active { color: var(--green); border-bottom-color: var(--green); }
+    .email-thread { padding: 0; max-height: 440px; overflow-y: auto; }
 
-    /* Messages */
-    .messages-area {
-      flex: 1; overflow-y: auto; padding: 12px 14px; background: #fff;
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .msg { display: flex; flex-direction: column; max-width: 80%; animation: popIn .2s ease; }
-    .msg.agent { align-self: flex-start; }
-    .msg.user  { align-self: flex-end; }
-    @keyframes popIn { from { opacity: 0; transform: scale(.92) translateY(4px); } to { opacity: 1; transform: none; } }
+    .email-msg { border-bottom: 1px solid #f3f4f6; padding: 16px 20px; }
+    .email-msg:last-child { border-bottom: none; }
+    .msg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .msg-from { display: flex; align-items: center; gap: 8px; }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .avatar.you   { background: #dbeafe; color: #1d4ed8; }
+    .avatar.agent { background: #dcfce7; color: #15803d; }
+    .msg-name { font-size: 13px; font-weight: 600; color: #111827; }
+    .msg-time { font-size: 11px; color: #9ca3af; }
+    .msg-body { font-size: 13px; color: #374151; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
 
-    .bubble {
-      padding: 9px 13px; border-radius: 18px; font-size: 14px; line-height: 1.45;
-    }
-    .msg.agent .bubble { background: #e9e9eb; color: #1c1c1e; border-bottom-left-radius: 4px; }
-    .msg.user  .bubble { background: #34c759; color: #fff; border-bottom-right-radius: 4px; }
+    .typing { padding: 16px 20px; display: none; align-items: center; gap: 10px; }
+    .typing.show { display: flex; }
+    .typing-label { font-size: 13px; color: #9ca3af; }
+    .dot-anim { display: flex; gap: 4px; }
+    .dot-anim span { width: 6px; height: 6px; background: #d1d5db; border-radius: 50%; animation: blink 1.2s infinite; }
+    .dot-anim span:nth-child(2) { animation-delay: .2s; }
+    .dot-anim span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%,60%,100%{opacity:.3} 30%{opacity:1} }
 
-    .msg-time { font-size: 10px; color: #8e8e93; margin-top: 2px; padding: 0 4px; }
-    .msg.user .msg-time { text-align: right; }
-
-    .typing-indicator {
-      display: none; align-self: flex-start; background: #e9e9eb;
-      border-radius: 18px; border-bottom-left-radius: 4px; padding: 12px 16px;
+    /* Compose area */
+    .compose { border-top: 1px solid #e5e7eb; padding: 12px 16px; }
+    .compose-header { font-size: 12px; color: #9ca3af; margin-bottom: 6px; }
+    .compose textarea {
+      width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; color: #111827; resize: none; outline: none; font-family: inherit;
+      line-height: 1.5; min-height: 72px;
     }
-    .typing-indicator.show { display: flex; gap: 4px; animation: popIn .2s ease; }
-    .dot {
-      width: 7px; height: 7px; background: #8e8e93; border-radius: 50%;
-      animation: bounce 1.2s infinite;
-    }
-    .dot:nth-child(2) { animation-delay: .2s; }
-    .dot:nth-child(3) { animation-delay: .4s; }
-    @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
-
-    /* Input area */
-    .input-area {
-      padding: 10px 12px; background: #f2f2f7; border-top: 0.5px solid #e0e0e5;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .msg-input {
-      flex: 1; padding: 9px 14px; border-radius: 20px; border: none;
-      background: #fff; font-size: 14px; color: #1c1c1e; outline: none;
-      box-shadow: 0 0 0 1px #e0e0e5;
-    }
+    .compose textarea:focus { border-color: #006747; box-shadow: 0 0 0 2px rgba(0,103,71,.1); }
+    .compose-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
     .send-btn {
-      width: 34px; height: 34px; background: #34c759; border: none; border-radius: 50%;
-      color: #fff; font-size: 16px; cursor: pointer; display: flex;
-      align-items: center; justify-content: center; flex-shrink: 0;
+      background: #006747; color: #fff; border: none; border-radius: 8px;
+      padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
     }
-    .send-btn:disabled { background: #c7c7cc; cursor: default; }
+    .send-btn:hover { background: #004d34; }
+    .send-btn:disabled { background: #d1d5db; cursor: default; }
+    .char-count { font-size: 11px; color: #9ca3af; }
 
-    /* Completion card */
-    .completion-card {
-      background: var(--green-pale); border: 1px solid #bbf7d0; border-radius: 10px;
-      padding: 12px 14px; margin: 0 14px 10px;
-    }
-    .completion-card h4 { font-size: 12px; font-weight: 700; color: var(--green-dark); margin-bottom: 6px; }
-    .completion-card p  { font-size: 11px; color: #374151; line-height: 1.4; }
+    /* Completion */
+    .completion { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 18px; margin: 12px 16px; display: none; }
+    .completion.show { display: block; }
+    .completion h4 { font-size: 13px; font-weight: 600; color: #15803d; margin-bottom: 6px; }
+    .completion p  { font-size: 12px; color: #374151; line-height: 1.5; }
+    .reset-link { display: inline-block; margin-top: 8px; font-size: 12px; color: #006747; cursor: pointer; text-decoration: underline; }
 
-    /* Reset btn */
-    .reset-btn {
-      display: none; background: none; border: 1px solid var(--gray-200); border-radius: 8px;
-      padding: 6px 14px; font-size: 12px; color: var(--gray-600); cursor: pointer;
-      margin: 0 14px 12px;
-    }
-    .reset-btn.show { display: block; }
-    .reset-btn:hover { background: var(--gray-100); }
-
-    @media (max-width: 768px) {
+    @media (max-width: 720px) {
       .page { grid-template-columns: 1fr; }
-      .phone-frame { position: static; }
     }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="header-brand">
-    <span>🌴</span>
+<div class="header">
+  <div class="brand">
+    <span style="font-size:20px">🌴</span>
     <div>
       <strong>Top of the Palms</strong>
       <small>USF Dining · Reservation Agent</small>
     </div>
   </div>
-  <div class="header-links">
-    <a href="/manager/dashboard">Manager dashboard</a>
-    <a href="/pos">POS board</a>
-  </div>
-</header>
+  <a href="/manager/dashboard">Manager dashboard →</a>
+</div>
 
 <div class="page">
 
-  <!-- Left: explainer -->
-  <div class="explainer">
-    <h1>Multi-channel reservation agent</h1>
-    <p>Guests can make reservations three ways. The same AI handles all channels — collects the same information, routes faculty to auto-approve and students to manager review.</p>
+  <!-- LEFT: Instructions -->
+  <div class="left">
+    <h1>Email reservation demo</h1>
+    <p>Simulate a full email reservation conversation right here in the browser. The AI is real — it uses Groq (free) to power the replies.</p>
 
-    <div class="channels">
-      <div class="channel-card active" onclick="setChannel('sms', this)">
-        <div class="channel-icon">💬</div>
-        <div class="channel-name">SMS / Text</div>
-        <div class="channel-desc">Text your Twilio number</div>
+    <div class="steps-card">
+      <h3>How to test right now</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Type something like <strong>"Hi, I'd like to make a reservation"</strong> in the compose box and click Send</div>
       </div>
-      <div class="channel-card" onclick="setChannel('voice', this)">
-        <div class="channel-icon">📞</div>
-        <div class="channel-name">Phone Call</div>
-        <div class="channel-desc">Call your Twilio number</div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">The AI will reply asking for your details — answer each question naturally</div>
       </div>
-      <div class="channel-card" onclick="setChannel('email', this)">
-        <div class="channel-icon">📧</div>
-        <div class="channel-name">Email</div>
-        <div class="channel-desc">Email inbound parse</div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Give it: <strong>name → faculty/student → UID → email → party size → date/time</strong></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">After all 6 are collected, check the <a href="/manager/dashboard" style="color:#006747">dashboard</a> to see the result</div>
       </div>
     </div>
 
-    <div class="setup-box">
-      <h3 id="setup-title">What you need to install on your PC</h3>
-      <div id="setup-steps">
-        <div class="setup-step">
-          <div class="step-num">1</div>
-          <div class="step-text"><strong>Node.js</strong> — download and install from <code>nodejs.org</code> (choose the LTS version). This is the only thing you install. npm comes with it automatically.</div>
-        </div>
-        <div class="setup-step">
-          <div class="step-num">2</div>
-          <div class="step-text"><strong>Unzip the project</strong>, open a terminal in that folder, then run <code>npm install</code> — this downloads all the libraries automatically.</div>
-        </div>
-        <div class="setup-step">
-          <div class="step-num">3</div>
-          <div class="step-text"><strong>Copy <code>.env.example</code> to <code>.env</code></strong> and fill in your keys. The demo below works with just <code>ANTHROPIC_API_KEY</code>.</div>
-        </div>
-        <div class="setup-step">
-          <div class="step-num">4</div>
-          <div class="step-text">Run <code>npm start</code> and open <code>localhost:3000</code> — you're live. For Twilio webhooks use <code>npx ngrok http 3000</code> to get a public URL.</div>
-        </div>
-      </div>
+    <div class="info-box">
+      <h4>Faculty test → auto-approved instantly</h4>
+      <p>When asked faculty or student, say <strong>Faculty</strong> — the reservation saves immediately with status "Approved" and appears in the dashboard.</p>
+    </div>
+
+    <div class="warn-box">
+      <h4>Student test → manager approval required</h4>
+      <p>Say <strong>Student</strong> — the reservation goes to "Pending" in the dashboard. Click <strong>Approve</strong> or <strong>Deny</strong> to process it. With SendGrid set up, the manager also receives an email.</p>
     </div>
   </div>
 
-  <!-- Right: phone simulator -->
+  <!-- RIGHT: Email simulator -->
   <div>
-    <div class="phone-frame">
-      <div class="phone-screen">
+    <div class="email-frame">
 
-        <div class="phone-status">
-          <span class="status-left">9:41 AM</span>
-          <span class="status-right">●●●●● WiFi ■</span>
-        </div>
-
-        <div class="chat-header">
-          <div class="avatar">🌴</div>
-          <div class="chat-name">Top of the Palms</div>
-          <div class="chat-sub" id="chat-sub">Text reservation demo</div>
-        </div>
-
-        <div class="channel-tabs">
-          <button class="ch-tab active" onclick="setChannel('sms', null)">💬 SMS</button>
-          <button class="ch-tab" onclick="setChannel('voice', null)">📞 Voice</button>
-          <button class="ch-tab" onclick="setChannel('email', null)">📧 Email</button>
-        </div>
-
-        <div class="messages-area" id="messages">
-          <div class="msg agent">
-            <div class="bubble">Hi! Text me to start a reservation at Top of the Palms. What would you like to do?</div>
-            <div class="msg-time">delivered</div>
-          </div>
-        </div>
-        <div class="typing-indicator" id="typing">
-          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-        </div>
-
-        <div class="completion-card" id="completion-card" style="display:none">
-          <h4>✓ Reservation received</h4>
-          <p id="completion-text"></p>
-        </div>
-        <button class="reset-btn" id="reset-btn" onclick="resetChat()">↺ Start new conversation</button>
-
-        <div class="input-area">
-          <input type="text" class="msg-input" id="msg-input" placeholder="Type a message…" maxlength="320" />
-          <button class="send-btn" id="send-btn" onclick="sendMessage()">↑</button>
-        </div>
-
+      <div class="email-toolbar">
+        <div class="dot r"></div>
+        <div class="dot y"></div>
+        <div class="dot g"></div>
+        <span class="toolbar-title">Reservation Request — Top of the Palms</span>
       </div>
+
+      <div class="email-thread" id="thread">
+        <div class="email-msg">
+          <div class="msg-header">
+            <div class="msg-from">
+              <div class="avatar agent">TP</div>
+              <span class="msg-name">Top of the Palms Reservations</span>
+            </div>
+            <span class="msg-time">just now</span>
+          </div>
+          <div class="msg-body">Hello! Send us an email to start a reservation request at Top of the Palms.
+
+We'll ask for a few quick details and get you set up.
+
+— Top of the Palms Reservations Team</div>
+        </div>
+      </div>
+
+      <div class="typing" id="typing">
+        <div class="avatar agent" style="width:28px;height:28px">TP</div>
+        <span class="typing-label">Typing</span>
+        <div class="dot-anim"><span></span><span></span><span></span></div>
+      </div>
+
+      <div class="completion" id="completion">
+        <h4>✓ Reservation received!</h4>
+        <p id="completion-details"></p>
+        <span class="reset-link" onclick="resetConversation()">↺ Start a new reservation</span>
+      </div>
+
+      <div class="compose">
+        <div class="compose-header">Reply</div>
+        <textarea id="compose-input" placeholder="Type your message here…" maxlength="500" oninput="updateCount()"></textarea>
+        <div class="compose-footer">
+          <span class="char-count" id="char-count">0 / 500</span>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()">Send ↑</button>
+        </div>
+      </div>
+
     </div>
-    <p style="text-align:center;font-size:12px;color:var(--gray-400);margin-top:12px">
-      This demo uses the real Claude AI. No Twilio needed.
-    </p>
+    <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:10px">Demo uses real AI. No account needed to test.</p>
   </div>
+
 </div>
 
 <script>
-  let sessionId   = crypto.randomUUID();
-  let currentChan = 'sms';
-  let chatDone    = false;
+  let sessionId = crypto.randomUUID();
+  let done = false;
 
-  // ── Channel switching ────────────────────────────────────────────────────
+  const input   = document.getElementById('compose-input');
+  const sendBtn = document.getElementById('send-btn');
+  const thread  = document.getElementById('thread');
+  const typing  = document.getElementById('typing');
 
-  function setChannel(ch, cardEl) {
-    currentChan = ch;
-    document.querySelectorAll('.channel-card').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.ch-tab').forEach(t => t.classList.remove('active'));
-
-    if (cardEl) cardEl.classList.add('active');
-    const tabIdx = ['sms','voice','email'].indexOf(ch);
-    document.querySelectorAll('.ch-tab')[tabIdx].classList.add('active');
-
-    const icons = { sms: '💬', voice: '📞', email: '📧' };
-    const labels = { sms: 'Text reservation demo', voice: 'Voice call simulation', email: 'Email reservation demo' };
-    document.getElementById('chat-sub').textContent = labels[ch];
-
-    const bubbleFix = document.querySelector('.msg.user .bubble');
-    if (bubbleFix) {
-      bubbleFix.style.background = ch === 'voice' ? '#007aff' : ch === 'email' ? '#8e44ad' : '#34c759';
-    }
-
-    resetChat();
-  }
-
-  // ── Messaging ────────────────────────────────────────────────────────────
-
-  document.getElementById('msg-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.ctrlKey) sendMessage();
   });
 
+  function updateCount() {
+    document.getElementById('char-count').textContent = `${input.value.length} / 500`;
+  }
+
   async function sendMessage() {
-    if (chatDone) return;
-    const input = document.getElementById('msg-input');
-    const text  = input.value.trim();
+    if (done) return;
+    const text = input.value.trim();
     if (!text) return;
 
     input.value = '';
-    appendMessage('user', text);
-    showTyping(true);
-
-    const sendBtn = document.getElementById('send-btn');
+    updateCount();
     sendBtn.disabled = true;
+
+    addMessage('You', text, 'you');
+    showTyping(true);
 
     try {
       const resp = await fetch('/api/demo/chat', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ sessionId, message: text, channel: currentChan })
+        body:    JSON.stringify({ sessionId, message: text })
       });
 
-      if (resp.status === 500) {
+      showTyping(false);
+
+      if (!resp.ok) {
         const err = await resp.json();
-        showTyping(false);
-        appendMessage('agent', `⚠️ ${err.error || 'Server error. Is ANTHROPIC_API_KEY set in .env?'}`);
+        addMessage('System', '⚠️ Error: ' + (err.error || 'Server error. Is the server running and GROQ_API_KEY set?'), 'agent');
         sendBtn.disabled = false;
         return;
       }
 
       const data = await resp.json();
-      showTyping(false);
-      appendMessage('agent', data.text);
+      addMessage('Top of the Palms Reservations', data.text, 'agent');
 
       if (data.complete && data.collected) {
-        chatDone = true;
+        done = true;
         const c = data.collected;
-        const partyLabel = c.party === 1 ? '1 guest' : `${c.party} guests`;
-        document.getElementById('completion-text').textContent =
-          `${c.name} · ${partyLabel} · ${c.datetime} · ${c.status === 'faculty' ? 'Auto-approved ✓' : 'Sent for manager review'}`;
-        document.getElementById('completion-card').style.display = 'block';
-        document.getElementById('reset-btn').classList.add('show');
-        input.disabled  = true;
+        const details = [
+          `Name: ${c.name}`,
+          `Type: ${c.status === 'faculty' ? 'Faculty — auto-approved ✓' : 'Student — pending manager approval'}`,
+          `Party: ${c.party} guest${c.party === 1 ? '' : 's'}`,
+          `Time: ${c.datetime}`
+        ].join('\n');
+
+        document.getElementById('completion-details').textContent = details;
+        document.getElementById('completion').classList.add('show');
+        input.disabled   = true;
         sendBtn.disabled = true;
-        input.placeholder = 'Conversation complete';
+        input.placeholder = 'Conversation complete.';
       } else {
         sendBtn.disabled = false;
         input.focus();
       }
     } catch (err) {
       showTyping(false);
-      appendMessage('agent', '⚠️ Could not reach server. Make sure npm start is running.');
+      addMessage('System', '⚠️ Cannot reach server. Make sure npm start is running.', 'agent');
       sendBtn.disabled = false;
     }
   }
 
-  function appendMessage(role, text) {
-    const area = document.getElementById('messages');
-    const div  = document.createElement('div');
-    div.className = `msg ${role}`;
-    const bubbleColor = role === 'user'
-      ? (currentChan === 'voice' ? '#007aff' : currentChan === 'email' ? '#8e44ad' : '#34c759')
-      : '#e9e9eb';
-    const textColor = role === 'user' ? '#fff' : '#1c1c1e';
+  function addMessage(from, text, role) {
+    const initials = role === 'you' ? 'You' : 'TP';
+    const div = document.createElement('div');
+    div.className = 'email-msg';
     div.innerHTML = `
-      <div class="bubble" style="background:${bubbleColor};color:${textColor}">${esc(text).replace(/\n/g,'<br>')}</div>
-      <div class="msg-time">${role === 'user' ? 'You · now' : 'Top of the Palms · now'}</div>`;
-    area.appendChild(div);
-    area.scrollTop = area.scrollHeight;
+      <div class="msg-header">
+        <div class="msg-from">
+          <div class="avatar ${role}">${initials}</div>
+          <span class="msg-name">${esc(from)}</span>
+        </div>
+        <span class="msg-time">just now</span>
+      </div>
+      <div class="msg-body">${esc(text)}</div>`;
+    thread.appendChild(div);
+    thread.scrollTop = thread.scrollHeight;
   }
 
   function showTyping(show) {
-    document.getElementById('typing').classList.toggle('show', show);
-    const area = document.getElementById('messages');
-    area.scrollTop = area.scrollHeight;
+    typing.classList.toggle('show', show);
+    thread.scrollTop = thread.scrollHeight;
   }
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  function resetChat() {
+  function resetConversation() {
     sessionId = crypto.randomUUID();
-    chatDone  = false;
-    document.getElementById('messages').innerHTML = `
-      <div class="msg agent">
-        <div class="bubble">Hi! Send a message to start a reservation at Top of the Palms.</div>
-        <div class="msg-time">delivered</div>
+    done = false;
+    thread.innerHTML = `
+      <div class="email-msg">
+        <div class="msg-header">
+          <div class="msg-from"><div class="avatar agent">TP</div><span class="msg-name">Top of the Palms Reservations</span></div>
+          <span class="msg-time">just now</span>
+        </div>
+        <div class="msg-body">Hello! Send us an email to start a new reservation.</div>
       </div>`;
-    document.getElementById('completion-card').style.display = 'none';
-    document.getElementById('reset-btn').classList.remove('show');
-    const input = document.getElementById('msg-input');
-    input.disabled   = false;
-    input.placeholder = 'Type a message…';
-    document.getElementById('send-btn').disabled = false;
+    document.getElementById('completion').classList.remove('show');
+    input.disabled    = false;
+    input.placeholder = 'Type your message here…';
+    sendBtn.disabled  = false;
     input.focus();
   }
 </script>

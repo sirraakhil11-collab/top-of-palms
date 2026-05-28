@@ -3,179 +3,143 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Reservations Today — Top of the Palms</title>
+  <title>POS Board — Top of the Palms</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --green: #006747; --gold: #CFC493; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e8e8e8; min-height: 100vh; }
-
-    header {
-      background: linear-gradient(135deg, var(--green) 0%, #004d34 100%);
-      padding: 20px 32px; display: flex; align-items: center; justify-content: space-between;
-    }
-    .header-left h1 { color: #fff; font-size: 22px; font-weight: 800; }
-    .header-left p  { color: var(--gold); font-size: 13px; margin-top: 2px; }
-    .header-right   { text-align: right; }
-    .date-display   { color: #fff; font-size: 20px; font-weight: 700; }
-    .time-display   { color: var(--gold); font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
-
-    .controls {
-      padding: 16px 32px; background: #1a1d27; display: flex; align-items: center; gap: 12px;
-      border-bottom: 1px solid #2d3148;
-    }
-    .stat-pill {
-      background: #252836; border: 1px solid #3d4065; border-radius: 20px;
-      padding: 6px 16px; font-size: 13px; color: #9ca3af;
-    }
-    .stat-pill strong { color: #fff; margin-right: 4px; }
-    .stat-pill.green strong { color: #4ade80; }
-    .stat-pill.amber strong { color: #fbbf24; }
-    .refresh-btn {
-      margin-left: auto; background: #252836; color: #9ca3af; border: 1px solid #3d4065;
-      padding: 7px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;
-    }
-    .refresh-btn:hover { background: #2d3148; color: #fff; }
-
-    .board { padding: 24px 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-
-    .res-card {
-      background: #1e2130; border: 1px solid #2d3148; border-radius: 14px;
-      overflow: hidden; transition: transform .15s;
-    }
-    .res-card:hover { transform: translateY(-2px); }
-    .card-top { padding: 14px 18px 10px; border-bottom: 1px solid #2d3148; display: flex; justify-content: space-between; align-items: flex-start; }
-    .res-name { font-size: 17px; font-weight: 700; color: #fff; }
-    .res-time { font-size: 13px; color: #6b7280; margin-top: 3px; }
-    .status-dot {
-      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 6px;
-    }
-    .dot-confirmed { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,.5); }
-    .dot-faculty   { background: #60a5fa; box-shadow: 0 0 8px rgba(96,165,250,.5); }
-
-    .card-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 7px; }
-    .card-row  { display: flex; justify-content: space-between; font-size: 13px; }
-    .card-key  { color: #6b7280; }
-    .card-val  { color: #d1d5db; font-weight: 500; }
-    .card-val.large { font-size: 22px; font-weight: 800; color: #fff; }
-    .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
-    .badge-faculty  { background: #1e3a5f; color: #60a5fa; }
-    .badge-student  { background: #3b1a6e; color: #c084fc; }
-    .badge-approved { background: #14532d; color: #4ade80; }
-
-    .empty-state { grid-column: 1/-1; text-align: center; padding: 80px 20px; color: #4b5563; }
-    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
-    .empty-state h2 { font-size: 20px; color: #6b7280; margin-bottom: 8px; }
-    .empty-state p { font-size: 14px; }
-
-    @media (max-width: 640px) {
-      header { padding: 16px; flex-direction: column; gap: 10px; text-align: center; }
-      .controls { padding: 12px 16px; flex-wrap: wrap; }
-      .board { padding: 16px; grid-template-columns: 1fr; }
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e8e8e8;min-height:100vh}
+    header{background:linear-gradient(135deg,#006747 0%,#004d34 100%);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .hl h1{color:#fff;font-size:20px;font-weight:800}
+    .hl p{color:#CFC493;font-size:12px;margin-top:2px}
+    .hr{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    .clock{text-align:right}
+    .cdate{color:#fff;font-size:16px;font-weight:700}
+    .ctime{color:#CFC493;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+    .date-picker-wrap{display:flex;align-items:center;gap:8px}
+    .date-picker-wrap label{color:#a7d9c2;font-size:12px}
+    .dpick{padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+    .dpick:focus{border-color:#CFC493}
+    .today-btn{padding:7px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;cursor:pointer}
+    .today-btn:hover{background:rgba(255,255,255,.25)}
+    .nav-btn{padding:7px 14px;background:rgba(207,196,147,.2);border:1px solid #CFC493;border-radius:8px;color:#CFC493;font-size:12px;cursor:pointer;text-decoration:none}
+    .nav-btn:hover{background:rgba(207,196,147,.3)}
+    .controls{padding:14px 28px;background:#1a1d27;display:flex;align-items:center;gap:12px;border-bottom:1px solid #2d3148;flex-wrap:wrap}
+    .spill{background:#252836;border:1px solid #3d4065;border-radius:20px;padding:6px 16px;font-size:13px;color:#9ca3af}
+    .spill strong{color:#fff;margin-right:4px}
+    .spill.g strong{color:#4ade80}
+    .spill.a strong{color:#fbbf24}
+    .viewing{color:#9ca3af;font-size:13px;margin-left:auto}
+    .board{padding:20px 28px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+    .rcard{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s}
+    .rcard:hover{transform:translateY(-2px)}
+    .rtop{padding:14px 18px 10px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start}
+    .rname{font-size:16px;font-weight:700;color:#fff}
+    .rtime{font-size:12px;color:#6b7280;margin-top:3px}
+    .rdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
+    .dot-f{background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,.5)}
+    .dot-s{background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,.5)}
+    .rbody{padding:14px 18px;display:flex;flex-direction:column;gap:7px}
+    .rrow{display:flex;justify-content:space-between;font-size:13px}
+    .rk{color:#6b7280}.rv{color:#d1d5db;font-weight:500}
+    .rv.big{font-size:28px;font-weight:800;color:#fff}
+    .rbadge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px}
+    .rb-f{background:#1e3a5f;color:#60a5fa}
+    .rb-s{background:#14532d;color:#4ade80}
+    .empty{grid-column:1/-1;text-align:center;padding:80px 20px;color:#4b5563}
+    .empty .eicon{font-size:48px;margin-bottom:16px}
+    .empty h2{font-size:20px;color:#6b7280;margin-bottom:8px}
+    @media(max-width:640px){header{padding:14px 16px}.board{padding:14px 16px;grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-
 <header>
-  <div class="header-left">
-    <h1>🌴 Top of the Palms — Reservations</h1>
-    <p>POS Board · USF Tampa Campus · Compass USA</p>
-  </div>
-  <div class="header-right">
-    <div class="date-display" id="date-display"></div>
-    <div class="time-display" id="time-display"></div>
+  <div class="hl"><h1>🌴 Top of the Palms — Reservations</h1><p>POS Board · USF Dining · Compass USA</p></div>
+  <div class="hr">
+    <div class="date-picker-wrap">
+      <label>Viewing:</label>
+      <input class="dpick" type="date" id="dpick" onchange="loadBoard()">
+      <button class="today-btn" onclick="goToday()">Today</button>
+    </div>
+    <div class="clock"><div class="cdate" id="cdate"></div><div class="ctime" id="ctime"></div></div>
+    <a class="nav-btn" href="/manager/dashboard">← Manager</a>
   </div>
 </header>
-
 <div class="controls">
-  <div class="stat-pill green"><strong id="total-count">0</strong>Reservations today</div>
-  <div class="stat-pill"><strong id="total-covers">0</strong>Covers</div>
-  <div class="stat-pill amber"><strong id="next-time">—</strong>Next reservation</div>
-  <a href="/manager/dashboard" style="color:#9ca3af;font-size:13px;text-decoration:none;margin-left:8px">← Manager view</a>
-  <button class="refresh-btn" onclick="loadBoard()">↻ Refresh</button>
+  <div class="spill g"><strong id="total">0</strong>Reservations</div>
+  <div class="spill a"><strong id="covers">0</strong>Covers</div>
+  <div class="spill"><strong id="faculty-cnt">0</strong>Faculty</div>
+  <div class="spill"><strong id="student-cnt">0</strong>Students</div>
+  <div class="viewing" id="viewing-lbl">Today</div>
 </div>
-
 <div class="board" id="board">
-  <div class="empty-state">
-    <div class="icon">📋</div>
-    <h2>Loading reservations…</h2>
-  </div>
+  <div class="empty"><div class="eicon">🔄</div><h2>Loading…</h2></div>
 </div>
-
 <script>
-  function updateClock() {
-    const now = new Date();
-    document.getElementById('date-display').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    document.getElementById('time-display').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  // Set today as default
+  const todayStr = new Date().toISOString().split('T')[0];
+  document.getElementById('dpick').value = todayStr;
+
+  function goToday() {
+    document.getElementById('dpick').value = todayStr;
+    loadBoard();
   }
 
   async function loadBoard() {
+    const date = document.getElementById('dpick').value || todayStr;
     try {
-      const data = await fetch('/api/pos/today').then(r => r.json());
-      renderBoard(data);
-    } catch (err) {
-      document.getElementById('board').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><h2>Could not load reservations</h2><p>${err.message}</p></div>`;
+      const resp = await fetch(`/api/pos?date=${date}`);
+      const data = await resp.json();
+      renderBoard(data.reservations, date);
+    } catch(e) {
+      document.getElementById('board').innerHTML='<div class="empty"><div class="eicon">⚠️</div><h2>Could not load</h2><p>'+e.message+'</p></div>';
     }
   }
 
-  function renderBoard(data) {
+  function renderBoard(data, date) {
     const board = document.getElementById('board');
-    document.getElementById('total-count').textContent = data.length;
-    document.getElementById('total-covers').textContent = data.reduce((s, r) => s + r.party, 0);
-
-    const sorted = [...data].sort((a, b) => a.datetime.localeCompare(b.datetime));
-    const next   = sorted[0];
-    document.getElementById('next-time').textContent = next ? next.datetime : '—';
+    const isToday = date === todayStr;
+    const label = isToday ? 'Today' : new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    document.getElementById('viewing-lbl').textContent = label;
+    document.getElementById('total').textContent   = data.length;
+    document.getElementById('covers').textContent  = data.reduce((s,r)=>s+r.party,0);
+    document.getElementById('faculty-cnt').textContent = data.filter(r=>r.guest_status==='faculty').length;
+    document.getElementById('student-cnt').textContent = data.filter(r=>r.guest_status==='student').length;
 
     if (!data.length) {
-      board.innerHTML = `<div class="empty-state"><div class="icon">🌴</div><h2>No confirmed reservations today</h2><p>Approved reservations will appear here automatically.</p></div>`;
+      board.innerHTML=`<div class="empty"><div class="eicon">🌴</div><h2>No confirmed reservations</h2><p>${isToday?'Approved reservations for today will appear here automatically.':'No approved reservations found for this date.'}</p></div>`;
       return;
     }
 
     board.innerHTML = data.map(r => {
-      const confirmId = r.id.slice(0, 8).toUpperCase();
-      const isFaculty = r.guest_status === 'faculty';
-      const partyLabel = r.party === 1 ? '1 guest' : `${r.party} guests`;
-      return `<div class="res-card">
-        <div class="card-top">
-          <div>
-            <div class="res-name">${esc(r.name)}</div>
-            <div class="res-time">${esc(r.datetime)}</div>
-          </div>
-          <div class="status-dot ${isFaculty ? 'dot-faculty' : 'dot-confirmed'}"></div>
+      const ref = r.id.slice(0,8).toUpperCase();
+      const isFac = r.guest_status==='faculty';
+      return `<div class="rcard">
+        <div class="rtop">
+          <div><div class="rname">${x(r.name)}</div><div class="rtime">${x(r.datetime)}</div></div>
+          <div class="rdot ${isFac?'dot-f':'dot-s'}"></div>
         </div>
-        <div class="card-body">
-          <div class="card-row">
-            <span class="card-key">Party size</span>
-            <span class="card-val large">${r.party}</span>
-          </div>
-          <div class="card-row">
-            <span class="card-key">Type</span>
-            <span class="badge ${isFaculty ? 'badge-faculty' : 'badge-student'}">${isFaculty ? 'Faculty' : 'Student'}</span>
-          </div>
-          <div class="card-row">
-            <span class="card-key">Status</span>
-            <span class="badge badge-approved">Confirmed</span>
-          </div>
-          <div class="card-row">
-            <span class="card-key">Confirmation #</span>
-            <span class="card-val" style="font-family:monospace;font-size:12px">${confirmId}</span>
-          </div>
-          <div class="card-row">
-            <span class="card-key">UID</span>
-            <span class="card-val" style="font-family:monospace;font-size:12px">${esc(r.uid)}</span>
-          </div>
+        <div class="rbody">
+          <div class="rrow"><span class="rk">Party size</span><span class="rv big">${r.party}</span></div>
+          <div class="rrow"><span class="rk">Type</span><span class="rbadge ${isFac?'rb-f':'rb-s'}">${isFac?'Faculty':'Student'}</span></div>
+          <div class="rrow"><span class="rk">Confirmation</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
+          <div class="rrow"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
+          ${r.notes?`<div class="rrow"><span class="rk">Notes</span><span class="rv" style="font-size:12px">${x(r.notes)}</span></div>`:''}
         </div>
       </div>`;
     }).join('');
   }
 
-  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('cdate').textContent = now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    document.getElementById('ctime').textContent = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
 
   updateClock();
-  setInterval(updateClock, 1000);
+  setInterval(updateClock,1000);
   loadBoard();
-  setInterval(loadBoard, 30000);
+  setInterval(loadBoard,30000);
 </script>
 </body>
 </html>

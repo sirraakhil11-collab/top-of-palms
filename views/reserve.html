@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Make a Reservation — Top of the Palms</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; min-height: 100vh; }
+
+    header { background: #006747; padding: 20px 24px; text-align: center; }
+    header h1 { color: #fff; font-size: 22px; font-weight: 800; }
+    header p  { color: #a7d9c2; font-size: 13px; margin-top: 4px; }
+
+    .container { max-width: 560px; margin: 32px auto; padding: 0 16px 60px; }
+
+    .card { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    label span { color: #b91c1c; margin-left: 2px; }
+    input, select, textarea {
+      width: 100%; padding: 11px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+      font-size: 14px; color: #111827; font-family: inherit; outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #006747; box-shadow: 0 0 0 3px rgba(0,103,71,.08); }
+    textarea { resize: vertical; min-height: 80px; }
+    .hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+
+    .radio-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .radio-option { position: relative; }
+    .radio-option input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+    .radio-label {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      border: 1.5px solid #e5e7eb; border-radius: 8px; cursor: pointer;
+      font-size: 14px; font-weight: 500; color: #374151; transition: all .15s;
+    }
+    .radio-option input:checked + .radio-label {
+      border-color: #006747; background: #f0fdf4; color: #006747;
+    }
+    .radio-icon { font-size: 18px; }
+
+    .submit-btn {
+      width: 100%; background: #006747; color: #fff; border: none; border-radius: 10px;
+      padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer;
+      margin-top: 8px; transition: background .15s;
+    }
+    .submit-btn:hover { background: #004d34; }
+    .submit-btn:disabled { background: #d1d5db; cursor: default; }
+
+    .error-msg { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .error-msg.show { display: block; }
+
+    /* Success screen */
+    .success-screen { display: none; text-align: center; padding: 16px 0; }
+    .success-screen.show { display: block; }
+    .success-icon { font-size: 56px; margin-bottom: 16px; }
+    .success-screen h2 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .success-screen p  { color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+    .success-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
+    .badge-approved { background: #dcfce7; color: #15803d; }
+    .badge-pending  { background: #fef3c7; color: #b45309; }
+    .new-btn { background: #006747; color: #fff; border: none; border-radius: 8px; padding: 11px 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 24px 0; }
+
+    .info-banner { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 16px; margin-bottom: 24px; font-size: 13px; color: #374151; line-height: 1.6; }
+    .info-banner strong { color: #006747; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🌴 Top of the Palms</h1>
+  <p>University of South Florida Dining · Managed by Compass USA</p>
+</header>
+
+<div class="container">
+  <div class="card">
+
+    <!-- Form -->
+    <div id="form-section">
+      <h2 style="font-size:20px;font-weight:700;color:#111827;margin-bottom:6px">Make a Reservation</h2>
+      <p style="color:#6b7280;font-size:14px;margin-bottom:20px">Fill in the form below. Faculty reservations are confirmed instantly. Student reservations require manager approval.</p>
+
+      <div class="info-banner">
+        📧 You can also email us at <strong id="from-email-display">reservations@topofthepalms.usf.edu</strong> to make a reservation.
+      </div>
+
+      <div class="error-msg" id="error-msg"></div>
+
+      <div class="form-group">
+        <label>Full Name <span>*</span></label>
+        <input type="text" id="f-name" placeholder="e.g. Dr. Sarah Mitchell" autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label>I am a <span>*</span></label>
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" name="guest_type" id="type-faculty" value="faculty">
+            <label class="radio-label" for="type-faculty">
+              <span class="radio-icon">🎓</span> Faculty
+            </label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" name="guest_type" id="type-student" value="student">
+            <label class="radio-label" for="type-student">
+              <span class="radio-icon">📚</span> Student
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>USF UID <span>*</span></label>
+        <input type="text" id="f-uid" placeholder="9-digit USF ID number" maxlength="9" inputmode="numeric">
+        <div class="hint">Your 9-digit USF student or faculty ID number</div>
+      </div>
+
+      <div class="form-group">
+        <label>Email Address <span>*</span></label>
+        <input type="email" id="f-email" placeholder="your@usf.edu" autocomplete="email">
+        <div class="hint">Confirmation will be sent here</div>
+      </div>
+
+      <div class="form-group">
+        <label>Number of Guests <span>*</span></label>
+        <select id="f-party">
+          <option value="">Select party size</option>
+          <option value="1">1 guest (just me)</option>
+          <option value="2">2 guests</option>
+          <option value="3">3 guests</option>
+          <option value="4">4 guests</option>
+          <option value="5">5 guests</option>
+          <option value="6">6 guests</option>
+          <option value="7">7 guests</option>
+          <option value="8">8 guests</option>
+          <option value="9">9 guests</option>
+          <option value="10">10 guests</option>
+          <option value="15">15 guests</option>
+          <option value="20">20+ guests</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Preferred Date & Time <span>*</span></label>
+        <input type="datetime-local" id="f-datetime">
+        <div class="hint">Select your preferred reservation date and time</div>
+      </div>
+
+      <div class="form-group">
+        <label>Special Requests <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
+        <textarea id="f-notes" placeholder="Any dietary requirements, special occasions, seating preferences..."></textarea>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()">Request Reservation</button>
+    </div>
+
+    <!-- Success screen -->
+    <div class="success-screen" id="success-screen">
+      <div class="success-icon" id="success-icon">✅</div>
+      <h2 id="success-title">Reservation Received!</h2>
+      <div class="success-badge" id="success-badge"></div>
+      <p id="success-msg"></p>
+      <button class="new-btn" onclick="resetForm()">Make Another Reservation</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Set min datetime to now
+  const dt = document.getElementById('f-datetime');
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  dt.min = now.toISOString().slice(0, 16);
+
+  async function submitForm() {
+    const name     = document.getElementById('f-name').value.trim();
+    const type     = document.querySelector('input[name="guest_type"]:checked')?.value;
+    const uid      = document.getElementById('f-uid').value.trim().replace(/\D/g,'');
+    const email    = document.getElementById('f-email').value.trim();
+    const party    = document.getElementById('f-party').value;
+    const datetime = document.getElementById('f-datetime').value;
+    const notes    = document.getElementById('f-notes').value.trim();
+    const errEl    = document.getElementById('error-msg');
+
+    // Validate
+    if (!name)     return showError('Please enter your full name.');
+    if (!type)     return showError('Please select Faculty or Student.');
+    if (uid.length !== 9) return showError('UID must be exactly 9 digits.');
+    if (!email || !email.includes('@')) return showError('Please enter a valid email address.');
+    if (!party)    return showError('Please select your party size.');
+    if (!datetime) return showError('Please select a date and time.');
+
+    errEl.classList.remove('show');
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    try {
+      const resp = await fetch('/api/reserve', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          name, guest_type: type, uid, email,
+          party: parseInt(party),
+          datetime: new Date(datetime).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }),
+          notes
+        })
+      });
+
+      const data = await resp.json();
+      if (!resp.ok) return showError(data.error || 'Submission failed. Please try again.');
+
+      showSuccess(data.status, name, email);
+    } catch (err) {
+      showError('Could not reach the server. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Request Reservation';
+    }
+  }
+
+  function showSuccess(status, name, email) {
+    document.getElementById('form-section').style.display = 'none';
+    const ss = document.getElementById('success-screen');
+    ss.classList.add('show');
+
+    if (status === 'approved') {
+      document.getElementById('success-icon').textContent  = '✅';
+      document.getElementById('success-title').textContent = 'Reservation Confirmed!';
+      document.getElementById('success-badge').className   = 'success-badge badge-approved';
+      document.getElementById('success-badge').textContent = '✓ Auto-approved — Faculty';
+      document.getElementById('success-msg').textContent   = `Hi ${name}! Your reservation is confirmed. A confirmation email has been sent to ${email}. We look forward to seeing you at Top of the Palms!`;
+    } else {
+      document.getElementById('success-icon').textContent  = '⏳';
+      document.getElementById('success-title').textContent = 'Request Submitted!';
+      document.getElementById('success-badge').className   = 'success-badge badge-pending';
+      document.getElementById('success-badge').textContent = '⏳ Pending manager approval';
+      document.getElementById('success-msg').textContent   = `Hi ${name}! Your reservation request has been received and is under review. A manager will confirm it shortly and you will receive an email at ${email}.`;
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg;
+    el.classList.add('show');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = false;
+    btn.textContent = 'Request Reservation';
+  }
+
+  function resetForm() {
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('success-screen').classList.remove('show');
+    document.getElementById('f-name').value = '';
+    document.querySelector('input[name="guest_type"]:checked') && (document.querySelector('input[name="guest_type"]:checked').checked = false);
+    document.getElementById('f-uid').value = '';
+    document.getElementById('f-email').value = '';
+    document.getElementById('f-party').value = '';
+    document.getElementById('f-datetime').value = '';
+    document.getElementById('f-notes').value = '';
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-btn').textContent = 'Request Reservation';
+  }
+</script>
+</body>
+</html>
