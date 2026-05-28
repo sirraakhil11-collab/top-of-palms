@@ -38,9 +38,12 @@
 
 <script>
   // Parse action and id from URL: /manager/confirm/approve/:id or /manager/confirm/deny/:id
+  // URL is: /manager/confirm/approve/:id
+  // parts:  ['', 'manager', 'confirm', 'approve', ':id']
+  //          [0]   [1]        [2]        [3]        [4]
   const parts  = window.location.pathname.split('/');
-  const action = parts[4]; // 'approve' or 'deny'
-  const id     = parts[5];
+  const action = parts[3]; // 'approve' or 'deny'
+  const id     = parts[4]; // the UUID
 
   async function loadReservation() {
     try {
