@@ -9,27 +9,20 @@ async function processReservation(session) {
 
   console.log(`\n[Reservation] Processing: ${data.name} (${data.status}) via ${channel}`);
 
-  // ── Daily limit check ──────────────────────────────────────────────────────
-  const today = new Date().toISOString().split('T')[0];
-  const count = db.getDailyCount(today);
+  // ── Daily limit check (by reservation date, not submitted date) ───────────
+  const resDate = db.parseReservationDate(data.datetime) || new Date().toISOString().split('T')[0];
+  const count   = db.getDailyCount(resDate);
 
   if (count >= DAILY_LIMIT) {
-    console.log(`[Reservation] ⚠️  Daily limit reached (${count}/${DAILY_LIMIT}) — rejecting ${data.name}`);
-
-    // Save as denied with limit reason
+    console.log(`[Reservation] ⚠️  Daily limit reached (${count}/${DAILY_LIMIT}) for ${resDate}`);
     const record = db.createReservation({
       name: data.name, guest_status: data.status,
       uid: data.uid, email: data.email,
       party: parseInt(data.party, 10), datetime: data.datetime,
-      notes: data.notes || '', channel,
+      notes: 'Auto-denied: daily reservation limit reached', channel,
       status: 'denied'
     });
-    db.updateReservation(record.id, {
-      processed_at: new Date().toISOString(),
-      notes: 'Auto-denied: daily reservation limit reached'
-    });
-
-    // Notify guest
+    db.updateReservation(record.id, { processed_at: new Date().toISOString() });
     await sendLimitEmail(data).catch(console.error);
     return { success: false, reason: 'daily_limit' };
   }
@@ -43,22 +36,18 @@ async function processReservation(session) {
     status: data.status === 'faculty' ? 'auto_approved' : 'pending_approval'
   });
 
-  console.log(`[Reservation] Saved → ${reservation.id} (${count + 1}/${DAILY_LIMIT} today)`);
+  console.log(`[Reservation] Saved → ${reservation.id} (${count + 1}/${DAILY_LIMIT} for ${resDate})`);
 
-  // ── Faculty: auto-approve ──────────────────────────────────────────────────
   if (data.status === 'faculty') {
-    db.updateReservation(reservation.id, {
-      status: 'approved', processed_at: new Date().toISOString()
-    });
+    db.updateReservation(reservation.id, { status: 'approved', processed_at: new Date().toISOString() });
     await sendEmail(db.getReservation(reservation.id), 'confirmed').catch(console.error);
     console.log(`[Reservation] Faculty auto-approved ✓`);
     return { success: true, status: 'approved' };
   }
 
-  // ── Student: manager approval ──────────────────────────────────────────────
   await sendManagerApprovalEmail(reservation).catch(console.error);
   await sendEmail(reservation, 'pending').catch(console.error);
-  console.log(`[Reservation] Student queued for manager approval ✓`);
+  console.log(`[Reservation] Student queued ✓`);
   return { success: true, status: 'pending' };
 }
 
@@ -67,16 +56,15 @@ async function sendLimitEmail(data) {
   if (!process.env.SENDGRID_API_KEY || !data.email) return;
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   await sgMail.send({
-    to:   data.email,
+    to: data.email,
     from: { email: process.env.FROM_EMAIL, name: 'Top of the Palms Reservations' },
-    subject: 'Reservation request — fully booked for today',
+    subject: 'Reservation request — fully booked for that date',
     html: `<div style="font-family:sans-serif;max-width:520px;padding:20px">
       <h2 style="color:#006747">Top of the Palms</h2>
       <p>Hi ${data.name},</p>
-      <p>Unfortunately we are fully booked for today and cannot accommodate your reservation request.</p>
-      <p>Please try again tomorrow or contact us directly to check availability for another date.</p>
-      <p>We apologize for the inconvenience and hope to see you soon!</p>
-      <p>— Top of the Palms Reservations Team<br>USF Dining · Compass USA</p>
+      <p>Unfortunately we are fully booked for <strong>${data.datetime}</strong> and cannot accommodate your request.</p>
+      <p>Please try a different date or contact us directly to check availability.</p>
+      <p>— Top of the Palms Reservations Team</p>
     </div>`
   });
 }

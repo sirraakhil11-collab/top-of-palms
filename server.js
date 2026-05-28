@@ -138,7 +138,7 @@ app.delete('/api/reservations/:id', (req, res) => {
 //  POS BOARD
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/pos', (req, res) => res.sendFile(path.join(__dirname, 'views', 'pos-board.html')));
-app.get('/api/pos', (req, res) => {
+app.get("/api/pos", (req, res) => {
   const date = req.query.date || new Date().toISOString().split('T')[0];
   const data = db.getAllReservations().filter(r =>
     (r.status === 'approved' || r.status === 'auto_approved') &&

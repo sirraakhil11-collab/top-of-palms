@@ -16,30 +16,33 @@
     .rbtn{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:13px;cursor:pointer}
     .upd{color:#a7d9c2;font-size:12px}
     main{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
-    /* Stats */
-    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
-    .stat{background:#fff;border-radius:10px;padding:14px 18px;border-top:3px solid var(--c,#e5e7eb)}
-    .stat-lbl{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
-    .stat-val{font-size:26px;font-weight:700;color:#111827}
-    .stat-sub{font-size:11px;color:#9ca3af;margin-top:2px}
-    .sp{--c:#f59e0b}.sa{--c:#006747}.sd{--c:#ef4444}.st{--c:#3b82f6}.sl{--c:#8b5cf6}
+
+    /* Stats — 6 cards, clickable */
+    .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+    .stat{background:#fff;border-radius:10px;padding:14px 16px;border-top:3px solid var(--c,#e5e7eb);cursor:pointer;transition:box-shadow .15s;position:relative}
+    .stat:hover{box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    .stat.active-filter{box-shadow:0 0 0 2px var(--c,#006747);background:#fafffe}
+    .stat-lbl{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+    .stat-val{font-size:24px;font-weight:700;color:#111827;line-height:1}
+    .stat-sub{font-size:10px;color:#9ca3af;margin-top:3px}
+    .stat-hint{font-size:10px;color:#c4b5fd;margin-top:2px}
+    .sp{--c:#f59e0b}.sa{--c:#006747}.sd{--c:#ef4444}.st{--c:#3b82f6}.sl{--c:#8b5cf6}.so{--c:#6b7280}
+    .active-filter .stat-lbl{font-weight:700}
+
     /* Limit bar */
-    .limit-bar{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:20px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:14px}
+    .limit-bar{background:#fff;border-radius:10px;padding:12px 18px;margin-bottom:20px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:14px}
     .lb-label{font-size:13px;font-weight:600;color:#374151;white-space:nowrap}
     .lb-track{flex:1;background:#f3f4f6;border-radius:20px;height:10px;overflow:hidden}
     .lb-fill{height:100%;border-radius:20px;background:#006747;transition:width .4s}
-    .lb-fill.warn{background:#f59e0b}
-    .lb-fill.full{background:#ef4444}
+    .lb-fill.warn{background:#f59e0b}.lb-fill.full{background:#ef4444}
     .lb-count{font-size:13px;font-weight:700;color:#111827;white-space:nowrap}
-    /* Filters */
-    .filters{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border:1px solid #e5e7eb}
-    .flbl{font-size:12px;font-weight:600;color:#6b7280}
-    .finput,.fsel{padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;outline:none;font-family:inherit}
-    .finput:focus,.fsel:focus{border-color:#006747}
-    .fsearch{flex:1;min-width:180px;padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
-    .fsearch:focus{border-color:#006747}
-    .clrbtn{padding:7px 14px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer}
-    /* Cards */
+
+    /* Active filter banner */
+    .filter-banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 16px;margin-bottom:14px;display:none;align-items:center;justify-content:space-between;font-size:13px;color:#1d4ed8}
+    .filter-banner.show{display:flex}
+    .clear-filter-btn{background:none;border:none;color:#2563eb;font-size:13px;cursor:pointer;font-weight:600;text-decoration:underline}
+
+    /* Pending cards */
     .sec-title{font-size:15px;font-weight:700;color:#111827;margin-bottom:14px;display:flex;align-items:center;gap:8px}
     .cbadge{background:#f59e0b;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
     .cbadge.zero{background:#e5e7eb;color:#9ca3af}
@@ -58,14 +61,27 @@
     .bdn{flex:1;background:#fff;color:#b91c1c;border:1.5px solid #b91c1c;border-radius:8px;padding:8px 0;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:block;text-align:center}
     .bdn:hover{background:#fef2f2}
     .bed{background:#fff;color:#2563eb;border:1.5px solid #93c5fd;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer}
+
     /* Pills */
     .pill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;white-space:nowrap}
     .pp{background:#fef3c7;color:#b45309}.pa{background:#dcfce7;color:#15803d}.pd{background:#fee2e2;color:#b91c1c}.pau{background:#dbeafe;color:#1d4ed8}
+
+    /* Filters */
+    .filters{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border:1px solid #e5e7eb}
+    .flbl{font-size:12px;font-weight:600;color:#6b7280}
+    .finput,.fsel{padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;outline:none;font-family:inherit}
+    .finput:focus,.fsel:focus{border-color:#006747}
+    .date-hint{font-size:11px;color:#9ca3af}
+    .fsearch{flex:1;min-width:180px;padding:7px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+    .fsearch:focus{border-color:#006747}
+    .clrbtn{padding:7px 14px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer}
+
     /* Table */
     .twrap{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden}
-    .tbar{display:flex;border-bottom:1px solid #e5e7eb;padding:0 18px}
+    .tbar{display:flex;border-bottom:1px solid #e5e7eb;padding:0 18px;align-items:center}
     .ttab{padding:11px 14px;font-size:13px;font-weight:500;color:#9ca3af;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
     .ttab.active{color:#006747;border-bottom-color:#006747}
+    .tcount{font-size:11px;color:#9ca3af;margin-left:auto;padding-right:4px}
     .tscroll{overflow-x:auto}
     table{width:100%;border-collapse:collapse;font-size:13px}
     th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;background:#f9fafb;border-bottom:1px solid #e5e7eb}
@@ -78,6 +94,7 @@
     .tb:hover{filter:brightness(.92)}
     .empty{text-align:center;padding:48px 20px;color:#9ca3af}
     .empty-icon{font-size:32px;margin-bottom:10px}
+
     /* Modals */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
     .overlay.show{display:flex}
@@ -91,7 +108,6 @@
     .mfoot{display:flex;gap:10px;margin-top:20px}
     .msave{flex:1;background:#006747;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer}
     .mcancel{background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:11px 20px;font-size:14px;cursor:pointer}
-    /* PIN modal */
     .pin-modal{background:#fff;border-radius:16px;padding:28px;max-width:360px;width:100%;text-align:center}
     .pin-modal h3{font-size:17px;font-weight:700;color:#111827;margin-bottom:8px}
     .pin-modal p{font-size:13px;color:#6b7280;margin-bottom:20px}
@@ -100,6 +116,8 @@
     .pin-err{color:#b91c1c;font-size:13px;margin-bottom:12px;display:none}
     .pin-err.show{display:block}
     .pdel-btn{width:100%;background:#b91c1c;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px}
+
+    @media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}}
     @media(max-width:640px){.stats{grid-template-columns:1fr 1fr}.filters{flex-direction:column}.mgrid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -114,27 +132,68 @@
   </div>
 </header>
 <main>
+
+  <!-- Stats — all clickable -->
   <div class="stats">
-    <div class="stat sp"><div class="stat-lbl">Pending</div><div class="stat-val" id="s0">–</div></div>
-    <div class="stat sa"><div class="stat-lbl">Approved today</div><div class="stat-val" id="s1">–</div></div>
-    <div class="stat sd"><div class="stat-lbl">Denied today</div><div class="stat-val" id="s2">–</div></div>
-    <div class="stat st"><div class="stat-lbl">Total today</div><div class="stat-val" id="s3">–</div></div>
-    <div class="stat sl"><div class="stat-lbl">Slots left today</div><div class="stat-val" id="s4">–</div><div class="stat-sub" id="s4-sub"></div></div>
+    <div class="stat sp" onclick="clickStat('pending_approval')" id="card-pending" title="Click to show all pending">
+      <div class="stat-lbl">Pending</div>
+      <div class="stat-val" id="s0">–</div>
+      <div class="stat-hint">Click to filter</div>
+    </div>
+    <div class="stat sa" onclick="clickStat('approved_today')" id="card-approved-today" title="Click to show today's approved">
+      <div class="stat-lbl">Approved Today</div>
+      <div class="stat-val" id="s1">–</div>
+      <div class="stat-sub" id="s1-date"></div>
+      <div class="stat-hint">Click to filter</div>
+    </div>
+    <div class="stat sd" onclick="clickStat('denied')" id="card-denied" title="Click to show all denied">
+      <div class="stat-lbl">All Denied</div>
+      <div class="stat-val" id="s2">–</div>
+      <div class="stat-hint">Click to filter</div>
+    </div>
+    <div class="stat st" onclick="clickStat('today')" id="card-today" title="Click to show today's reservations">
+      <div class="stat-lbl">Today's Reservations</div>
+      <div class="stat-val" id="s3">–</div>
+      <div class="stat-sub" id="s3-date"></div>
+      <div class="stat-hint">Click to filter</div>
+    </div>
+    <div class="stat sl">
+      <div class="stat-lbl">Slots Left Today</div>
+      <div class="stat-val" id="s4">–</div>
+      <div class="stat-sub" id="s4-sub"></div>
+    </div>
+    <div class="stat so" onclick="clickStat('all')" id="card-all" title="Click to show all reservations">
+      <div class="stat-lbl">Total Overall</div>
+      <div class="stat-val" id="s5">–</div>
+      <div class="stat-hint">Click to filter</div>
+    </div>
   </div>
+
   <!-- Daily limit bar -->
   <div class="limit-bar">
     <span class="lb-label">Daily capacity:</span>
     <div class="lb-track"><div class="lb-fill" id="lb-fill" style="width:0%"></div></div>
     <span class="lb-count" id="lb-count">0 / 30</span>
   </div>
-  <!-- Pending cards -->
+
+  <!-- Active filter banner -->
+  <div class="filter-banner" id="filter-banner">
+    <span id="filter-banner-text">Showing filtered results</span>
+    <button class="clear-filter-btn" onclick="clearStatFilter()">✕ Clear filter</button>
+  </div>
+
+  <!-- Pending approval cards -->
   <div class="sec-title">Pending approvals <span class="cbadge zero" id="pcnt">0</span></div>
   <div class="cards" id="pcards"><div class="empty"><div class="empty-icon">⏳</div><p>Loading…</p></div></div>
-  <!-- Filters -->
+
+  <!-- Search/date filters -->
   <div class="filters">
     <span class="flbl">Filter:</span>
     <input class="fsearch" id="fs" placeholder="Search name or email…" oninput="applyF()">
-    <input class="finput" type="date" id="fd" onchange="applyF()">
+    <div>
+      <input class="finput" type="date" id="fd" onchange="applyF()">
+      <div class="date-hint">Filter by reservation date</div>
+    </div>
     <select class="fsel" id="ft" onchange="applyF()">
       <option value="">All types</option>
       <option value="faculty">Faculty</option>
@@ -142,6 +201,7 @@
     </select>
     <button class="clrbtn" onclick="clearF()">✕ Clear</button>
   </div>
+
   <!-- Table -->
   <div class="twrap">
     <div class="tbar">
@@ -150,11 +210,12 @@
       <button class="ttab" onclick="switchTab('pending_approval',this)">Pending</button>
       <button class="ttab" onclick="switchTab('denied',this)">Denied</button>
       <button class="ttab" onclick="switchTab('auto_approved',this)">Auto-approved</button>
+      <span class="tcount" id="tcount"></span>
     </div>
     <div class="tscroll">
       <table>
         <thead><tr>
-          <th>Name</th><th>Status</th><th>Table</th><th>Date &amp; Time</th>
+          <th>Name</th><th>Status</th><th>Table</th><th>Reservation Date &amp; Time</th>
           <th>Party</th><th>UID</th><th>Email</th><th>Via</th><th>Submitted</th><th>Actions</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -175,9 +236,9 @@
       <div><label>USF UID</label><input id="eu" type="text" maxlength="9"></div>
       <div><label>Party Size</label><input id="ep" type="number" min="1" max="50"></div>
       <div class="full"><label>Email</label><input id="ee" type="email"></div>
-      <div class="full"><label>Date &amp; Time</label><input id="edt" type="text" placeholder="Jun 7 2026 6:00 PM"></div>
-      <div><label>Table Number</label><input id="etbl" type="text" placeholder="e.g. T-5 or 12"></div>
-      <div class="full"><label>Notes / Special Requests</label><textarea id="eno" rows="2"></textarea></div>
+      <div class="full"><label>Reservation Date &amp; Time</label><input id="edt" type="text" placeholder="Jun 7 2026 6:00 PM"></div>
+      <div><label>Table Number</label><input id="etbl" type="text" placeholder="e.g. T-5"></div>
+      <div class="full"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
     </div>
     <div class="mfoot">
       <button class="mcancel" onclick="closeEdit()">Cancel</button>
@@ -199,52 +260,101 @@
 </div>
 
 <script>
-let allData=[],atab='all',pendingDelId='';
+let allData=[], atab='all', activeStatFilter=null, pendingDelId='';
+const todayStr = new Date().toISOString().split('T')[0];
+const todayLabel = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
 async function loadAll(){
   try{
-    const[stats,data]=await Promise.all([fetch('/api/stats').then(r=>r.json()),fetch('/api/reservations').then(r=>r.json())]);
+    const[stats,data]=await Promise.all([
+      fetch('/api/stats').then(r=>r.json()),
+      fetch('/api/reservations').then(r=>r.json())
+    ]);
     allData=data;
-    document.getElementById('s0').textContent=stats.pending;
-    document.getElementById('s1').textContent=stats.approved_today;
-    document.getElementById('s2').textContent=stats.denied_today;
-    document.getElementById('s3').textContent=stats.total_today;
-    document.getElementById('s4').textContent=stats.slots_left;
-    document.getElementById('s4-sub').textContent=`of ${stats.daily_limit} limit`;
+
+    // Update stat cards
+    document.getElementById('s0').textContent = stats.pending;
+    document.getElementById('s1').textContent = stats.approved_today;
+    document.getElementById('s1-date').textContent = 'for '+todayLabel;
+    document.getElementById('s2').textContent = stats.total_denied;
+    document.getElementById('s3').textContent = stats.total_today;
+    document.getElementById('s3-date').textContent = 'for '+todayLabel;
+    document.getElementById('s4').textContent = stats.slots_left;
+    document.getElementById('s4-sub').textContent = 'of '+stats.daily_limit+' limit';
+    document.getElementById('s5').textContent = stats.total_all;
+
     // Limit bar
-    const pct=Math.min(100,Math.round((stats.daily_count/stats.daily_limit)*100));
-    const fill=document.getElementById('lb-fill');
-    fill.style.width=pct+'%';
-    fill.className='lb-fill'+(pct>=100?' full':pct>=80?' warn':'');
-    document.getElementById('lb-count').textContent=`${stats.daily_count} / ${stats.daily_limit} reservations today`;
+    const pct = Math.min(100, Math.round((stats.daily_count/stats.daily_limit)*100));
+    const fill = document.getElementById('lb-fill');
+    fill.style.width = pct+'%';
+    fill.className = 'lb-fill'+(pct>=100?' full':pct>=80?' warn':'');
+    document.getElementById('lb-count').textContent = `${stats.daily_count} / ${stats.daily_limit} reserved today`;
+
     renderPending(data.filter(r=>r.status==='pending_approval'));
     renderTable(filtered());
     document.getElementById('upd').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   }catch(e){console.error(e)}
 }
 
+// ── Stat card click filtering ──────────────────────────────────────────────
+function clickStat(type){
+  if(activeStatFilter===type){ clearStatFilter(); return; }
+  activeStatFilter = type;
+
+  // Highlight active card
+  document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active-filter'));
+  const cardMap = { pending_approval:'card-pending', approved_today:'card-approved-today', denied:'card-denied', today:'card-today', all:'card-all' };
+  if(cardMap[type]) document.getElementById(cardMap[type]).classList.add('active-filter');
+
+  // Show banner
+  const labels = { pending_approval:'Showing: All pending approvals', approved_today:'Showing: Approved reservations for today ('+todayLabel+')', denied:'Showing: All denied reservations', today:'Showing: All reservations for today ('+todayLabel+')', all:'Showing: All reservations' };
+  document.getElementById('filter-banner-text').textContent = labels[type] || 'Filtered';
+  document.getElementById('filter-banner').classList.add('show');
+
+  renderTable(filtered());
+}
+
+function clearStatFilter(){
+  activeStatFilter = null;
+  document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active-filter'));
+  document.getElementById('filter-banner').classList.remove('show');
+  renderTable(filtered());
+}
+
+// ── Combined filter logic ──────────────────────────────────────────────────
 function filtered(){
-  let d=atab==='all'?allData:allData.filter(r=>r.status===atab);
-  const s=document.getElementById('fs').value.toLowerCase();
-  const dt=document.getElementById('fd').value;
-  const tp=document.getElementById('ft').value;
-  if(s)  d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
-  if(dt) d=d.filter(r=>r.created_at.startsWith(dt));
-  if(tp) d=d.filter(r=>r.guest_status===tp);
+  let d = atab==='all' ? allData : allData.filter(r=>r.status===atab);
+
+  // Stat card filter
+  if(activeStatFilter==='pending_approval') d = d.filter(r=>r.status==='pending_approval');
+  else if(activeStatFilter==='approved_today') d = d.filter(r=>(r.status==='approved'||r.status==='auto_approved')&&r.reservation_date===todayStr);
+  else if(activeStatFilter==='denied') d = d.filter(r=>r.status==='denied');
+  else if(activeStatFilter==='today') d = d.filter(r=>r.reservation_date===todayStr&&r.status!=='denied');
+
+  // Search bar filters
+  const s  = document.getElementById('fs').value.toLowerCase();
+  const dt = document.getElementById('fd').value;   // filters by reservation_date
+  const tp = document.getElementById('ft').value;
+
+  if(s)  d = d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
+  if(dt) d = d.filter(r=>r.reservation_date===dt || (!r.reservation_date && r.created_at.startsWith(dt)));
+  if(tp) d = d.filter(r=>r.guest_status===tp);
+
   return d;
 }
-function applyF(){renderTable(filtered())}
-function clearF(){document.getElementById('fs').value='';document.getElementById('fd').value='';document.getElementById('ft').value='';renderTable(filtered())}
-function switchTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTable(filtered())}
+
+function applyF(){ clearStatFilter(); renderTable(filtered()); }
+function clearF(){ document.getElementById('fs').value=''; document.getElementById('fd').value=''; document.getElementById('ft').value=''; renderTable(filtered()); }
+function switchTab(t,el){ atab=t; document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active')); el.classList.add('active'); renderTable(filtered()); }
 
 function renderPending(p){
   const g=document.getElementById('pcards'),b=document.getElementById('pcnt');
-  b.textContent=p.length;b.className='cbadge'+(p.length?'':' zero');
+  b.textContent=p.length; b.className='cbadge'+(p.length?'':' zero');
   if(!p.length){g.innerHTML='<div class="empty"><div class="empty-icon">✓</div><p>No pending approvals — all clear!</p></div>';return}
   g.innerHTML=p.map(r=>`<div class="card">
     <div class="ctop"><div><div class="cname">${x(r.name)}</div><div class="cago">${ago(r.created_at)}</div></div><span class="pill pp">Pending</span></div>
     <div class="cbody">
-      <div class="crow"><span class="ck">Date &amp; time</span><span class="cv">${x(r.datetime)}</span></div>
+      <div class="crow"><span class="ck">Reservation date</span><span class="cv">${x(r.datetime)}</span></div>
       <div class="crow"><span class="ck">Party</span><span class="cv">${r.party} guest${r.party===1?'':'s'}</span></div>
       <div class="crow"><span class="ck">UID</span><span class="cv" style="font-family:monospace">${x(r.uid)}</span></div>
       <div class="crow"><span class="ck">Email</span><span class="cv">${x(r.email)}</span></div>
@@ -260,19 +370,20 @@ function renderPending(p){
 
 function renderTable(data){
   const tb=document.getElementById('tbody');
+  document.getElementById('tcount').textContent=data.length+' record'+(data.length===1?'':'s');
   if(!data.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">📋</div><p>No reservations found.</p></div></td></tr>';return}
   const pm={pending_approval:'<span class="pill pp">Pending</span>',approved:'<span class="pill pa">Approved</span>',auto_approved:'<span class="pill pau">Auto-approved</span>',denied:'<span class="pill pd">Denied</span>'};
   const te=t=>t==='faculty'?'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px">Faculty</span>':'<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px">Student</span>';
   tb.innerHTML=data.map(r=>`<tr>
     <td><strong>${x(r.name)}</strong><br>${te(r.guest_status)}</td>
     <td>${pm[r.status]||r.status}</td>
-    <td style="font-weight:600;color:#006747">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
+    <td style="font-weight:700;color:#006747;font-size:14px">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
     <td style="white-space:nowrap">${x(r.datetime)}</td>
     <td>${r.party}</td>
     <td style="font-family:monospace;font-size:12px">${x(r.uid)}</td>
     <td style="font-size:12px">${x(r.email)}</td>
     <td style="font-size:11px;color:#9ca3af">${x(r.channel||'form')}</td>
-    <td style="white-space:nowrap;font-size:12px;color:#9ca3af">${fmt(r.created_at)}</td>
+    <td style="white-space:nowrap;font-size:11px;color:#9ca3af">${fmt(r.created_at)}</td>
     <td><div class="acts">
       ${r.status==='pending_approval'?`<a class="tb tap" href="/manager/approve/${r.id}">Approve</a><a class="tb tdn" href="/manager/deny/${r.id}">Deny</a>`:''}
       <button class="tb ted" onclick="openEdit('${r.id}')">Edit</button>
@@ -299,17 +410,7 @@ function openEdit(id){
 function closeEdit(){document.getElementById('edit-overlay').classList.remove('show')}
 async function saveEdit(){
   const id=document.getElementById('eid').value;
-  const body={
-    name:document.getElementById('en').value.trim(),
-    guest_status:document.getElementById('et').value,
-    status:document.getElementById('es').value,
-    uid:document.getElementById('eu').value.trim(),
-    party:parseInt(document.getElementById('ep').value),
-    email:document.getElementById('ee').value.trim(),
-    datetime:document.getElementById('edt').value.trim(),
-    table_number:document.getElementById('etbl').value.trim(),
-    notes:document.getElementById('eno').value.trim()
-  };
+  const body={name:document.getElementById('en').value.trim(),guest_status:document.getElementById('et').value,status:document.getElementById('es').value,uid:document.getElementById('eu').value.trim(),party:parseInt(document.getElementById('ep').value),email:document.getElementById('ee').value.trim(),datetime:document.getElementById('edt').value.trim(),table_number:document.getElementById('etbl').value.trim(),notes:document.getElementById('eno').value.trim()};
   const resp=await fetch(`/api/reservations/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!resp.ok){alert('Save failed');return}
   closeEdit();await loadAll();toast('Saved ✓');
@@ -329,15 +430,13 @@ async function confirmDelete(){
   const pin=document.getElementById('pin-input').value;
   if(!pin){document.getElementById('pin-err').textContent='Please enter your PIN.';document.getElementById('pin-err').classList.add('show');return}
   const resp=await fetch(`/api/reservations/${pendingDelId}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
-  if(resp.status===403){document.getElementById('pin-err').textContent='Incorrect PIN. Deletion not allowed.';document.getElementById('pin-err').classList.add('show');document.getElementById('pin-input').value='';return}
+  if(resp.status===403){document.getElementById('pin-err').textContent='Incorrect PIN.';document.getElementById('pin-err').classList.add('show');document.getElementById('pin-input').value='';return}
   if(!resp.ok){alert('Delete failed');return}
   closePin();await loadAll();toast('Deleted');
 }
 
-// Close overlays on background click
 document.getElementById('edit-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('edit-overlay'))closeEdit()});
 document.getElementById('pin-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('pin-overlay'))closePin()});
-// Enter key in PIN field
 document.getElementById('pin-input').addEventListener('keydown',e=>{if(e.key==='Enter')confirmDelete()});
 
 function toast(msg){let t=document.getElementById('_t');if(!t){t=document.createElement('div');t.id='_t';t.style.cssText='position:fixed;bottom:24px;right:24px;background:#111;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:opacity .25s';document.body.appendChild(t)}t.textContent=msg;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',3000)}
@@ -345,7 +444,8 @@ function ago(iso){const s=Math.floor((Date.now()-new Date(iso))/1000);return s<6
 function fmt(iso){return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
 function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
-loadAll();setInterval(loadAll,30000);
+loadAll();
+setInterval(loadAll,30000);
 </script>
 </body>
 </html>
