@@ -2,7 +2,7 @@ const sgMail = require('@sendgrid/mail');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const FROM  = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
-const NAME  = 'Top of the Palms Reservations';
+const NAME  = 'On Top of the Palms Reservations';
 const PHONE = process.env.RESTAURANT_PHONE || '(813) 974-0000';
 
 function layout(body) {
@@ -14,7 +14,7 @@ function layout(body) {
     <h1 style="color:#fff;font-size:18px;font-weight:700;margin:0">Top of the Palms</h1>
   </div>
   <div style="background:#fff;border-radius:0 0 10px 10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,.08)">${body}</div>
-  <p style="text-align:center;color:#9ca3af;font-size:11px;margin:12px 0 0">Top of the Palms · USF Tampa Campus · ${PHONE}</p>
+  <p style="text-align:center;color:#9ca3af;font-size:11px;margin:12px 0 0">On Top of the Palms · USF Tampa Campus · ${PHONE}</p>
 </div></body></html>`;
 }
 

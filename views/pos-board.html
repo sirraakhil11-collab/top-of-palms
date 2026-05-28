@@ -149,6 +149,7 @@ let allData = [], activeFilter = 'all';
 
 function goToday(){ document.getElementById('dpick').value=todayISO; load(); }
 
+let allData = [];
 async function load(){
   const date = document.getElementById('dpick').value || todayISO;
   try{
@@ -224,13 +225,29 @@ function render(date){
       ? `<span class="att-badge badge-noshow">✕ No-show</span>`
       : `<span class="att-badge badge-pending">Waiting</span>`;
 
-    // Payment section - update from POS
+    // ── Payment multi-select (editable until checked in) ──────────────────
+    const payMethods = ['CC/Cash','USF Card','Direct Bill'];
+    const curPay = (r.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean);
     const paymentSection = `<div class="tbl-section">
-      <div class="tbl-label">Payment method</div>
-      <div style="font-size:13px;color:#d1d5db;margin-bottom:6px">${x(r.payment_method)||'<span style="color:#4b5563">Not specified</span>'}</div>
-      ${r.direct_bill_status==='pending_document'?`<div style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:6px 10px;font-size:11px;color:#c4b5fd;margin-bottom:6px">📄 Direct Bill — document pending</div>`:''}
-      ${r.direct_bill_status==='document_received'?`<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:6px 10px;font-size:11px;color:#4ade80;margin-bottom:6px">✓ Direct Bill — document received</div>`:''}
-      <div style="font-size:11px;color:#6b7280">Seating: ${x(r.seating_preference)||'—'}</div>
+      <div class="tbl-label">Payment Method${isCheckedIn?'':' <span style=\'color:#6b7280;font-weight:400;font-size:10px\'>(editable until check-in)</span>'}</div>
+      ${isCheckedIn
+        ? `<div style="font-size:13px;color:#d1d5db">${r.payment_method||'<span style="color:#4b5563">Not specified</span>'}</div>`
+        : `<div class="pos-ms-wrap" id="pmswrap-${r.id}">
+            <div class="pos-ms-trigger" onclick="togglePosPay('${r.id}')">
+              <span id="pms-disp-${r.id}" style="font-size:12px">${curPay.length?curPay.join(', '):'<span style="color:#4b5563">Select payment...</span>'}</span>
+              <span style="color:#6b7280;font-size:10px">▲</span>
+            </div>
+            <div class="pos-ms-dropdown" id="pms-dd-${r.id}">
+              ${payMethods.map(pm=>`<label class="pos-ms-opt ${curPay.includes(pm)?'sel':''}" onclick="togglePosPayOpt('${r.id}','${pm}',event)">
+                <input type="checkbox" ${curPay.includes(pm)?'checked':''} onchange=""> ${pm}
+              </label>`).join('')}
+              <div style="padding:6px 10px"><button class="save-btn-sm" onclick="savePayment('${r.id}')">Save Payment</button></div>
+            </div>
+          </div>`
+      }
+      ${r.direct_bill_status==='pending_document'?`<div style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#c4b5fd;margin-top:5px">📄 Direct Bill — document pending</div>`:''}
+      ${r.direct_bill_status==='document_received'?`<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:5px 9px;font-size:11px;color:#4ade80;margin-top:5px">✓ Direct Bill — document received</div>`:''}
+      ${r.seating_preference?`<div style="font-size:11px;color:#6b7280;margin-top:4px">Preference: ${x(r.seating_preference)}</div>`:''}
     </div>`;
 
     // Table section

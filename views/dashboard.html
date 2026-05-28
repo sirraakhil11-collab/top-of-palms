@@ -278,7 +278,20 @@
         <option>Window</option><option>Middle</option><option>Bench</option>
         <option>Private Room A</option><option>Private Room B</option><option>Private Room C</option>
       </select></div>
-      <div class="full"><label>Payment Method</label><input id="epay" type="text" placeholder="e.g. CC/Cash, USF Card, Direct Bill"></div>
+      <div class="full">
+        <label>Payment Method</label>
+        <div class="ms-wrap" id="epay-wrap" style="position:relative">
+          <div class="ms-trigger" id="epay-trigger" onclick="toggleMS('epay')" style="min-height:40px;display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;background:#fff;font-size:13px">
+            <span id="epay-display" style="color:#9ca3af">Select payment method(s)</span>
+            <span style="color:#9ca3af;font-size:11px">▼</span>
+          </div>
+          <div id="epay-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #006747;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:300;overflow:hidden">
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13px;color:#374151" onclick="toggleEditPay('CC/Cash',event)"><input type="checkbox" id="ep-cc" style="width:15px;height:15px;accent-color:#006747"> CC / Cash</label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13px;color:#374151" onclick="toggleEditPay('USF Card',event)"><input type="checkbox" id="ep-usf" style="width:15px;height:15px;accent-color:#006747"> USF Card</label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13px;color:#374151" onclick="toggleEditPay('Direct Bill',event)"><input type="checkbox" id="ep-db" style="width:15px;height:15px;accent-color:#006747"> Direct Bill</label>
+          </div>
+        </div>
+      </div>
       <div class="full"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
     </div>
 
@@ -420,6 +433,43 @@ function renderTable(data){
   </tr>`).join('');
 }
 
+// ── Multi-select helpers ──────────────────────────────────────────────────
+let editPayments = [];
+function toggleMS(id){
+  const dd=document.getElementById(id+'-dropdown');
+  const open=dd.style.display==='block';
+  dd.style.display=open?'none':'block';
+}
+function toggleEditPay(val,e){
+  if(e) e.stopPropagation();
+  const idx=editPayments.indexOf(val);
+  if(idx>-1) editPayments.splice(idx,1); else editPayments.push(val);
+  updateEditPayDisplay();
+}
+function updateEditPayDisplay(){
+  const map={'CC/Cash':'ep-cc','USF Card':'ep-usf','Direct Bill':'ep-db'};
+  Object.entries(map).forEach(([v,id])=>{
+    const el=document.getElementById(id); if(el) el.checked=editPayments.includes(v);
+  });
+  const disp=document.getElementById('epay-display');
+  if(disp){
+    disp.textContent=editPayments.length?editPayments.join(', '):'Select payment method(s)';
+    disp.style.color=editPayments.length?'#111827':'#9ca3af';
+  }
+}
+function setEditPayments(val){
+  editPayments=(val||'').split(',').map(s=>s.trim()).filter(Boolean);
+  updateEditPayDisplay();
+}
+// Close MS dropdown on outside click
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('epay-wrap');
+  if(wrap&&!wrap.contains(e.target)){
+    const dd=document.getElementById('epay-dropdown');
+    if(dd) dd.style.display='none';
+  }
+});
+
 // ── Edit modal ─────────────────────────────────────────────────────────────
 function openEdit(id){
   const r=allData.find(r=>r.id===id);
@@ -436,7 +486,7 @@ function openEdit(id){
   document.getElementById('edt').value   = r.datetime||'';
   document.getElementById('etbl').value  = r.table_number||'';
   document.getElementById('eseat').value = r.seating_preference||'';
-  document.getElementById('epay').value  = r.payment_method||'';
+  setEditPayments(r.payment_method||'');
   document.getElementById('eno').value   = r.notes||'';
   document.getElementById('eovl').classList.add('show');
 }
@@ -456,7 +506,7 @@ async function saveEdit(){
     datetime:       document.getElementById('edt').value.trim(),
     table_number:   document.getElementById('etbl').value.trim(),
     seating_preference: document.getElementById('eseat').value,
-    payment_method: document.getElementById('epay').value.trim(),
+    payment_method: editPayments.join(', '),
     notes:          document.getElementById('eno').value.trim()
   };
   try{

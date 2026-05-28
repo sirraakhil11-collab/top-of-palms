@@ -159,7 +159,7 @@ async function handleIncomingEmail(req, res) {
     if (process.env.SENDGRID_API_KEY) {
       await sgMail.send({
         to:      session.replyTo,
-        from:    { email: process.env.FROM_EMAIL, name: 'Top of the Palms Reservations' },
+        from:    { email: process.env.FROM_EMAIL, name: 'On Top of the Palms Reservations' },
         subject: session.replySubject,
         text:    aiReply.text,
         html:    `<div style="font-family:-apple-system,sans-serif;font-size:15px;line-height:1.7;color:#111827;max-width:560px">${aiReply.text.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}</div>`
@@ -194,7 +194,7 @@ async function handleIncomingEmail(req, res) {
     if (process.env.SENDGRID_API_KEY) {
       await sgMail.send({
         to:      senderEmail,
-        from:    { email: process.env.FROM_EMAIL, name: 'Top of the Palms Reservations' },
+        from:    { email: process.env.FROM_EMAIL, name: 'On Top of the Palms Reservations' },
         subject: session.replySubject,
         text:    "We're sorry, something went wrong. Please reply and we'll assist you with your reservation."
       }).catch(() => {});

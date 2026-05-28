@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Make a Reservation — Top of the Palms</title>
+  <title>Make a Reservation — On Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh}
@@ -13,16 +13,20 @@
     .container{max-width:580px;margin:28px auto;padding:0 16px 60px}
     .card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
     .card h2{font-size:20px;font-weight:700;color:#111827;margin-bottom:6px}
-    .card p{color:#6b7280;font-size:14px;margin-bottom:20px}
-    .info-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#374151}
-    .info-box strong{color:#006747}
-    .section-title{font-size:12px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e7eb}
-    .form-group{margin-bottom:16px}
-    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    .card>p{color:#6b7280;font-size:14px;margin-bottom:16px}
+    /* Policy box */
+    .policy-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#374151;line-height:1.65}
+    .policy-box strong{color:#006747;display:block;margin-bottom:6px}
+    .policy-box ul{margin:6px 0 0 14px}
+    .policy-box li{margin-bottom:3px}
+    /* Sections */
+    .sec-title{font-size:11px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #e5e7eb}
+    .form-group{margin-bottom:14px}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
     label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
-    label span.req{color:#b91c1c;margin-left:2px}
-    label span.opt{color:#9ca3af;font-weight:400;font-size:12px}
-    input,select,textarea{width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;outline:none;transition:border-color .15s;background:#fff}
+    label .req{color:#b91c1c;margin-left:2px}
+    label .opt{color:#9ca3af;font-weight:400;font-size:12px}
+    input,select,textarea{width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;outline:none;transition:border-color .15s}
     input:focus,select:focus,textarea:focus{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
     textarea{resize:vertical;min-height:72px}
     .hint{font-size:11px;color:#9ca3af;margin-top:3px}
@@ -31,34 +35,41 @@
     .radio-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
     .radio-opt label{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:#374151;transition:all .15s}
     .radio-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
-
-    /* Payment multi-select */
-    .payment-group{display:flex;flex-direction:column;gap:8px}
-    .pay-opt{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;color:#374151;transition:all .15s}
-    .pay-opt:has(input:checked){border-color:#006747;background:#f0fdf4}
-    .pay-opt input{width:16px;height:16px;accent-color:#006747;flex-shrink:0}
-    .direct-bill-notice{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;color:#b45309;margin-top:8px;display:none}
-    .direct-bill-notice.show{display:block}
+    /* Multi-select dropdown */
+    .ms-wrap{position:relative}
+    .ms-trigger{width:100%;padding:10px 36px 10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;cursor:pointer;text-align:left;background:#fff;position:relative;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s;min-height:42px}
+    .ms-trigger:hover,.ms-trigger.open{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
+    .ms-trigger-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111827}
+    .ms-trigger-text.placeholder{color:#9ca3af}
+    .ms-arrow{color:#9ca3af;font-size:12px;flex-shrink:0}
+    .ms-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #006747;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;overflow:hidden}
+    .ms-dropdown.open{display:block}
+    .ms-option{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:14px;color:#374151;transition:background .12s}
+    .ms-option:hover{background:#f0fdf4}
+    .ms-option input[type="checkbox"]{width:16px;height:16px;accent-color:#006747;flex-shrink:0;cursor:pointer}
+    .ms-option.selected{background:#f0fdf4;color:#006747;font-weight:500}
+    /* Direct bill notice */
+    .db-notice{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;color:#b45309;margin-top:8px;display:none}
+    .db-notice.show{display:block}
     /* Submit */
-    .submit-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:background .15s}
+    .submit-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px;transition:background .15s}
     .submit-btn:hover{background:#004d34}
     .submit-btn:disabled{background:#d1d5db;cursor:default}
     .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
     .err-msg.show{display:block}
     /* Success */
-    .success-screen{display:none;text-align:center;padding:12px 0}
+    .success-screen{display:none;text-align:center;padding:16px 0}
     .success-screen.show{display:block}
     .success-icon{font-size:52px;margin-bottom:14px}
     .success-screen h2{font-size:20px;font-weight:700;color:#111827;margin-bottom:8px}
-    .success-badge{display:inline-block;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:16px}
-    .badge-pending{background:#fef3c7;color:#b45309}
+    .success-badge{display:inline-block;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:16px;background:#fef3c7;color:#b45309}
     .success-detail{font-size:13px;color:#374151;line-height:1.7;margin-bottom:20px;text-align:left;background:#f9fafb;border-radius:8px;padding:14px}
     .new-btn{background:#006747;color:#fff;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer}
   </style>
 </head>
 <body>
 <header>
-  <h1>🌴 Top of the Palms</h1>
+  <h1>🌴 On Top of the Palms</h1>
   <p>University of South Florida Dining · Managed by Compass USA</p>
 </header>
 <div class="container">
@@ -66,17 +77,22 @@
 
   <div id="form-section">
     <h2>Make a Reservation</h2>
-    <p>Open daily 11:00 AM – 2:00 PM. Reservations must be made at least 24 hours in advance.</p>
+    <p>Open Monday–Friday, 11:00 AM – 2:00 PM. All reservations require manager approval.</p>
 
-    <div class="info-box">
-      📧 You can also email us at <strong id="from-email-lbl">reservations@topofthepalms.usf.edu</strong> to make a reservation.
+    <div class="policy-box">
+      <strong>📋 Reservation Policy</strong>
+      <ul>
+        <li>Reservations available for parties of <strong>2–15 guests</strong></li>
+        <li>Must be requested at least <strong>24 hours in advance</strong></li>
+        <li>PCard/Credit card preferred — Direct Bill accepted (payment due within 30 days)</li>
+        <li>Limited daily reservations — additional guests accommodated as walk-ups</li>
+        <li>Same-day requests welcome as walk-ups based on availability</li>
+      </ul>
     </div>
 
     <div class="err-msg" id="err-msg"></div>
 
-    <!-- Guest info -->
-    <div class="section-title">Guest Information</div>
-
+    <div class="sec-title">Guest Information</div>
     <div class="form-row">
       <div class="form-group">
         <label>Full Name <span class="req">*</span></label>
@@ -87,7 +103,6 @@
         <input id="f-dept" type="text" placeholder="e.g. Nursing, Physics">
       </div>
     </div>
-
     <div class="form-row">
       <div class="form-group">
         <label>Phone / Ext <span class="opt">(optional)</span></label>
@@ -98,13 +113,11 @@
         <input id="f-uid" type="text" placeholder="9-digit ID" maxlength="9" inputmode="numeric">
       </div>
     </div>
-
     <div class="form-group">
       <label>Email Address <span class="req">*</span></label>
       <input id="f-email" type="email" placeholder="your@usf.edu">
       <div class="hint">Confirmation will be sent here</div>
     </div>
-
     <div class="form-group">
       <label>I am a <span class="req">*</span></label>
       <div class="radio-group">
@@ -119,29 +132,25 @@
       </div>
     </div>
 
-    <!-- Reservation details -->
-    <div class="section-title">Reservation Details</div>
-
+    <div class="sec-title">Reservation Details</div>
     <div class="form-row">
       <div class="form-group">
         <label>Date <span class="req">*</span></label>
         <input id="f-date" type="date">
-        <div class="hint">Must be at least 24 hours from now</div>
+        <div class="hint">At least 24 hours from now</div>
       </div>
       <div class="form-group">
         <label>Time <span class="req">*</span></label>
         <select id="f-time">
           <option value="">Select a time</option>
         </select>
-        <div class="hint">Available 11:00 AM – 1:45 PM</div>
+        <div class="hint">11:00 AM – 1:45 PM</div>
       </div>
     </div>
-
     <div class="form-group">
       <label>Number of Guests <span class="req">*</span></label>
       <select id="f-party">
-        <option value="">Select party size</option>
-        <option value="1">1 guest</option>
+        <option value="">Select party size (2–15)</option>
         <option value="2">2 guests</option>
         <option value="3">3 guests</option>
         <option value="4">4 guests</option>
@@ -151,40 +160,49 @@
         <option value="8">8 guests</option>
         <option value="9">9 guests</option>
         <option value="10">10 guests</option>
+        <option value="11">11 guests</option>
         <option value="12">12 guests</option>
+        <option value="13">13 guests</option>
+        <option value="14">14 guests</option>
         <option value="15">15 guests</option>
-        <option value="20">20 guests</option>
       </select>
+      <div class="hint">Minimum 2, maximum 15 guests per reservation</div>
     </div>
 
-    <!-- Seating preference is assigned by staff at POS, not selected by guests -->
-
-    <!-- Payment -->
-    <div class="section-title">Method of Payment</div>
-    <div class="payment-group">
-      <label class="pay-opt"><input type="checkbox" name="payment" value="CC/Cash"> 💳 CC / Cash</label>
-      <label class="pay-opt"><input type="checkbox" name="payment" value="USF Card"> 🎓 USF Card</label>
-      <label class="pay-opt" id="pay-direct"><input type="checkbox" name="payment" value="Direct Bill" onchange="toggleDirectBill()"> 🏢 Direct Bill</label>
+    <div class="sec-title">Method of Payment <span class="req" style="font-size:13px">*</span></div>
+    <div class="ms-wrap" id="pay-wrap">
+      <div class="ms-trigger" id="pay-trigger" onclick="toggleDropdown('pay')">
+        <span class="ms-trigger-text placeholder" id="pay-display">Select payment method(s)</span>
+        <span class="ms-arrow">▼</span>
+      </div>
+      <div class="ms-dropdown" id="pay-dropdown">
+        <label class="ms-option" onclick="togglePayment('CC/Cash')">
+          <input type="checkbox" id="pay-cc"> CC / Cash
+        </label>
+        <label class="ms-option" onclick="togglePayment('USF Card')">
+          <input type="checkbox" id="pay-usf"> USF Card
+        </label>
+        <label class="ms-option" onclick="togglePayment('Direct Bill')">
+          <input type="checkbox" id="pay-db"> Direct Bill
+        </label>
+      </div>
     </div>
-    <div class="direct-bill-notice" id="direct-bill-notice">
-      📄 <strong>Direct Bill selected:</strong> You will receive an authorization form by email that must be completed and returned before your reservation is confirmed.
+    <div class="db-notice" id="db-notice">
+      📄 <strong>Direct Bill selected:</strong> An authorization form will be emailed to you. It must be completed and returned before your reservation is confirmed. Payment is due within 30 days of dining.
     </div>
 
-    <!-- Notes -->
-    <div class="section-title">Special Requests <span style="color:#9ca3af;font-size:11px;font-weight:400;text-transform:none">(optional)</span></div>
+    <div class="sec-title">Special Requests <span style="color:#9ca3af;font-size:11px;font-weight:400;text-transform:none">(optional)</span></div>
     <textarea id="f-notes" placeholder="Dietary requirements, special occasions, accessibility needs…"></textarea>
 
-    <div style="margin-top:20px">
-      <button class="submit-btn" id="submit-btn" onclick="submitForm()">Submit Reservation Request</button>
-    </div>
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">Submit Reservation Request</button>
   </div>
 
-  <!-- Success screen -->
   <div class="success-screen" id="success-screen">
     <div class="success-icon">⏳</div>
     <h2>Request Submitted!</h2>
-    <div class="success-badge badge-pending">Pending manager approval</div>
+    <div class="success-badge">Pending manager approval</div>
     <div class="success-detail" id="success-detail"></div>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:16px">A manager will review your request and you will receive a confirmation email. Walk-ups are always welcome based on availability.</p>
     <button class="new-btn" onclick="resetForm()">Make Another Reservation</button>
   </div>
 
@@ -192,38 +210,60 @@
 </div>
 
 <script>
-  // Set min date to tomorrow (24hr advance)
+  const PAYMENT_OPTIONS = ['CC/Cash','USF Card','Direct Bill'];
+  let selectedPayments = [];
+
+  // Set min date = tomorrow
   const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
-  document.getElementById('f-date').min = minDate;
+  tomorrow.setDate(tomorrow.getDate()+1);
+  document.getElementById('f-date').min = tomorrow.toISOString().split('T')[0];
 
-  // Build time slots 11:00 AM to 1:45 PM in 15-min increments
-  function buildTimeSlots() {
-    const sel = document.getElementById('f-time');
-    const slots = [];
-    for (let h = 11; h <= 13; h++) {
-      const maxMin = h === 13 ? 45 : 45;
-      for (let m = 0; m <= maxMin; m += 15) {
-        const label = `${h > 12 ? h - 12 : h}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
-        const value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-        slots.push({ label, value });
-      }
-    }
-    slots.forEach(s => {
-      const o = document.createElement('option');
-      o.value = s.value; o.textContent = s.label;
+  // Time slots 11:00AM - 1:45PM in 15min increments
+  const sel = document.getElementById('f-time');
+  for(let h=11;h<=13;h++){
+    const maxM = h===13?45:45;
+    for(let m=0;m<=maxM;m+=15){
+      const label=`${h>12?h-12:h}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+      const o=document.createElement('option');
+      o.value=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      o.textContent=label;
       sel.appendChild(o);
+    }
+  }
+
+  // Multi-select payment
+  function toggleDropdown(id){
+    document.getElementById(id+'-dropdown').classList.toggle('open');
+    document.getElementById(id+'-trigger').classList.toggle('open');
+  }
+  function togglePayment(val){
+    event.stopPropagation();
+    const idx=selectedPayments.indexOf(val);
+    if(idx>-1) selectedPayments.splice(idx,1); else selectedPayments.push(val);
+    updatePaymentDisplay();
+  }
+  function updatePaymentDisplay(){
+    const disp=document.getElementById('pay-display');
+    const cbs={'CC/Cash':'pay-cc','USF Card':'pay-usf','Direct Bill':'pay-db'};
+    Object.entries(cbs).forEach(([v,id])=>{
+      document.getElementById(id).checked=selectedPayments.includes(v);
+      const opt=document.getElementById(id).closest('.ms-option');
+      opt.classList.toggle('selected',selectedPayments.includes(v));
     });
-  }
-  buildTimeSlots();
-
-  function toggleDirectBill() {
-    const checked = [...document.querySelectorAll('input[name="payment"]:checked')].map(x=>x.value);
-    document.getElementById('direct-bill-notice').classList.toggle('show', checked.includes('Direct Bill'));
+    if(selectedPayments.length===0){disp.textContent='Select payment method(s)';disp.className='ms-trigger-text placeholder';}
+    else{disp.textContent=selectedPayments.join(', ');disp.className='ms-trigger-text';}
+    document.getElementById('db-notice').classList.toggle('show',selectedPayments.includes('Direct Bill'));
   }
 
-  async function submitForm() {
+  // Close dropdown on outside click
+  document.addEventListener('click',e=>{
+    if(!document.getElementById('pay-wrap').contains(e.target)){
+      document.getElementById('pay-dropdown').classList.remove('open');
+      document.getElementById('pay-trigger').classList.remove('open');
+    }
+  });
+
+  async function submitForm(){
     const name  = document.getElementById('f-name').value.trim();
     const dept  = document.getElementById('f-dept').value.trim();
     const phone = document.getElementById('f-phone').value.trim();
@@ -232,84 +272,66 @@
     const type  = document.querySelector('input[name="guest_type"]:checked')?.value;
     const date  = document.getElementById('f-date').value;
     const time  = document.getElementById('f-time').value;
-    const party = document.getElementById('f-party').value;
-    const seating = ''; // Assigned by staff at POS
-    const payments = [...document.querySelectorAll('input[name="payment"]:checked')].map(x=>x.value);
+    const party = parseInt(document.getElementById('f-party').value||'0');
     const notes = document.getElementById('f-notes').value.trim();
 
-    const showErr = msg => {
-      const el = document.getElementById('err-msg');
-      el.textContent = msg; el.classList.add('show');
-      el.scrollIntoView({ behavior:'smooth', block:'center' });
-      document.getElementById('submit-btn').disabled = false;
-      document.getElementById('submit-btn').textContent = 'Submit Reservation Request';
-    };
+    const showErr=msg=>{const el=document.getElementById('err-msg');el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});const b=document.getElementById('submit-btn');b.disabled=false;b.textContent='Submit Reservation Request';};
 
-    if (!name)  return showErr('Please enter your full name.');
-    if (!dept)  return showErr('Please enter your department.');
-    if (uid.length !== 9) return showErr('USF UID must be exactly 9 digits.');
-    if (!email || !email.includes('@')) return showErr('Please enter a valid email address.');
-    if (!type)  return showErr('Please select Faculty or Student.');
-    if (!date)  return showErr('Please select a date.');
-    if (!time)  return showErr('Please select a time.');
-    if (!party) return showErr('Please select your party size.');
-    if (payments.length === 0) return showErr('Please select at least one payment method.');
+    if(!name)  return showErr('Please enter your full name.');
+    if(!dept)  return showErr('Please enter your department.');
+    if(uid.length!==9) return showErr('USF UID must be exactly 9 digits.');
+    if(!email||!email.includes('@')) return showErr('Please enter a valid email address.');
+    if(!type)  return showErr('Please select Faculty or Student.');
+    if(!date)  return showErr('Please select a date.');
+    if(!time)  return showErr('Please select a time.');
+    if(!party||party<2) return showErr('Minimum party size is 2 guests.');
+    if(party>15) return showErr('Maximum party size is 15 guests.');
+    if(selectedPayments.length===0) return showErr('Please select at least one payment method.');
 
-    // 24-hour advance check
     const reservationDT = new Date(`${date}T${time}:00`);
-    const minDT = new Date(Date.now() + 24*60*60*1000);
-    if (reservationDT < minDT) return showErr('Reservations must be made at least 24 hours in advance.');
+    if(reservationDT < new Date(Date.now()+24*60*60*1000)) return showErr('Reservations must be made at least 24 hours in advance. Walk-ups are welcome on the day.');
 
     document.getElementById('err-msg').classList.remove('show');
-    const btn = document.getElementById('submit-btn');
-    btn.disabled = true; btn.textContent = 'Submitting…';
+    const btn=document.getElementById('submit-btn');
+    btn.disabled=true;btn.textContent='Submitting…';
 
-    const displayTime = new Date(`${date}T${time}:00`).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    const displayTime=new Date(`${date}T${time}:00`).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
 
-    try {
-      const resp = await fetch('/api/reserve', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          name, department:dept, phone_ext:phone,
-          guest_type:type, uid, email,
-          party:parseInt(party),
-          datetime_iso:`${date}T${time}`,
-          datetime_display:displayTime,
+    try{
+      const resp=await fetch('/api/reserve',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          name,department:dept,phone_ext:phone,guest_type:type,uid,email,
+          party,datetime_iso:`${date}T${time}`,datetime_display:displayTime,
           reservation_time:displayTime.split(',')[1]?.trim()||time,
-          seating_preference:seating,
-          payment_method:payments.join(', '),
+          seating_preference:'',
+          payment_method:selectedPayments.join(', '),
           notes
         })
       });
-      const data = await resp.json();
-      if (!resp.ok) return showErr(data.error||'Submission failed. Please try again.');
-
-      // Show success
-      document.getElementById('form-section').style.display = 'none';
+      const data=await resp.json();
+      if(!resp.ok) return showErr(data.error||'Submission failed. Please try again.');
+      document.getElementById('form-section').style.display='none';
       document.getElementById('success-screen').classList.add('show');
-      document.getElementById('success-detail').innerHTML = `
+      document.getElementById('success-detail').innerHTML=`
         <strong>Name:</strong> ${name}<br>
         <strong>Department:</strong> ${dept}<br>
         <strong>Date & time:</strong> ${displayTime}<br>
-        <strong>Party size:</strong> ${party} guest${party==='1'?'':'s'}<br>
-        ${seating?`<strong>Seating:</strong> ${seating}<br>`:''}
-        <strong>Payment:</strong> ${payments.join(', ')}<br>
-        ${payments.includes('Direct Bill')?'<br>⚠️ A Direct Bill authorization form has been sent to your email. Please complete and return it.':''}
-        <br><em>A manager will review your request and you will receive a confirmation email shortly.</em>`;
-    } catch(e) { showErr('Could not reach server. Please try again.'); }
+        <strong>Party size:</strong> ${party} guest${party===1?'':'s'}<br>
+        <strong>Payment:</strong> ${selectedPayments.join(', ')}<br>
+        ${selectedPayments.includes('Direct Bill')?'<br>⚠️ A Direct Bill authorization form has been emailed to you. Please complete and return it within 30 days of dining.':''}`;
+    }catch(e){showErr('Could not reach server. Please try again.');}
   }
 
-  function resetForm() {
-    document.getElementById('form-section').style.display = 'block';
+  function resetForm(){
+    document.getElementById('form-section').style.display='block';
     document.getElementById('success-screen').classList.remove('show');
     ['f-name','f-dept','f-phone','f-uid','f-email','f-notes'].forEach(id=>document.getElementById(id).value='');
     ['f-date','f-time','f-party'].forEach(id=>document.getElementById(id).value='');
-    document.querySelectorAll('input[name="guest_type"],input[name="payment"]').forEach(i=>i.checked=false);
-    document.getElementById('direct-bill-notice').classList.remove('show');
+    document.querySelectorAll('input[name="guest_type"]').forEach(i=>i.checked=false);
+    selectedPayments=[];updatePaymentDisplay();
     document.getElementById('err-msg').classList.remove('show');
-    const btn = document.getElementById('submit-btn');
-    btn.disabled=false; btn.textContent='Submit Reservation Request';
+    const btn=document.getElementById('submit-btn');btn.disabled=false;btn.textContent='Submit Reservation Request';
   }
 </script>
 </body>

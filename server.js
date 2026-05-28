@@ -72,13 +72,14 @@ app.post('/api/reserve', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required.' });
     if (uid.replace(/\D/g,'').length !== 9)
       return res.status(400).json({ error: 'UID must be exactly 9 digits.' });
-
     const reservation_date = datetime_iso.slice(0, 10);
     const display = datetime_display || new Date(datetime_iso).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
 
     // Check people-based limit (60 covers)
-    const currentPeople = await db.getDailyPeopleCount(reservation_date);
     const partySize     = parseInt(party, 10);
+    if (partySize < 2) return res.status(400).json({ error: 'Minimum party size is 2 guests.' });
+    if (partySize > 15) return res.status(400).json({ error: 'Maximum party size is 15 guests.' });
+    const currentPeople = await db.getDailyPeopleCount(reservation_date);
     const limit         = parseInt(process.env.DAILY_LIMIT || '60');
     if (currentPeople + partySize > limit) {
       const remaining = Math.max(0, limit - currentPeople);
