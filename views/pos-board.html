@@ -149,7 +149,6 @@ let allData = [], activeFilter = 'all';
 
 function goToday(){ document.getElementById('dpick').value=todayISO; load(); }
 
-let allData = [];
 async function load(){
   const date = document.getElementById('dpick').value || todayISO;
   try{
