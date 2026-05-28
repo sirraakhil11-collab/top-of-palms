@@ -207,7 +207,8 @@
         body:    JSON.stringify({
           name, guest_type: type, uid, email,
           party: parseInt(party),
-          datetime: new Date(datetime).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }),
+          datetime_iso: datetime,
+          datetime_display: new Date(datetime).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }),
           notes
         })
       });

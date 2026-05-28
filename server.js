@@ -3,9 +3,9 @@ const express = require('express');
 const multer  = require('multer');
 const path    = require('path');
 
-const { handleIncomingEmail } = require('./src/emailInbound');
-const { getEmailReply }       = require('./src/agent');
-const { processReservation }  = require('./src/reservations');
+const { handleIncomingEmail }                 = require('./src/emailInbound');
+const { getEmailReply }                       = require('./src/agent');
+const { processReservation }                  = require('./src/reservations');
 const { sendEmail, sendManagerApprovalEmail } = require('./src/email');
 const db = require('./src/db');
 
@@ -17,8 +17,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'views')));
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  EMAIL INBOUND — SendGrid Inbound Parse
-//  Guests email your FROM_EMAIL address → SendGrid POSTs here → AI processes
+//  EMAIL INBOUND
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/email/incoming', upload.none(), handleIncomingEmail);
 
@@ -28,33 +27,41 @@ app.post('/email/incoming', upload.none(), handleIncomingEmail);
 app.get('/reserve', (req, res) => res.sendFile(path.join(__dirname, 'views', 'reserve.html')));
 
 app.post('/api/reserve', async (req, res) => {
-  const { name, guest_type, uid, email, party, datetime, notes } = req.body;
+  const { name, guest_type, uid, email, party, datetime_iso, datetime_display, notes } = req.body;
 
-  if (!name || !guest_type || !uid || !email || !party || !datetime)
+  if (!name || !guest_type || !uid || !email || !party || !datetime_iso)
     return res.status(400).json({ error: 'All fields are required.' });
-
   if (uid.replace(/\D/g,'').length !== 9)
     return res.status(400).json({ error: 'UID must be exactly 9 digits.' });
 
-  // Check daily limit before processing
-  const today = new Date().toISOString().split('T')[0];
-  const count = db.getDailyCount(today);
+  // datetime_iso = "2026-05-27T19:00" (from datetime-local input — always reliable)
+  // datetime_display = "May 27, 2026 7:00 PM" (human-readable for emails/display)
+  const reservation_date = datetime_iso.slice(0, 10); // guaranteed YYYY-MM-DD
+  const display = datetime_display || new Date(datetime_iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+
+  // Check daily limit
+  const count = db.getDailyCount(reservation_date);
   const limit = parseInt(process.env.DAILY_LIMIT || '30');
   if (count >= limit)
-    return res.status(429).json({ error: `We are fully booked for today (${limit} reservation limit reached). Please try again tomorrow.` });
+    return res.status(429).json({ error: `Fully booked for that date (${limit} reservation limit). Please choose a different date.` });
 
   const session = {
     channel: 'form', callerNumber: email, callSid: `form-${Date.now()}`,
     collected: {
       name, status: guest_type.toLowerCase(),
       uid: uid.replace(/\D/g,''), email,
-      party: parseInt(party), datetime, notes: notes || ''
+      party: parseInt(party),
+      datetime: display,
+      reservation_date,
+      notes: notes || ''
     }
   };
 
   try {
     const result = await processReservation(session);
-    res.json({ success: true, status: result.status, slots_left: Math.max(0, limit - count - 1) });
+    res.json({ success: true, status: result.status });
   } catch (err) {
     console.error('[Form]', err.message);
     res.status(500).json({ error: 'Submission failed. Please try again.' });
@@ -69,19 +76,18 @@ app.post('/api/demo/chat', async (req, res) => {
   const { sessionId, message } = req.body;
   if (!sessionId || !message) return res.status(400).json({ error: 'sessionId and message required' });
   const key = `demo:${sessionId}`;
-  if (!demoSessions[key]) demoSessions[key] = { channel: 'email', replyTo: 'demo@test.com', messages: [], collected: null };
-  const session = demoSessions[key];
-  const userContent = session.messages.length === 0 ? `I would like to make a reservation. My message: ${message}` : message;
-  session.messages.push({ role: 'user', content: userContent });
+  if (!demoSessions[key]) demoSessions[key] = { channel:'email', replyTo:'demo@test.com', messages:[], collected:null };
+  const s = demoSessions[key];
+  s.messages.push({ role:'user', content: s.messages.length===0 ? `I would like to make a reservation. My message: ${message}` : message });
   try {
-    const aiReply = await getEmailReply(session.messages);
-    session.messages.push({ role: 'assistant', content: aiReply.text });
-    if (aiReply.complete && aiReply.collected) {
-      session.collected = aiReply.collected;
+    const r = await getEmailReply(s.messages);
+    s.messages.push({ role:'assistant', content: r.text });
+    if (r.complete && r.collected) {
+      s.collected = r.collected;
       delete demoSessions[key];
-      setImmediate(() => processReservation({ ...session }).catch(console.error));
+      setImmediate(() => processReservation({ ...s }).catch(console.error));
     }
-    res.json({ text: aiReply.text, complete: aiReply.complete || false, collected: aiReply.collected || null });
+    res.json({ text: r.text, complete: r.complete||false, collected: r.collected||null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -92,75 +98,87 @@ app.get('/manager/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'v
 
 app.get('/manager/approve/:id', async (req, res) => {
   const r = db.getReservation(req.params.id);
-  if (!r) return res.status(404).send(statusPage('Not found', 'Reservation not found.', 'error'));
-  if (r.status !== 'pending_approval') return res.send(statusPage('Already processed', `Already ${r.status}.`, 'info'));
-  db.updateReservation(r.id, { status: 'approved', processed_at: new Date().toISOString() });
+  if (!r) return res.status(404).send(statusPage('Not found','Reservation not found.','error'));
+  if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`Already ${r.status}.`,'info'));
+  db.updateReservation(r.id, { status:'approved', processed_at: new Date().toISOString() });
   await sendEmail(db.getReservation(r.id), 'confirmed').catch(console.error);
-  res.send(statusPage('✓ Approved', `<strong>${r.name}</strong> — ${r.party} guests on ${r.datetime}<br>Confirmation sent to ${r.email}.`, 'success'));
+  res.send(statusPage('✓ Approved',`<strong>${r.name}</strong> — ${r.party} guests on ${r.datetime}<br>Confirmation sent to ${r.email}.`,'success'));
 });
 
 app.get('/manager/deny/:id', async (req, res) => {
   const r = db.getReservation(req.params.id);
-  if (!r) return res.status(404).send(statusPage('Not found', 'Reservation not found.', 'error'));
-  if (r.status !== 'pending_approval') return res.send(statusPage('Already processed', `Already ${r.status}.`, 'info'));
-  db.updateReservation(r.id, { status: 'denied', processed_at: new Date().toISOString() });
+  if (!r) return res.status(404).send(statusPage('Not found','Reservation not found.','error'));
+  if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`Already ${r.status}.`,'info'));
+  db.updateReservation(r.id, { status:'denied', processed_at: new Date().toISOString() });
   await sendEmail(db.getReservation(r.id), 'denied').catch(console.error);
-  res.send(statusPage('Denied', `<strong>${r.name}</strong> notified at ${r.email}.`, 'info'));
+  res.send(statusPage('Denied',`<strong>${r.name}</strong> notified at ${r.email}.`,'info'));
 });
 
-// Edit reservation
 app.put('/api/reservations/:id', async (req, res) => {
   const r = db.getReservation(req.params.id);
-  if (!r) return res.status(404).json({ error: 'Not found' });
+  if (!r) return res.status(404).json({ error:'Not found' });
   const allowed = ['name','guest_status','uid','email','party','datetime','status','notes','table_number'];
   const updates = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
   if (updates.status) updates.processed_at = new Date().toISOString();
   const updated = db.updateReservation(r.id, updates);
-  if (updates.status === 'approved') await sendEmail(updated, 'confirmed').catch(console.error);
-  if (updates.status === 'denied')   await sendEmail(updated, 'denied').catch(console.error);
+  if (updates.status==='approved') await sendEmail(updated,'confirmed').catch(console.error);
+  if (updates.status==='denied')   await sendEmail(updated,'denied').catch(console.error);
   res.json(updated);
 });
 
-// Delete — requires PIN
 app.delete('/api/reservations/:id', (req, res) => {
   const { pin } = req.body;
-  const DELETE_PIN = process.env.DELETE_PIN || '1234';
-  if (!pin || pin !== DELETE_PIN)
-    return res.status(403).json({ error: 'Invalid PIN. Deletion not authorized.' });
+  if (!pin || pin !== (process.env.DELETE_PIN || '1234'))
+    return res.status(403).json({ error:'Invalid PIN.' });
   const r = db.getReservation(req.params.id);
-  if (!r) return res.status(404).json({ error: 'Not found' });
+  if (!r) return res.status(404).json({ error:'Not found' });
   db.deleteReservation(req.params.id);
-  res.json({ success: true });
+  res.json({ success:true });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  POS BOARD
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/pos', (req, res) => res.sendFile(path.join(__dirname, 'views', 'pos-board.html')));
-app.get("/api/pos", (req, res) => {
+
+// Returns approved reservations FOR the selected date (by reservation_date)
+app.get('/api/pos', (req, res) => {
   const date = req.query.date || new Date().toISOString().split('T')[0];
   const data = db.getAllReservations().filter(r =>
     (r.status === 'approved' || r.status === 'auto_approved') &&
-    r.created_at.startsWith(date)
+    r.reservation_date === date
   );
   res.json({ date, reservations: data });
 });
 
+// Assign table number from POS board
+app.patch('/api/pos/table/:id', (req, res) => {
+  const { table_number } = req.body;
+  const r = db.getReservation(req.params.id);
+  if (!r) return res.status(404).json({ error:'Not found' });
+  const updated = db.updateReservation(req.params.id, { table_number: table_number || '' });
+  res.json(updated);
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
-//  JSON API
+//  JSON API — filtered
 // ═══════════════════════════════════════════════════════════════════════════
 app.get('/api/reservations', (req, res) => {
   let data = db.getAllReservations();
   if (req.query.status) data = data.filter(r => r.status === req.query.status);
-  if (req.query.date)   data = data.filter(r => r.created_at.startsWith(req.query.date));
-  if (req.query.type)   data = data.filter(r => r.guest_status === req.query.type);
-  if (req.query.search) { const q = req.query.search.toLowerCase(); data = data.filter(r => r.name.toLowerCase().includes(q) || (r.email||'').toLowerCase().includes(q)); }
+  // Filter by reservation_date (when the reservation is FOR)
+  if (req.query.date) data = data.filter(r => r.reservation_date === req.query.date);
+  if (req.query.type) data = data.filter(r => r.guest_status === req.query.type);
+  if (req.query.search) {
+    const q = req.query.search.toLowerCase();
+    data = data.filter(r => r.name.toLowerCase().includes(q) || (r.email||'').toLowerCase().includes(q));
+  }
   res.json(data);
 });
-app.get('/api/reservations/:id', (req, res) => { const r = db.getReservation(req.params.id); return r ? res.json(r) : res.status(404).json({ error: 'Not found' }); });
+app.get('/api/reservations/:id', (req, res) => { const r=db.getReservation(req.params.id); return r ? res.json(r) : res.status(404).json({error:'Not found'}); });
 app.get('/api/stats',  (req, res) => res.json(db.getStats()));
-app.get('/health',     (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+app.get('/health',     (req, res) => res.json({ status:'ok', time: new Date().toISOString() }));
 app.get('/',           (req, res) => res.redirect('/reserve'));
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -173,14 +191,12 @@ function statusPage(title, message, type) {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n🌴  Top of the Palms — Reservation Agent v4');
-  console.log('─────────────────────────────────────────────');
+  console.log('\n🌴  Top of the Palms — Reservation Agent v6');
   console.log(`   Guest form:  http://localhost:${PORT}/reserve`);
   console.log(`   Dashboard:   http://localhost:${PORT}/manager/dashboard`);
   console.log(`   POS board:   http://localhost:${PORT}/pos`);
-  console.log(`   Health:      http://localhost:${PORT}/health`);
-  console.log(`   Daily limit: ${process.env.DAILY_LIMIT || '30'} reservations`);
+  console.log(`   Daily limit: ${process.env.DAILY_LIMIT || '30'}`);
   const missing = ['GROQ_API_KEY','SENDGRID_API_KEY','FROM_EMAIL','MANAGER_EMAIL'].filter(k=>!process.env[k]);
-  if (missing.length) console.log(`\n⚠️  Missing: ${missing.join(', ')}\n`);
-  else console.log('\n✅  Ready!\n');
+  if (missing.length) console.log(`⚠️  Missing: ${missing.join(', ')}`);
+  else console.log('✅  Ready!\n');
 });

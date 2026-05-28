@@ -14,16 +14,44 @@ function read() {
 }
 function write(rows) { fs.writeFileSync(DB_FILE, JSON.stringify(rows, null, 2)); }
 
-// Parse "Jun 7 2026 6:00 PM" or "May 29, 2026 12:50 PM" → "2026-06-07"
-function parseReservationDate(datetimeStr) {
-  if (!datetimeStr) return null;
+// ── Parse any datetime string → YYYY-MM-DD ────────────────────────────────
+// Handles: "May 29, 2026 12:50 PM", "Jun 7 2026 6:00 PM", "2026-05-27", ISO strings
+function toDateStr(val) {
+  if (!val) return null;
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+  // Try native parse (works for most English date strings)
   try {
-    const d = new Date(datetimeStr);
-    if (isNaN(d)) return null;
-    return d.toISOString().split('T')[0];
-  } catch { return null; }
+    const d = new Date(val);
+    if (!isNaN(d)) {
+      // Use UTC to avoid timezone shift on Railway server
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  } catch {}
+  return null;
 }
 
+// ── Startup migration: backfill reservation_date for all old records ───────
+function migrate() {
+  const rows = read();
+  let changed = 0;
+  rows.forEach(r => {
+    if (!r.reservation_date && r.datetime) {
+      const d = toDateStr(r.datetime);
+      if (d) { r.reservation_date = d; changed++; }
+    }
+  });
+  if (changed > 0) {
+    write(rows);
+    console.log(`[DB] Migrated ${changed} records → reservation_date set`);
+  }
+}
+migrate(); // Run on require
+
+// ── CRUD ──────────────────────────────────────────────────────────────────
 function createReservation(data) {
   const rows = read();
   const record = {
@@ -33,13 +61,14 @@ function createReservation(data) {
     uid:              data.uid,
     email:            data.email,
     party:            data.party,
-    datetime:         data.datetime,
-    reservation_date: parseReservationDate(data.datetime), // YYYY-MM-DD of the actual reservation
+    datetime:         data.datetime,          // Display string e.g. "May 29, 2026 7:00 PM"
+    reservation_date: data.reservation_date   // YYYY-MM-DD — passed in from server
+                      || toDateStr(data.datetime),
     notes:            data.notes || '',
     table_number:     data.table_number || '',
     status:           data.status || 'pending_approval',
     channel:          data.channel || 'form',
-    created_at:       new Date().toISOString(),   // when submitted
+    created_at:       new Date().toISOString(),
     processed_at:     null
   };
   rows.unshift(record);
@@ -55,9 +84,9 @@ function updateReservation(id, updates) {
   const rows = read();
   const idx  = rows.findIndex(r => r.id === id);
   if (idx === -1) return null;
-  // If datetime is being updated, recalculate reservation_date
+  // Recalculate reservation_date if datetime changes
   if (updates.datetime) {
-    updates.reservation_date = parseReservationDate(updates.datetime);
+    updates.reservation_date = toDateStr(updates.datetime);
   }
   Object.assign(rows[idx], updates);
   write(rows);
@@ -68,7 +97,7 @@ function deleteReservation(id) {
   write(read().filter(r => r.id !== id));
 }
 
-// Count active reservations FOR a specific date (by reservation_date, not created_at)
+// Count active reservations FOR a date (uses reservation_date)
 function getDailyCount(date) {
   const d = date || new Date().toISOString().split('T')[0];
   return read().filter(r =>
@@ -81,31 +110,25 @@ function getStats() {
   const rows  = read();
   const today = new Date().toISOString().split('T')[0];
   const limit = parseInt(process.env.DAILY_LIMIT || '30');
+  const active = ['pending_approval','approved','auto_approved'];
 
-  // Reservations FOR today (by actual reservation date)
-  const forToday  = rows.filter(r => r.reservation_date === today);
-  const dailyCount = forToday.filter(r => ['pending_approval','approved','auto_approved'].includes(r.status)).length;
+  const forToday   = rows.filter(r => r.reservation_date === today);
+  const dailyCount = forToday.filter(r => active.includes(r.status)).length;
 
   return {
-    // Card 1: all currently pending
-    pending:           rows.filter(r => r.status === 'pending_approval').length,
-    // Card 2: approved reservations FOR today
-    approved_today:    forToday.filter(r => r.status === 'approved' || r.status === 'auto_approved').length,
-    // Card 3: all denied ever
-    total_denied:      rows.filter(r => r.status === 'denied').length,
-    // Card 4: total reservations FOR today (pending + approved)
-    total_today:       forToday.filter(r => r.status !== 'denied').length,
-    // Card 5: slots remaining today
-    daily_count:       dailyCount,
-    daily_limit:       limit,
-    slots_left:        Math.max(0, limit - dailyCount),
-    // Overall total
-    total_all:         rows.length
+    pending:        rows.filter(r => r.status === 'pending_approval').length,
+    approved_today: forToday.filter(r => r.status === 'approved' || r.status === 'auto_approved').length,
+    denied_all:     rows.filter(r => r.status === 'denied').length,
+    total_today:    forToday.filter(r => active.includes(r.status)).length,
+    total_all:      rows.filter(r => active.includes(r.status) || r.status === 'approved' || r.status === 'auto_approved').length,
+    daily_count:    dailyCount,
+    daily_limit:    limit,
+    slots_left:     Math.max(0, limit - dailyCount)
   };
 }
 
 module.exports = {
   createReservation, getReservation, getAllReservations,
   getReservationsByStatus, updateReservation, deleteReservation,
-  getDailyCount, getStats, parseReservationDate
+  getDailyCount, getStats, toDateStr
 };

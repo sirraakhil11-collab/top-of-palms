@@ -7,163 +7,190 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e8e8e8;min-height:100vh}
-    header{background:linear-gradient(135deg,#006747 0%,#004d34 100%);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-    .hl h1{color:#fff;font-size:20px;font-weight:800}
-    .hl p{color:#CFC493;font-size:12px;margin-top:2px}
-    .hr{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    header{background:linear-gradient(135deg,#006747,#004d34);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .hl h1{color:#fff;font-size:18px;font-weight:800}
+    .hl p{color:#CFC493;font-size:11px;margin-top:2px}
+    .hr{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .dp-wrap{display:flex;align-items:center;gap:8px}
+    .dp-wrap label{color:#a7d9c2;font-size:12px;white-space:nowrap}
+    .dp{padding:7px 11px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;outline:none}
+    .dp:focus{border-color:#CFC493}
+    .tbtn{padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,.2);color:#fff;background:rgba(255,255,255,.12)}
+    .tbtn:hover{background:rgba(255,255,255,.22)}
+    .nbtn{padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid #CFC493;color:#CFC493;background:rgba(207,196,147,.12);text-decoration:none}
+    .nbtn:hover{background:rgba(207,196,147,.25)}
     .clock{text-align:right}
-    .cdate{color:#fff;font-size:14px;font-weight:700}
-    .ctime{color:#CFC493;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
-    .dpwrap{display:flex;align-items:center;gap:8px}
-    .dpwrap label{color:#a7d9c2;font-size:12px;white-space:nowrap}
-    .dpick{padding:7px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer}
-    .dpick:focus{border-color:#CFC493}
-    .today-btn{padding:7px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;cursor:pointer}
-    .today-btn:hover{background:rgba(255,255,255,.25)}
-    .nav-btn{padding:7px 14px;background:rgba(207,196,147,.2);border:1px solid #CFC493;border-radius:8px;color:#CFC493;font-size:12px;cursor:pointer;text-decoration:none}
-    .nav-btn:hover{background:rgba(207,196,147,.3)}
-    .controls{padding:12px 28px;background:#1a1d27;display:flex;align-items:center;gap:12px;border-bottom:1px solid #2d3148;flex-wrap:wrap}
-    .spill{background:#252836;border:1px solid #3d4065;border-radius:20px;padding:6px 16px;font-size:13px;color:#9ca3af}
-    .spill strong{color:#fff;margin-right:4px}
-    .spill.g strong{color:#4ade80}
-    .spill.a strong{color:#fbbf24}
-    .viewing{color:#a7d9c2;font-size:13px;margin-left:auto;font-weight:600}
-    .board{padding:20px 28px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-    .rcard{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s}
-    .rcard:hover{transform:translateY(-2px)}
-    .rtop{padding:14px 18px 10px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start}
-    .rname{font-size:16px;font-weight:700;color:#fff}
-    .rtime{font-size:12px;color:#6b7280;margin-top:3px}
-    .rdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
-    .dot-f{background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,.5)}
-    .dot-s{background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,.5)}
-    .rbody{padding:14px 18px;display:flex;flex-direction:column;gap:7px}
-    .rrow{display:flex;justify-content:space-between;font-size:13px}
+    .cdate{color:#fff;font-size:13px;font-weight:600}
+    .ctime{color:#CFC493;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+    .controls{padding:10px 24px;background:#1a1d27;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2d3148;flex-wrap:wrap}
+    .sp{background:#252836;border:1px solid #3d4065;border-radius:18px;padding:5px 14px;font-size:13px;color:#9ca3af}
+    .sp strong{color:#fff;margin-right:4px}
+    .sp.g strong{color:#4ade80}.sp.a strong{color:#fbbf24}
+    .viewing{color:#a7d9c2;font-size:12px;font-weight:600;margin-left:auto}
+    .board{padding:18px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s}
+    .rc:hover{transform:translateY(-1px)}
+    .rt{padding:13px 16px 9px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start}
+    .rn{font-size:15px;font-weight:700;color:#fff}
+    .rs{font-size:12px;color:#6b7280;margin-top:2px}
+    .rdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
+    .df{background:#60a5fa;box-shadow:0 0 7px rgba(96,165,250,.5)}
+    .ds{background:#4ade80;box-shadow:0 0 7px rgba(74,222,128,.5)}
+    .rb{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+    .rr{display:flex;justify-content:space-between;align-items:center;font-size:13px}
     .rk{color:#6b7280}.rv{color:#d1d5db;font-weight:500}
-    .rv.big{font-size:28px;font-weight:800;color:#fff}
-    .rv.table-num{font-size:22px;font-weight:800;color:#4ade80}
-    .rbadge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px}
-    .rb-f{background:#1e3a5f;color:#60a5fa}
-    .rb-s{background:#14532d;color:#4ade80}
-    .no-table{color:#4b5563;font-size:12px;font-style:italic}
-    .empty{grid-column:1/-1;text-align:center;padding:80px 20px;color:#4b5563}
-    .empty .eicon{font-size:48px;margin-bottom:16px}
-    .empty h2{font-size:20px;color:#6b7280;margin-bottom:8px}
-    .empty p{font-size:14px}
-    @media(max-width:640px){header{padding:14px 16px}.board{padding:14px 16px;grid-template-columns:1fr}.controls{padding:10px 14px}}
+    .rv.big{font-size:26px;font-weight:800;color:#fff}
+    .rbg{font-size:11px;font-weight:600;padding:2px 8px;border-radius:7px}
+    .rf{background:#1e3a5f;color:#60a5fa}.rsb{background:#14532d;color:#4ade80}
+    /* Table number section */
+    .tbl-section{padding:10px 16px 14px;border-top:1px solid #2d3148}
+    .tbl-assigned{display:flex;align-items:center;justify-content:space-between}
+    .tbl-num{font-size:24px;font-weight:800;color:#4ade80}
+    .tbl-edit-btn{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
+    .tbl-edit-btn:hover{background:rgba(74,222,128,.2)}
+    .tbl-unassigned{display:flex;align-items:center;gap:8px}
+    .tbl-in{flex:1;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:7px 10px;color:#fff;font-size:13px;font-family:inherit;outline:none}
+    .tbl-in:focus{border-color:#4ade80}
+    .tbl-save-btn{background:#006747;border:none;color:#fff;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+    .tbl-save-btn:hover{background:#004d34}
+    .tbl-label{color:#6b7280;font-size:11px;margin-bottom:5px;font-weight:500}
+    .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
+    .ei{font-size:44px;margin-bottom:14px}.empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
+    @media(max-width:640px){header{padding:12px 14px}.board{padding:12px 14px;grid-template-columns:1fr}.controls{padding:8px 14px}}
   </style>
 </head>
 <body>
 <header>
   <div class="hl"><h1>🌴 Top of the Palms — Reservations</h1><p>POS Board · USF Dining · Compass USA</p></div>
   <div class="hr">
-    <div class="dpwrap">
-      <label>Viewing reservations for:</label>
-      <input class="dpick" type="date" id="dpick" onchange="loadBoard()">
-      <button class="today-btn" onclick="goToday()">Today</button>
+    <div class="dp-wrap">
+      <label>Date:</label>
+      <input class="dp" type="date" id="dpick" onchange="load()">
+      <button class="tbtn" onclick="goToday()">Today</button>
     </div>
-    <div class="clock">
-      <div class="cdate" id="cdate"></div>
-      <div class="ctime" id="ctime"></div>
-    </div>
-    <a class="nav-btn" href="/manager/dashboard">← Manager</a>
+    <div class="clock"><div class="cdate" id="cdate"></div><div class="ctime" id="ctime"></div></div>
+    <a class="nbtn" href="/manager/dashboard">← Manager</a>
   </div>
 </header>
 <div class="controls">
-  <div class="spill g"><strong id="total">0</strong>Reservations</div>
-  <div class="spill a"><strong id="covers">0</strong>Covers</div>
-  <div class="spill"><strong id="fac-cnt">0</strong>Faculty</div>
-  <div class="spill"><strong id="stu-cnt">0</strong>Students</div>
-  <span class="viewing" id="viewing-lbl"></span>
+  <div class="sp g"><strong id="tot">0</strong>Reservations</div>
+  <div class="sp a"><strong id="cov">0</strong>Covers</div>
+  <div class="sp"><strong id="fac">0</strong>Faculty</div>
+  <div class="sp"><strong id="stu">0</strong>Students</div>
+  <span class="viewing" id="vlbl"></span>
 </div>
-<div class="board" id="board">
-  <div class="empty"><div class="eicon">🔄</div><h2>Loading…</h2></div>
-</div>
+<div class="board" id="board"><div class="empty"><div class="ei">🔄</div><h2>Loading…</h2></div></div>
+
 <script>
-  const todayStr = new Date().toISOString().split('T')[0];
-  document.getElementById('dpick').value = todayStr;
+const todayISO = new Date().toISOString().split('T')[0];
+document.getElementById('dpick').value = todayISO;
 
-  function goToday(){
-    document.getElementById('dpick').value = todayStr;
-    loadBoard();
+function goToday(){ document.getElementById('dpick').value=todayISO; load(); }
+
+async function load(){
+  const date = document.getElementById('dpick').value || todayISO;
+  try{
+    const r = await fetch(`/api/pos?date=${date}`);
+    const d = await r.json();
+    render(d.reservations, date);
+  }catch(e){
+    document.getElementById('board').innerHTML=`<div class="empty"><div class="ei">⚠️</div><h2>Could not load</h2><p>${e.message}</p></div>`;
+  }
+}
+
+function render(data, date){
+  const isToday = date === todayISO;
+  const label = isToday
+    ? 'Today — '+new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
+    : new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  document.getElementById('vlbl').textContent = label;
+  document.getElementById('tot').textContent  = data.length;
+  document.getElementById('cov').textContent  = data.reduce((s,r)=>s+r.party,0);
+  document.getElementById('fac').textContent  = data.filter(r=>r.guest_status==='faculty').length;
+  document.getElementById('stu').textContent  = data.filter(r=>r.guest_status==='student').length;
+
+  if(!data.length){
+    document.getElementById('board').innerHTML=`<div class="empty">
+      <div class="ei">🌴</div>
+      <h2>No confirmed reservations</h2>
+      <p>${isToday?'Approved reservations for today appear here automatically.':'No approved reservations found for this date.'}</p>
+      ${!isToday?`<p style="margin-top:12px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">← Back to today</button></p>`:''}
+    </div>`;
+    return;
   }
 
-  async function loadBoard(){
-    const date = document.getElementById('dpick').value || todayStr;
-    try{
-      const resp = await fetch(`/api/pos?date=${date}`);
-      const data = await resp.json();
-      renderBoard(data.reservations, date);
-    }catch(e){
-      document.getElementById('board').innerHTML=`<div class="empty"><div class="eicon">⚠️</div><h2>Could not load</h2><p>${e.message}</p></div>`;
-    }
-  }
-
-  function renderBoard(data, date){
-    const board = document.getElementById('board');
-    const isToday = date === todayStr;
-    const dateLabel = isToday
-      ? 'Today — '+new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
-      : new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-
-    document.getElementById('viewing-lbl').textContent = dateLabel;
-    document.getElementById('total').textContent   = data.length;
-    document.getElementById('covers').textContent  = data.reduce((s,r)=>s+r.party,0);
-    document.getElementById('fac-cnt').textContent = data.filter(r=>r.guest_status==='faculty').length;
-    document.getElementById('stu-cnt').textContent = data.filter(r=>r.guest_status==='student').length;
-
-    if(!data.length){
-      board.innerHTML=`<div class="empty">
-        <div class="eicon">🌴</div>
-        <h2>No confirmed reservations</h2>
-        <p>${isToday?'Approved reservations for today will appear here automatically.':'No approved reservations found for this date.'}</p>
-        ${!isToday?'<p style="margin-top:8px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;margin-top:8px">← Back to today</button></p>':''}
-      </div>`;
-      return;
-    }
-
-    board.innerHTML = data.map(r => {
-      const ref    = r.id.slice(0,8).toUpperCase();
-      const isFac  = r.guest_status === 'faculty';
-      const hasTable = r.table_number && r.table_number.trim() !== '';
-      return `<div class="rcard">
-        <div class="rtop">
-          <div>
-            <div class="rname">${x(r.name)}</div>
-            <div class="rtime">${x(r.datetime)}</div>
+  document.getElementById('board').innerHTML = data.map(r => {
+    const ref   = r.id.slice(0,8).toUpperCase();
+    const isFac = r.guest_status === 'faculty';
+    const hasTbl= r.table_number && r.table_number.trim() !== '';
+    const tblSection = hasTbl
+      ? `<div class="tbl-section">
+          <div class="tbl-label">Table assigned</div>
+          <div class="tbl-assigned">
+            <span class="tbl-num">${x(r.table_number)}</span>
+            <button class="tbl-edit-btn" onclick="editTable('${r.id}', this)">Change</button>
           </div>
-          <div class="rdot ${isFac?'dot-f':'dot-s'}"></div>
-        </div>
-        <div class="rbody">
-          <div class="rrow">
-            <span class="rk">Table</span>
-            ${hasTable
-              ? `<span class="rv table-num">${x(r.table_number)}</span>`
-              : `<span class="no-table">Not assigned yet</span>`
-            }
+        </div>`
+      : `<div class="tbl-section">
+          <div class="tbl-label">Assign table number</div>
+          <div class="tbl-unassigned">
+            <input class="tbl-in" id="tbl-${r.id}" placeholder="e.g. T-5 or 12" onkeydown="if(event.key==='Enter')saveTable('${r.id}')">
+            <button class="tbl-save-btn" onclick="saveTable('${r.id}')">Assign</button>
           </div>
-          <div class="rrow"><span class="rk">Party size</span><span class="rv big">${r.party}</span></div>
-          <div class="rrow"><span class="rk">Type</span><span class="rbadge ${isFac?'rb-f':'rb-s'}">${isFac?'Faculty':'Student'}</span></div>
-          <div class="rrow"><span class="rk">Confirmation</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
-          <div class="rrow"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
-          ${r.notes?`<div class="rrow"><span class="rk">Notes</span><span class="rv" style="font-size:12px">${x(r.notes)}</span></div>`:''}
-        </div>
-      </div>`;
-    }).join('');
-  }
+        </div>`;
 
-  function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+    return `<div class="rc" id="rc-${r.id}">
+      <div class="rt">
+        <div><div class="rn">${x(r.name)}</div><div class="rs">${x(r.datetime)}</div></div>
+        <div class="rdot ${isFac?'df':'ds'}"></div>
+      </div>
+      <div class="rb">
+        <div class="rr"><span class="rk">Party size</span><span class="rv big">${r.party}</span></div>
+        <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
+        <div class="rr"><span class="rk">Confirmation</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
+        <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
+        ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:12px">${x(r.notes)}</span></div>`:''}
+      </div>
+      ${tblSection}
+    </div>`;
+  }).join('');
+}
 
-  function updateClock(){
-    const now = new Date();
-    document.getElementById('cdate').textContent = now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-    document.getElementById('ctime').textContent = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  }
+async function saveTable(id){
+  const input = document.getElementById(`tbl-${id}`);
+  const val   = (input?.value || '').trim();
+  if (!val) { input?.focus(); return; }
+  await fetch(`/api/pos/table/${id}`, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ table_number: val })
+  });
+  load(); // Reload to show updated card
+}
 
-  updateClock();
-  setInterval(updateClock, 1000);
-  loadBoard();
-  setInterval(loadBoard, 30000);
+function editTable(id, btn){
+  // Replace the assigned display with an edit input inline
+  const section = btn.closest('.tbl-section');
+  section.innerHTML = `
+    <div class="tbl-label">Change table number</div>
+    <div class="tbl-unassigned">
+      <input class="tbl-in" id="tbl-${id}" placeholder="New table number" onkeydown="if(event.key==='Enter')saveTable('${id}')">
+      <button class="tbl-save-btn" onclick="saveTable('${id}')">Save</button>
+    </div>`;
+  document.getElementById(`tbl-${id}`)?.focus();
+}
+
+function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function tick(){
+  const now=new Date();
+  document.getElementById('cdate').textContent=now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  document.getElementById('ctime').textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+tick(); setInterval(tick,1000);
+load(); setInterval(load,30000);
 </script>
 </body>
 </html>
