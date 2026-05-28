@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign In — Top of the Palms</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+    .logo{font-size:48px;margin-bottom:12px}
+    .title{font-size:22px;font-weight:700;color:#111827;margin-bottom:4px}
+    .sub{font-size:13px;color:#9ca3af;margin-bottom:32px}
+    .card{background:#fff;border-radius:16px;padding:32px;max-width:380px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+    .card h2{font-size:16px;font-weight:700;color:#111827;margin-bottom:6px}
+    .card p{font-size:13px;color:#6b7280;margin-bottom:20px;line-height:1.5}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px}
+    .tab-btn{padding:10px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;text-align:center;transition:all .15s}
+    .tab-btn.active{background:#006747;color:#fff;border-color:#006747}
+    .tab-btn:hover:not(.active){background:#f9fafb;border-color:#006747;color:#006747}
+    .tab-icon{font-size:20px;display:block;margin-bottom:4px}
+    label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+    .pin-wrap{display:flex;gap:8px;margin-bottom:20px}
+    .pin-digit{flex:1;height:56px;border:1.5px solid #e5e7eb;border-radius:8px;text-align:center;font-size:22px;font-weight:700;color:#111827;outline:none;background:#f9fafb;font-family:monospace;-webkit-text-security:disc;caret-color:#006747}
+    .pin-digit:focus{border-color:#006747;background:#fff;box-shadow:0 0 0 3px rgba(0,103,71,.1)}
+    .pin-input-hidden{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+    .dots{display:flex;gap:12px;justify-content:center;margin-bottom:24px}
+    .dot{width:14px;height:14px;border-radius:50%;border:2px solid #d1d5db;background:#fff;transition:all .15s}
+    .dot.filled{background:#006747;border-color:#006747}
+    .signin-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+    .signin-btn:hover{background:#004d34}
+    .signin-btn:disabled{background:#d1d5db;cursor:default}
+    .err{color:#b91c1c;font-size:13px;text-align:center;margin-top:12px;display:none}
+    .err.show{display:block}
+    .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+    .num-btn{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px;font-size:18px;font-weight:600;color:#111827;cursor:pointer;text-align:center;transition:all .15s;user-select:none}
+    .num-btn:hover{background:#e5e7eb}
+    .num-btn:active{background:#d1fae5;border-color:#006747}
+    .num-btn.del{font-size:14px;color:#6b7280}
+  </style>
+</head>
+<body>
+
+<div class="logo">🌴</div>
+<div class="title">Top of the Palms</div>
+<div class="sub">USF Dining · Compass USA</div>
+
+<div class="card">
+  <h2>Enter your PIN</h2>
+  <p id="desc">Select your role and enter your PIN to continue.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-pos" onclick="setRole('pos')">
+      <span class="tab-icon">🖥️</span>POS / Floor
+    </button>
+    <button class="tab-btn" id="tab-manager" onclick="setRole('manager')">
+      <span class="tab-icon">📊</span>Manager
+    </button>
+  </div>
+
+  <!-- PIN dots display -->
+  <label>PIN</label>
+  <div class="dots" id="dots">
+    <div class="dot" id="d0"></div>
+    <div class="dot" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+  </div>
+
+  <!-- Number pad -->
+  <div class="numpad">
+    <button class="num-btn" onclick="addDigit('1')">1</button>
+    <button class="num-btn" onclick="addDigit('2')">2</button>
+    <button class="num-btn" onclick="addDigit('3')">3</button>
+    <button class="num-btn" onclick="addDigit('4')">4</button>
+    <button class="num-btn" onclick="addDigit('5')">5</button>
+    <button class="num-btn" onclick="addDigit('6')">6</button>
+    <button class="num-btn" onclick="addDigit('7')">7</button>
+    <button class="num-btn" onclick="addDigit('8')">8</button>
+    <button class="num-btn" onclick="addDigit('9')">9</button>
+    <button class="num-btn" onclick="clearPin()">Clear</button>
+    <button class="num-btn" onclick="addDigit('0')">0</button>
+    <button class="num-btn del" onclick="delDigit()">⌫</button>
+  </div>
+
+  <button class="signin-btn" id="signin-btn" onclick="submit()" disabled>Sign In</button>
+  <div class="err" id="err">Incorrect PIN. Please try again.</div>
+</div>
+
+<script>
+  let pin = '';
+  let role = 'pos';
+  const params = new URLSearchParams(window.location.search);
+  const next   = params.get('next') || '/pos';
+  const type   = params.get('type') || 'pos';
+
+  // Auto-select role based on where they were going
+  if (type === 'manager') setRole('manager');
+
+  function setRole(r) {
+    role = r;
+    document.getElementById('tab-pos').classList.toggle('active', r==='pos');
+    document.getElementById('tab-manager').classList.toggle('active', r==='manager');
+    document.getElementById('desc').textContent = r==='pos'
+      ? 'Floor staff and POS access.'
+      : 'Manager access — approve reservations and view all data.';
+    clearPin();
+  }
+
+  function addDigit(d) {
+    if (pin.length >= 6) return;
+    pin += d;
+    updateDots();
+    if (pin.length >= 4) document.getElementById('signin-btn').disabled = false;
+    // Auto submit when pin reaches max expected length (6 digits)
+    if (pin.length === 6) submit();
+  }
+
+  function delDigit() {
+    pin = pin.slice(0, -1);
+    updateDots();
+    if (pin.length < 4) document.getElementById('signin-btn').disabled = true;
+  }
+
+  function clearPin() {
+    pin = '';
+    updateDots();
+    document.getElementById('signin-btn').disabled = true;
+    document.getElementById('err').classList.remove('show');
+  }
+
+  function updateDots() {
+    // Show up to 6 dots
+    const container = document.getElementById('dots');
+    // Adjust dots to show current pin length (up to 6)
+    const maxDots = 6;
+    container.innerHTML = '';
+    for (let i = 0; i < maxDots; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i < pin.length ? ' filled' : '');
+      container.appendChild(d);
+    }
+  }
+
+  // Also support keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9') addDigit(e.key);
+    else if (e.key === 'Backspace') delDigit();
+    else if (e.key === 'Enter' && pin.length >= 4) submit();
+  });
+
+  async function submit() {
+    document.getElementById('err').classList.remove('show');
+    const btn = document.getElementById('signin-btn');
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+
+    const resp = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin, role })
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      // Redirect to where they were going, or default for role
+      const dest = next !== '/login' ? next : (role === 'manager' ? '/manager/dashboard' : '/pos');
+      window.location.href = dest;
+    } else {
+      document.getElementById('err').classList.add('show');
+      clearPin();
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  }
+</script>
+</body>
+</html>

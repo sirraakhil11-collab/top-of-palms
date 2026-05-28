@@ -132,6 +132,7 @@
     <a href="/pos">POS Board →</a>
     <span class="upd" id="upd">Loading…</span>
     <button class="rbtn" onclick="loadAll()">↻ Refresh</button>
+    <button class="rbtn" onclick="logout()" style="background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4)">Sign out</button>
   </div>
 </header>
 <main>
@@ -429,6 +430,7 @@ function fmt(i){return new Date(i).toLocaleDateString('en-US',{month:'short',day
 function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 loadAll();setInterval(loadAll,30000);
+async function logout(){ await fetch('/api/logout',{method:'POST'}); window.location.href='/login?type=manager'; }
 </script>
 </body>
 </html>

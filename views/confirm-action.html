@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confirm Action — Top of the Palms</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#fff;border-radius:16px;padding:36px 32px;max-width:480px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center}
+    .icon{font-size:48px;margin-bottom:16px}
+    h1{font-size:22px;font-weight:700;color:#111827;margin-bottom:8px}
+    .sub{font-size:14px;color:#6b7280;margin-bottom:24px;line-height:1.6}
+    .details{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:4px 18px;margin-bottom:28px;text-align:left}
+    .dr{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #f3f4f6}
+    .dr:last-child{border-bottom:none}
+    .dk{color:#6b7280}.dv{color:#111827;font-weight:600}
+    .btns{display:flex;gap:10px}
+    .btn-confirm{flex:1;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+    .btn-back{flex:none;background:#f3f4f6;color:#374151;border:none;border-radius:10px;padding:13px 20px;font-size:14px;cursor:pointer}
+    .btn-back:hover{background:#e5e7eb}
+    .approve{background:#006747;color:#fff}
+    .approve:hover{background:#004d34}
+    .deny{background:#b91c1c;color:#fff}
+    .deny:hover{background:#991b1b}
+    .loading{display:none;color:#6b7280;font-size:14px;margin-top:12px}
+  </style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="icon" id="icon">⏳</div>
+  <h1 id="title">Loading…</h1>
+  <p class="sub" id="sub"></p>
+  <div class="details" id="details"></div>
+  <div class="btns" id="btns"></div>
+  <p class="loading" id="loading">Processing…</p>
+</div>
+
+<script>
+  // Parse action and id from URL: /manager/confirm/approve/:id or /manager/confirm/deny/:id
+  const parts  = window.location.pathname.split('/');
+  const action = parts[4]; // 'approve' or 'deny'
+  const id     = parts[5];
+
+  async function loadReservation() {
+    try {
+      const r = await fetch(`/api/reservations/${id}`).then(x => x.json());
+      if (r.error) { showError('Reservation not found.'); return; }
+      if (r.status !== 'pending_approval') {
+        document.getElementById('icon').textContent  = r.status === 'approved' ? '✅' : '✕';
+        document.getElementById('title').textContent = r.status === 'approved' ? 'Already approved' : 'Already denied';
+        document.getElementById('sub').textContent   = `This reservation was already ${r.status}. No further action needed.`;
+        document.getElementById('details').style.display = 'none';
+        document.getElementById('btns').innerHTML = `<a href="/manager/dashboard" style="flex:1;display:block;background:#006747;color:#fff;text-decoration:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;text-align:center">← Back to dashboard</a>`;
+        return;
+      }
+
+      const party = r.party + (r.party===1?' guest':' guests');
+      document.getElementById('icon').textContent  = action==='approve' ? '✓' : '✕';
+      document.getElementById('title').textContent = action==='approve' ? 'Approve this reservation?' : 'Deny this reservation?';
+      document.getElementById('sub').textContent   = action==='approve'
+        ? 'The guest will receive a confirmation email immediately.'
+        : 'The guest will receive a denial email. You can re-approve later from the dashboard.';
+
+      document.getElementById('details').innerHTML = `
+        <div class="dr"><span class="dk">Name</span><span class="dv">${esc(r.name)}</span></div>
+        <div class="dr"><span class="dk">Date & time</span><span class="dv">${esc(r.datetime)}</span></div>
+        <div class="dr"><span class="dk">Party size</span><span class="dv">${party}</span></div>
+        <div class="dr"><span class="dk">Email</span><span class="dv">${esc(r.email)}</span></div>
+        <div class="dr"><span class="dk">USF UID</span><span class="dv" style="font-family:monospace">${esc(r.uid)}</span></div>`;
+
+      const btnCls  = action==='approve' ? 'approve' : 'deny';
+      const btnText = action==='approve' ? '✓ Yes, approve reservation' : '✕ Yes, deny reservation';
+      document.getElementById('btns').innerHTML = `
+        <a href="/manager/dashboard" class="btn-back">← Cancel</a>
+        <button class="btn-confirm ${btnCls}" onclick="confirm_action()">${btnText}</button>`;
+    } catch(e) { showError(e.message); }
+  }
+
+  async function confirm_action() {
+    document.getElementById('btns').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+    window.location.href = `/manager/${action}/${id}`;
+  }
+
+  function showError(msg) {
+    document.getElementById('icon').textContent  = '⚠️';
+    document.getElementById('title').textContent = 'Error';
+    document.getElementById('sub').textContent   = msg;
+    document.getElementById('details').style.display = 'none';
+    document.getElementById('btns').innerHTML = `<a href="/manager/dashboard" style="flex:1;display:block;background:#006747;color:#fff;text-decoration:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;text-align:center">← Back to dashboard</a>`;
+  }
+
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  loadReservation();
+</script>
+</body>
+</html>
