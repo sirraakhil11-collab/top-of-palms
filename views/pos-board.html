@@ -3,11 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>POS Board — Top of the Palms</title>
+  <title>POS Board — On Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e8e8e8;min-height:100vh}
-
     header{background:linear-gradient(135deg,#006747,#004d34);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
     .hl h1{color:#fff;font-size:18px;font-weight:800}
     .hl p{color:#CFC493;font-size:11px;margin-top:2px}
@@ -20,95 +19,81 @@
     .tbtn:hover{background:rgba(255,255,255,.22)}
     .nbtn{padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid #CFC493;color:#CFC493;background:rgba(207,196,147,.12);text-decoration:none}
     .nbtn:hover{background:rgba(207,196,147,.25)}
+    .rbtn{padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid rgba(239,68,68,.4);color:#f87171;background:rgba(239,68,68,.1);text-decoration:none}
     .clock{text-align:right}
     .cdate{color:#fff;font-size:13px;font-weight:600}
     .ctime{color:#CFC493;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
-
-    /* Stats bar */
     .controls{padding:10px 24px;background:#1a1d27;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2d3148;flex-wrap:wrap}
     .sp{background:#252836;border:1px solid #3d4065;border-radius:18px;padding:5px 14px;font-size:13px;color:#9ca3af;cursor:pointer;transition:background .15s}
     .sp:hover{background:#2d3148}
     .sp.active{border-color:#4ade80;color:#4ade80}
     .sp.active-ns{border-color:#f87171;color:#f87171}
     .sp strong{color:#fff;margin-right:4px}
-    .sp.g strong{color:#4ade80}
-    .sp.a strong{color:#fbbf24}
     .sp.ci strong{color:#4ade80}
     .sp.ns strong{color:#f87171}
+    .sp.a strong{color:#fbbf24}
     .viewing{color:#a7d9c2;font-size:12px;font-weight:600;margin-left:auto}
-
-    /* Legend */
-    .legend{padding:8px 24px;background:#1a1d27;border-bottom:1px solid #2d3148;display:flex;align-items:center;gap:20px;font-size:12px;color:#6b7280}
-    .leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
-    .ld-wait{background:#60a5fa}
-    .ld-in{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.5)}
-    .ld-ns{background:#f87171;opacity:.6}
-
-    .board{padding:18px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-
-    /* Reservation card */
-    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s,border-color .2s}
+    .legend{padding:7px 24px;background:#1a1d27;border-bottom:1px solid #2d3148;display:flex;align-items:center;gap:20px;font-size:12px;color:#6b7280}
+    .ldot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+    .lw{background:#60a5fa}.li{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.5)}.ln{background:#f87171;opacity:.6}
+    .board{padding:18px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+    /* Card */
+    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s}
     .rc:hover{transform:translateY(-1px)}
     .rc.checked-in{border-color:rgba(74,222,128,.4);background:#1a2e20}
-    .rc.no-show{border-color:rgba(248,113,113,.25);opacity:.6}
-
+    .rc.no-show{opacity:.55}
     .rt{padding:13px 16px 9px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start}
     .rn{font-size:15px;font-weight:700;color:#fff}
     .rs{font-size:12px;color:#6b7280;margin-top:2px}
-    .rdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
+    .rdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
     .df{background:#60a5fa;box-shadow:0 0 7px rgba(96,165,250,.5)}
     .ds{background:#4ade80;box-shadow:0 0 7px rgba(74,222,128,.5)}
-
-    .rb{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+    .rb{padding:12px 16px;display:flex;flex-direction:column;gap:5px}
     .rr{display:flex;justify-content:space-between;align-items:center;font-size:13px}
     .rk{color:#6b7280}.rv{color:#d1d5db;font-weight:500}
     .rv.big{font-size:26px;font-weight:800;color:#fff}
     .rbg{font-size:11px;font-weight:600;padding:2px 8px;border-radius:7px}
     .rf{background:#1e3a5f;color:#60a5fa}.rsb{background:#14532d;color:#4ade80}
-
-    /* Table section */
-    .tbl-section{padding:10px 16px;border-top:1px solid #2d3148}
-    .tbl-assigned{display:flex;align-items:center;justify-content:space-between}
-    .tbl-num{font-size:24px;font-weight:800;color:#4ade80}
-    .tbl-edit-btn{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
-    .tbl-edit-btn:hover{background:rgba(74,222,128,.2)}
-    .tbl-unassigned{display:flex;align-items:center;gap:8px}
-    .tbl-in{flex:1;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:7px 10px;color:#fff;font-size:13px;font-family:inherit;outline:none}
-    .tbl-in:focus{border-color:#4ade80}
-    .tbl-save-btn{background:#006747;border:none;color:#fff;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
-    .tbl-save-btn:hover{background:#004d34}
-    .tbl-label{color:#6b7280;font-size:11px;margin-bottom:5px;font-weight:500}
-
-    /* Attendance section */
-    .att-section{padding:10px 16px 14px;border-top:1px solid #2d3148}
-    .att-label{color:#6b7280;font-size:11px;font-weight:500;margin-bottom:7px}
-    .att-btns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-    .att-btn{border:none;border-radius:8px;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
-    .btn-checkin{background:rgba(74,222,128,.12);color:#4ade80;border:1.5px solid rgba(74,222,128,.3)}
-    .btn-checkin:hover{background:rgba(74,222,128,.22)}
-    .btn-checkin.active{background:#15532d;color:#4ade80;border-color:#4ade80;box-shadow:0 0 10px rgba(74,222,128,.2)}
-    .btn-noshow{background:rgba(248,113,113,.1);color:#f87171;border:1.5px solid rgba(248,113,113,.2)}
-    .btn-noshow:hover{background:rgba(248,113,113,.2)}
-    .btn-noshow.active{background:#3b1515;color:#f87171;border-color:#f87171}
-    .att-time{font-size:11px;color:#4ade80;text-align:center;margin-top:5px}
-
-    /* Status badge on card */
+    /* Att badge */
     .att-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px}
     .badge-checkin{background:#14532d;color:#4ade80}
     .badge-noshow{background:#3b1515;color:#f87171}
     .badge-pending{background:#252836;color:#6b7280}
-
+    /* Sections */
+    .tbl-section{padding:9px 16px;border-top:1px solid #2d3148}
+    .tbl-label{color:#6b7280;font-size:11px;font-weight:500;margin-bottom:5px}
+    .att-section{padding:9px 16px 13px;border-top:1px solid #2d3148}
+    .att-label{color:#6b7280;font-size:11px;font-weight:500;margin-bottom:6px}
+    .att-btns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .att-btn{border:none;border-radius:8px;padding:9px 0;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px}
+    .btn-checkin{background:rgba(74,222,128,.12);color:#4ade80;border:1.5px solid rgba(74,222,128,.3)}
+    .btn-checkin.active{background:#15532d;color:#4ade80;border-color:#4ade80}
+    .btn-noshow{background:rgba(248,113,113,.1);color:#f87171;border:1.5px solid rgba(248,113,113,.2)}
+    .btn-noshow.active{background:#3b1515;color:#f87171;border-color:#f87171}
+    /* POS dropdowns */
+    .pos-select{width:100%;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:8px 10px;color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;margin-top:2px}
+    .pos-select:focus{border-color:#4ade80}
+    .pos-ms-wrap{position:relative;margin-top:2px}
+    .pos-ms-trigger{width:100%;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:8px 10px;color:#d1d5db;font-size:13px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:36px}
+    .pos-ms-trigger:hover{border-color:#4ade80}
+    .pos-ms-dd{display:none;position:absolute;bottom:calc(100%+4px);left:0;right:0;background:#1e2130;border:1px solid #4ade80;border-radius:8px;z-index:100;overflow:hidden;box-shadow:0 -4px 16px rgba(0,0,0,.4)}
+    .pos-ms-dd.open{display:block}
+    .pos-ms-opt{display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;font-size:13px;color:#d1d5db;transition:background .12s}
+    .pos-ms-opt:hover{background:#252836}
+    .pos-ms-opt input{width:15px;height:15px;accent-color:#4ade80;flex-shrink:0;pointer-events:none}
+    .pos-ms-opt.sel{background:#1a2e1e;color:#4ade80}
+    .save-sm{background:#006747;border:none;color:#fff;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;width:100%;margin:4px 0}
+    .save-sm:hover{background:#004d34}
+    /* Empty */
     .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
     .ei{font-size:44px;margin-bottom:14px}
     .empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
-
-    @media(max-width:640px){header{padding:12px 14px}.board{padding:12px 14px;grid-template-columns:1fr}.controls{padding:8px 14px}.legend{padding:6px 14px}}
+    @media(max-width:640px){header{padding:12px 14px}.board{padding:12px 14px;grid-template-columns:1fr}.controls{padding:8px 14px}}
   </style>
 </head>
 <body>
-
 <header>
-  <div class="hl"><h1>🌴 Top of the Palms — Reservations</h1><p>POS Board · USF Dining · Compass USA</p></div>
+  <div class="hl"><h1>🌴 On Top of the Palms — Reservations</h1><p>POS Board · USF Dining · Compass USA</p></div>
   <div class="hr">
     <div class="dp-wrap">
       <label>Date:</label>
@@ -117,24 +102,24 @@
     </div>
     <div class="clock"><div class="cdate" id="cdate"></div><div class="ctime" id="ctime"></div></div>
     <a class="nbtn" href="/manager/dashboard">← Manager</a>
-    <button class="tbtn" onclick="logout()" style="border-color:rgba(239,68,68,.4);color:#f87171">Sign out</button>
+    <button class="rbtn" onclick="logout()">Sign out</button>
   </div>
 </header>
 
 <div class="controls">
-  <div class="sp g" onclick="setFilter('all')"><strong id="tot">0</strong>Total</div>
-  <div class="sp ci" onclick="setFilter('checked_in')"><strong id="ci">0</strong>Checked in</div>
-  <div class="sp ns" onclick="setFilter('no_show')"><strong id="ns">0</strong>No-show</div>
-  <div class="sp" onclick="setFilter('pending')"><strong id="pw">0</strong>Waiting</div>
+  <div class="sp" id="f-all"  onclick="setFilter('all')"><strong id="tot">0</strong>Total</div>
+  <div class="sp ci" id="f-ci"  onclick="setFilter('checked_in')"><strong id="ci">0</strong>Checked in</div>
+  <div class="sp ns" id="f-ns"  onclick="setFilter('no_show')"><strong id="ns">0</strong>No-show</div>
+  <div class="sp" id="f-pw"  onclick="setFilter('pending')"><strong id="pw">0</strong>Waiting</div>
   <div class="sp a"><strong id="cov">0</strong>Covers</div>
   <span class="viewing" id="vlbl"></span>
 </div>
 
 <div class="legend">
-  <span><span class="leg-dot ld-wait"></span>Waiting</span>
-  <span><span class="leg-dot ld-in"></span>Checked in</span>
-  <span><span class="leg-dot ld-ns"></span>No-show</span>
-  <span style="margin-left:auto;color:#4b5563;font-size:11px">Tap a card to check in or mark no-show</span>
+  <span><span class="ldot lw"></span>Waiting</span>
+  <span><span class="ldot li"></span>Checked in</span>
+  <span><span class="ldot ln"></span>No-show</span>
+  <span style="margin-left:auto;font-size:11px">Tap a card to check in or mark no-show</span>
 </div>
 
 <div class="board" id="board">
@@ -146,15 +131,17 @@ const todayISO = new Date().toISOString().split('T')[0];
 document.getElementById('dpick').value = todayISO;
 
 let allData = [], activeFilter = 'all';
+const posPaySel = {}; // tracks per-card payment selections
 
 function goToday(){ document.getElementById('dpick').value=todayISO; load(); }
 
 async function load(){
   const date = document.getElementById('dpick').value || todayISO;
   try{
-    const r = await fetch(`/api/pos?date=${date}`);
-    const d = await r.json();
-    allData = d.reservations;
+    const resp = await fetch(`/api/pos?date=${date}`);
+    if(resp.status===401){ window.location.href='/login?type=pos'; return; }
+    const d = await resp.json();
+    allData = d.reservations || [];
     render(date);
   }catch(e){
     document.getElementById('board').innerHTML=`<div class="empty"><div class="ei">⚠️</div><h2>Could not load</h2><p>${e.message}</p></div>`;
@@ -162,190 +149,193 @@ async function load(){
 }
 
 function setFilter(f){
-  activeFilter = f;
-  // Update button styles
-  document.querySelectorAll('.controls .sp').forEach(s=>s.classList.remove('active','active-ns'));
-  const idx = ['all','checked_in','no_show','pending'].indexOf(f);
-  if(idx>=0){
-    const btns = document.querySelectorAll('.controls .sp');
-    if(btns[idx]){
-      btns[idx].classList.add(f==='no_show'?'active-ns':'active');
-    }
-  }
-  render(document.getElementById('dpick').value || todayISO);
+  activeFilter=f;
+  ['all','ci','ns','pw'].forEach((_,i)=>{
+    const ids=['f-all','f-ci','f-ns','f-pw'];
+    document.getElementById(ids[i]).classList.remove('active','active-ns');
+  });
+  const map={all:'f-all',checked_in:'f-ci',no_show:'f-ns',pending:'f-pw'};
+  if(map[f]) document.getElementById(map[f]).classList.add(f==='no_show'?'active-ns':'active');
+  render(document.getElementById('dpick').value||todayISO);
 }
 
 function render(date){
-  const isToday = date === todayISO;
+  const isToday = date===todayISO;
   const label = isToday
     ? 'Today — '+new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
     : new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('vlbl').textContent=label;
 
-  document.getElementById('vlbl').textContent = label;
-
-  // Counts
   const ci  = allData.filter(r=>r.attendance==='checked_in').length;
   const ns  = allData.filter(r=>r.attendance==='no_show').length;
-  const pw  = allData.filter(r=>r.attendance==='pending'||!r.attendance).length;
+  const pw  = allData.filter(r=>!r.attendance||r.attendance==='pending').length;
   const cov = allData.filter(r=>r.attendance!=='no_show').reduce((s,r)=>s+r.party,0);
+  document.getElementById('tot').textContent=allData.length;
+  document.getElementById('ci').textContent=ci;
+  document.getElementById('ns').textContent=ns;
+  document.getElementById('pw').textContent=pw;
+  document.getElementById('cov').textContent=cov;
 
-  document.getElementById('tot').textContent = allData.length;
-  document.getElementById('ci').textContent  = ci;
-  document.getElementById('ns').textContent  = ns;
-  document.getElementById('pw').textContent  = pw;
-  document.getElementById('cov').textContent = cov;
-
-  // Filter
   let filtered = allData;
-  if(activeFilter==='checked_in') filtered = allData.filter(r=>r.attendance==='checked_in');
-  else if(activeFilter==='no_show') filtered = allData.filter(r=>r.attendance==='no_show');
-  else if(activeFilter==='pending') filtered = allData.filter(r=>!r.attendance||r.attendance==='pending');
+  if(activeFilter==='checked_in') filtered=allData.filter(r=>r.attendance==='checked_in');
+  else if(activeFilter==='no_show') filtered=allData.filter(r=>r.attendance==='no_show');
+  else if(activeFilter==='pending') filtered=allData.filter(r=>!r.attendance||r.attendance==='pending');
 
   if(!filtered.length){
-    const msgs = {all:'No confirmed reservations for this date.', checked_in:'No guests checked in yet.', no_show:'No no-shows recorded.', pending:'Everyone is checked in!'};
+    const msgs={all:'No confirmed reservations for this date.',checked_in:'No guests checked in yet.',no_show:'No no-shows recorded.',pending:'Everyone is checked in!'};
     document.getElementById('board').innerHTML=`<div class="empty">
       <div class="ei">${activeFilter==='checked_in'?'✅':activeFilter==='no_show'?'🚫':'🌴'}</div>
       <h2>${msgs[activeFilter]||'No reservations.'}</h2>
-      ${!isToday&&activeFilter==='all'?`<p style="margin-top:8px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">← Back to today</button></p>`:''}
+      ${!isToday&&activeFilter==='all'?`<p style="margin-top:10px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">← Back to today</button></p>`:''}
     </div>`;
     return;
   }
 
-  document.getElementById('board').innerHTML = filtered.map(r => {
-    const ref    = r.id.slice(0,8).toUpperCase();
-    const isFac  = r.guest_status === 'faculty';
-    const att    = r.attendance || 'pending';
-    const hasTbl = r.table_number && r.table_number.trim() !== '';
+  const SEATING = ['Window','Middle','Bench','Private Room A','Private Room B','Private Room C'];
+  const PAYMENT = ['CC/Cash','USF Card','Direct Bill'];
 
-    // Attendance badge
-    const attBadge = att==='checked_in'
-      ? `<span class="att-badge badge-checkin">✓ Checked in${r.checked_in_at ? ' '+fmtTime(r.checked_in_at) : ''}</span>`
-      : att==='no_show'
-      ? `<span class="att-badge badge-noshow">✕ No-show</span>`
+  document.getElementById('board').innerHTML = filtered.map(r => {
+    const ref         = r.id.slice(0,8).toUpperCase();
+    const isFac       = r.guest_status === 'faculty';
+    const att         = r.attendance || 'pending';
+    const isCheckedIn = att === 'checked_in';
+    const isNoShow    = att === 'no_show';
+    const curSeat     = r.table_number || '';
+    const curPay      = (posPaySel[r.id] || (r.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean));
+    if(!posPaySel[r.id]) posPaySel[r.id]=[...curPay];
+
+    const attBadge = isCheckedIn
+      ? `<span class="att-badge badge-checkin">✓ Checked in${r.checked_in_at?' '+fmtTime(r.checked_in_at):''}</span>`
+      : isNoShow ? `<span class="att-badge badge-noshow">✕ No-show</span>`
       : `<span class="att-badge badge-pending">Waiting</span>`;
 
-    // ── Payment multi-select (editable until checked in) ──────────────────
-    const payMethods = ['CC/Cash','USF Card','Direct Bill'];
-    const curPay = (r.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean);
-    const paymentSection = `<div class="tbl-section">
-      <div class="tbl-label">Payment Method${isCheckedIn?'':' <span style=\'color:#6b7280;font-weight:400;font-size:10px\'>(editable until check-in)</span>'}</div>
+    const seatSection = `<div class="tbl-section">
+      <div class="tbl-label">Seating${isCheckedIn?'':' <span style="color:#6b7280;font-size:10px">(tap to assign)</span>'}</div>
+      ${isCheckedIn
+        ? `<div style="font-size:18px;font-weight:800;color:#4ade80">${curSeat||'<span style="color:#4b5563;font-size:13px">Not assigned</span>'}</div>`
+        : `<select class="pos-select" onchange="saveSeating('${r.id}',this.value)">
+            <option value="">— Select seating —</option>
+            ${SEATING.map(s=>`<option value="${s}"${curSeat===s?' selected':''}>${s}</option>`).join('')}
+          </select>`
+      }
+    </div>`;
+
+    const paySection = `<div class="tbl-section">
+      <div class="tbl-label">Payment${isCheckedIn?'':' <span style="color:#6b7280;font-size:10px">(editable until check-in)</span>'}</div>
       ${isCheckedIn
         ? `<div style="font-size:13px;color:#d1d5db">${r.payment_method||'<span style="color:#4b5563">Not specified</span>'}</div>`
-        : `<div class="pos-ms-wrap" id="pmswrap-${r.id}">
-            <div class="pos-ms-trigger" onclick="togglePosPay('${r.id}')">
-              <span id="pms-disp-${r.id}" style="font-size:12px">${curPay.length?curPay.join(', '):'<span style="color:#4b5563">Select payment...</span>'}</span>
+        : `<div class="pos-ms-wrap" id="pmw-${r.id}">
+            <div class="pos-ms-trigger" onclick="togglePP('${r.id}')">
+              <span id="ppd-${r.id}">${posPaySel[r.id].length?posPaySel[r.id].join(', '):'<span style="color:#4b5563">Select payment…</span>'}</span>
               <span style="color:#6b7280;font-size:10px">▲</span>
             </div>
-            <div class="pos-ms-dropdown" id="pms-dd-${r.id}">
-              ${payMethods.map(pm=>`<label class="pos-ms-opt ${curPay.includes(pm)?'sel':''}" onclick="togglePosPayOpt('${r.id}','${pm}',event)">
-                <input type="checkbox" ${curPay.includes(pm)?'checked':''} onchange=""> ${pm}
+            <div class="pos-ms-dd" id="pdd-${r.id}">
+              ${PAYMENT.map(pm=>`<label class="pos-ms-opt${posPaySel[r.id].includes(pm)?' sel':''}" onclick="togglePPOpt('${r.id}','${pm}',event)">
+                <input type="checkbox"${posPaySel[r.id].includes(pm)?' checked':''}> ${pm}
               </label>`).join('')}
-              <div style="padding:6px 10px"><button class="save-btn-sm" onclick="savePayment('${r.id}')">Save Payment</button></div>
+              <div style="padding:6px 10px"><button class="save-sm" onclick="savePay('${r.id}')">Save Payment</button></div>
             </div>
           </div>`
       }
-      ${r.direct_bill_status==='pending_document'?`<div style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#c4b5fd;margin-top:5px">📄 Direct Bill — document pending</div>`:''}
-      ${r.direct_bill_status==='document_received'?`<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:5px 9px;font-size:11px;color:#4ade80;margin-top:5px">✓ Direct Bill — document received</div>`:''}
+      ${r.direct_bill_status==='pending_document'?`<div style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#c4b5fd;margin-top:5px">📄 Direct Bill — doc pending</div>`:''}
+      ${r.direct_bill_status==='document_received'?`<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:5px 9px;font-size:11px;color:#4ade80;margin-top:5px">✓ Direct Bill — doc received</div>`:''}
       ${r.seating_preference?`<div style="font-size:11px;color:#6b7280;margin-top:4px">Preference: ${x(r.seating_preference)}</div>`:''}
     </div>`;
 
-    // Table section
-    const tblSection = hasTbl
-      ? `<div class="tbl-section">
-          <div class="tbl-label">Table</div>
-          <div class="tbl-assigned">
-            <span class="tbl-num">${x(r.table_number)}</span>
-            <button class="tbl-edit-btn" onclick="editTable('${r.id}',this)">Change</button>
-          </div>
-        </div>`
-      : `<div class="tbl-section">
-          <div class="tbl-label">Assign table</div>
-          <div class="tbl-unassigned">
-            <input class="tbl-in" id="tbl-${r.id}" placeholder="e.g. T-5" onkeydown="if(event.key==='Enter')saveTable('${r.id}')">
-            <button class="tbl-save-btn" onclick="saveTable('${r.id}')">Assign</button>
-          </div>
-        </div>`;
-
-    // Attendance buttons
     const attSection = `<div class="att-section">
       <div class="att-label">Attendance</div>
       <div class="att-btns">
-        <button class="att-btn btn-checkin ${att==='checked_in'?'active':''}" onclick="markAttendance('${r.id}','${att==='checked_in'?'pending':'checked_in'}')">
-          ✓ ${att==='checked_in'?'Undo check-in':'Check in'}
+        <button class="att-btn btn-checkin${isCheckedIn?' active':''}" onclick="markAtt('${r.id}','${isCheckedIn?'pending':'checked_in'}')">
+          ✓ ${isCheckedIn?'Undo':'Check in'}
         </button>
-        <button class="att-btn btn-noshow ${att==='no_show'?'active':''}" onclick="markAttendance('${r.id}','${att==='no_show'?'pending':'no_show'}')">
-          ✕ ${att==='no_show'?'Undo':'No-show'}
+        <button class="att-btn btn-noshow${isNoShow?' active':''}" onclick="markAtt('${r.id}','${isNoShow?'pending':'no_show'}')">
+          ✕ ${isNoShow?'Undo':'No-show'}
         </button>
       </div>
     </div>`;
 
-    return `<div class="rc ${att==='checked_in'?'checked-in':att==='no_show'?'no-show':''}" id="rc-${r.id}">
+    return `<div class="rc${isCheckedIn?' checked-in':isNoShow?' no-show':''}" id="rc-${r.id}">
       <div class="rt">
-        <div>
-          <div class="rn">${x(r.name)}</div>
-          <div class="rs">${x(r.datetime)}</div>
-        </div>
+        <div><div class="rn">${x(r.name)}</div><div class="rs">${x(r.datetime)}</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
           <div class="rdot ${isFac?'df':'ds'}"></div>
           ${attBadge}
         </div>
       </div>
       <div class="rb">
-        <div class="rr"><span class="rk">Party size</span><span class="rv big">${r.party}</span></div>
+        <div class="rr"><span class="rk">Party</span><span class="rv big">${r.party}</span></div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
-        <div class="rr"><span class="rk">Confirmation</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
+        ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:12px">${x(r.department)}</span></div>`:''}
+        <div class="rr"><span class="rk">Confirm #</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
         <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
         ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:11px">${x(r.notes)}</span></div>`:''}
       </div>
-      ${paymentSection}
-      ${tblSection}
+      ${seatSection}
+      ${paySection}
       ${attSection}
     </div>`;
   }).join('');
 }
 
-async function markAttendance(id, attendance){
-  await fetch(`/api/reservations/${id}/attendance`, {
-    method:'PATCH',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ attendance })
+// ── Seating ────────────────────────────────────────────────────────────────
+async function saveSeating(id, val){
+  await fetch(`/api/pos/table/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({table_number:val})});
+  const r=allData.find(r=>r.id===id); if(r) r.table_number=val;
+  toast(`Seating set to ${val||'none'}`);
+}
+
+// ── Payment ────────────────────────────────────────────────────────────────
+function togglePP(id){
+  const dd=document.getElementById(`pdd-${id}`);
+  if(!dd) return;
+  document.querySelectorAll('.pos-ms-dd.open').forEach(el=>{ if(el.id!==`pdd-${id}`) el.classList.remove('open'); });
+  dd.classList.toggle('open');
+}
+function togglePPOpt(id, val, e){
+  if(e) e.stopPropagation();
+  if(!posPaySel[id]) posPaySel[id]=[];
+  const idx=posPaySel[id].indexOf(val);
+  if(idx>-1) posPaySel[id].splice(idx,1); else posPaySel[id].push(val);
+  const dd=document.getElementById(`pdd-${id}`);
+  if(dd) dd.querySelectorAll('.pos-ms-opt').forEach((opt,i)=>{
+    const pm=['CC/Cash','USF Card','Direct Bill'][i];
+    opt.classList.toggle('sel',posPaySel[id].includes(pm));
+    const cb=opt.querySelector('input'); if(cb) cb.checked=posPaySel[id].includes(pm);
   });
-  await load(); // Reload to reflect change
+  const disp=document.getElementById(`ppd-${id}`);
+  if(disp) disp.innerHTML=posPaySel[id].length?posPaySel[id].join(', '):'<span style="color:#4b5563">Select payment…</span>';
+}
+async function savePay(id){
+  const arr=posPaySel[id]||[];
+  await fetch(`/api/reservations/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_method:arr.join(', ')})});
+  const r=allData.find(r=>r.id===id); if(r) r.payment_method=arr.join(', ');
+  document.getElementById(`pdd-${id}`)?.classList.remove('open');
+  toast('Payment saved ✓');
 }
 
-async function saveTable(id){
-  const input = document.getElementById(`tbl-${id}`);
-  const val   = (input?.value||'').trim();
-  if(!val){ input?.focus(); return; }
-  await fetch(`/api/pos/table/${id}`,{
-    method:'PATCH',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ table_number: val })
-  });
-  load();
+// ── Attendance ─────────────────────────────────────────────────────────────
+async function markAtt(id, att){
+  await fetch(`/api/reservations/${id}/attendance`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({attendance:att})});
+  await load();
 }
 
-function editTable(id,btn){
-  const section = btn.closest('.tbl-section');
-  section.innerHTML=`<div class="tbl-label">Change table number</div>
-    <div class="tbl-unassigned">
-      <input class="tbl-in" id="tbl-${id}" placeholder="New table number" onkeydown="if(event.key==='Enter')saveTable('${id}')">
-      <button class="tbl-save-btn" onclick="saveTable('${id}')">Save</button>
-    </div>`;
-  document.getElementById(`tbl-${id}`)?.focus();
-}
+// ── Close dropdowns on outside click ──────────────────────────────────────
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.pos-ms-wrap')) document.querySelectorAll('.pos-ms-dd.open').forEach(el=>el.classList.remove('open'));
+});
 
-function fmtTime(iso){ return new Date(iso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
-function x(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+async function logout(){ await fetch('/api/logout',{method:'POST'}); window.location.href='/login?type=pos'; }
+
+function toast(m){let t=document.getElementById('_t');if(!t){t=document.createElement('div');t.id='_t';t.style.cssText='position:fixed;bottom:20px;right:20px;background:#111;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:opacity .25s';document.body.appendChild(t)}t.textContent=m;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',2500)}
+function fmtTime(i){return new Date(i).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}
+function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 function tick(){
-  const now=new Date();
-  document.getElementById('cdate').textContent=now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-  document.getElementById('ctime').textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const n=new Date();
+  document.getElementById('cdate').textContent=n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  document.getElementById('ctime').textContent=n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
-
 tick(); setInterval(tick,1000);
-async function logout(){ await fetch('/api/logout',{method:'POST'}); window.location.href='/login?type=pos'; }
 load(); setInterval(load,30000);
 </script>
 </body>

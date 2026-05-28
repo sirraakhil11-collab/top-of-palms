@@ -164,9 +164,13 @@
       <div class="stat-sub">Total ever denied</div>
       <div class="stat-click">Click to filter ↓</div>
     </div>
-    <div class="stat s4 nocursor">
-      <div class="stat-lbl">Slots Left Today</div>
-      <div class="stat-val" id="v-slots">–</div>
+    <div class="stat s4" style="cursor:default">
+      <div class="stat-lbl">Check Availability</div>
+      <input type="date" id="slots-date" style="width:100%;padding:4px 8px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:12px;outline:none;margin-bottom:5px;font-family:inherit" onchange="checkSlots()" title="Check slots for any date">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:11px;color:#9ca3af" id="slots-lbl">Covers left today</span>
+        <span style="font-size:22px;font-weight:800;color:#111827" id="v-slots">–</span>
+      </div>
       <div class="stat-sub" id="v-slots-sub">of 60 covers</div>
     </div>
     <div class="stat s5" onclick="clickStat('all')" id="c-all">
@@ -319,6 +323,18 @@ let allData=[], atab='all', activeStat=null, delId='';
 const todayISO = new Date().toISOString().split('T')[0];
 const todayFmt = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
+async function checkSlots(){
+  const d = document.getElementById('slots-date').value || todayISO;
+  try{
+    const resp = await fetch(`/api/slots?date=${d}`);
+    const data = await resp.json();
+    document.getElementById('v-slots').textContent = data.slots_left;
+    document.getElementById('v-slots-sub').textContent = `of ${data.daily_limit} covers`;
+    const isToday = d===todayISO;
+    document.getElementById('slots-lbl').textContent = isToday?'Covers left today':'Covers left for '+new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  }catch(e){console.error(e);}
+}
+
 async function loadAll(){
   try{
     const[s,d]=await Promise.all([fetch('/api/stats').then(r=>r.json()),fetch('/api/reservations').then(r=>r.json())]);
@@ -329,6 +345,9 @@ async function loadAll(){
     document.getElementById('v-today').textContent   = s.total_today;
     document.getElementById('v-today-sub').textContent = 'for '+todayFmt;
     document.getElementById('v-denied').textContent  = s.denied_all;
+    // Set today as default for slots picker if not already set
+    const sp=document.getElementById('slots-date');
+    if(!sp.value) sp.value=todayISO;
     document.getElementById('v-slots').textContent   = s.slots_left;
     document.getElementById('v-slots-sub').textContent = `of ${s.daily_limit} covers`;
     document.getElementById('v-all').textContent     = s.total_all;
