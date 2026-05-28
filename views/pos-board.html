@@ -7,6 +7,7 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e8e8e8;min-height:100vh}
+
     header{background:linear-gradient(135deg,#006747,#004d34);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
     .hl h1{color:#fff;font-size:18px;font-weight:800}
     .hl p{color:#CFC493;font-size:11px;margin-top:2px}
@@ -22,28 +23,51 @@
     .clock{text-align:right}
     .cdate{color:#fff;font-size:13px;font-weight:600}
     .ctime{color:#CFC493;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+
+    /* Stats bar */
     .controls{padding:10px 24px;background:#1a1d27;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2d3148;flex-wrap:wrap}
-    .sp{background:#252836;border:1px solid #3d4065;border-radius:18px;padding:5px 14px;font-size:13px;color:#9ca3af}
+    .sp{background:#252836;border:1px solid #3d4065;border-radius:18px;padding:5px 14px;font-size:13px;color:#9ca3af;cursor:pointer;transition:background .15s}
+    .sp:hover{background:#2d3148}
+    .sp.active{border-color:#4ade80;color:#4ade80}
+    .sp.active-ns{border-color:#f87171;color:#f87171}
     .sp strong{color:#fff;margin-right:4px}
-    .sp.g strong{color:#4ade80}.sp.a strong{color:#fbbf24}
+    .sp.g strong{color:#4ade80}
+    .sp.a strong{color:#fbbf24}
+    .sp.ci strong{color:#4ade80}
+    .sp.ns strong{color:#f87171}
     .viewing{color:#a7d9c2;font-size:12px;font-weight:600;margin-left:auto}
+
+    /* Legend */
+    .legend{padding:8px 24px;background:#1a1d27;border-bottom:1px solid #2d3148;display:flex;align-items:center;gap:20px;font-size:12px;color:#6b7280}
+    .leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+    .ld-wait{background:#60a5fa}
+    .ld-in{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.5)}
+    .ld-ns{background:#f87171;opacity:.6}
+
     .board{padding:18px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s}
+
+    /* Reservation card */
+    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s,border-color .2s}
     .rc:hover{transform:translateY(-1px)}
+    .rc.checked-in{border-color:rgba(74,222,128,.4);background:#1a2e20}
+    .rc.no-show{border-color:rgba(248,113,113,.25);opacity:.6}
+
     .rt{padding:13px 16px 9px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start}
     .rn{font-size:15px;font-weight:700;color:#fff}
     .rs{font-size:12px;color:#6b7280;margin-top:2px}
-    .rdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
+    .rdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
     .df{background:#60a5fa;box-shadow:0 0 7px rgba(96,165,250,.5)}
     .ds{background:#4ade80;box-shadow:0 0 7px rgba(74,222,128,.5)}
+
     .rb{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
     .rr{display:flex;justify-content:space-between;align-items:center;font-size:13px}
     .rk{color:#6b7280}.rv{color:#d1d5db;font-weight:500}
     .rv.big{font-size:26px;font-weight:800;color:#fff}
     .rbg{font-size:11px;font-weight:600;padding:2px 8px;border-radius:7px}
     .rf{background:#1e3a5f;color:#60a5fa}.rsb{background:#14532d;color:#4ade80}
-    /* Table number section */
-    .tbl-section{padding:10px 16px 14px;border-top:1px solid #2d3148}
+
+    /* Table section */
+    .tbl-section{padding:10px 16px;border-top:1px solid #2d3148}
     .tbl-assigned{display:flex;align-items:center;justify-content:space-between}
     .tbl-num{font-size:24px;font-weight:800;color:#4ade80}
     .tbl-edit-btn{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
@@ -54,12 +78,35 @@
     .tbl-save-btn{background:#006747;border:none;color:#fff;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
     .tbl-save-btn:hover{background:#004d34}
     .tbl-label{color:#6b7280;font-size:11px;margin-bottom:5px;font-weight:500}
+
+    /* Attendance section */
+    .att-section{padding:10px 16px 14px;border-top:1px solid #2d3148}
+    .att-label{color:#6b7280;font-size:11px;font-weight:500;margin-bottom:7px}
+    .att-btns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .att-btn{border:none;border-radius:8px;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+    .btn-checkin{background:rgba(74,222,128,.12);color:#4ade80;border:1.5px solid rgba(74,222,128,.3)}
+    .btn-checkin:hover{background:rgba(74,222,128,.22)}
+    .btn-checkin.active{background:#15532d;color:#4ade80;border-color:#4ade80;box-shadow:0 0 10px rgba(74,222,128,.2)}
+    .btn-noshow{background:rgba(248,113,113,.1);color:#f87171;border:1.5px solid rgba(248,113,113,.2)}
+    .btn-noshow:hover{background:rgba(248,113,113,.2)}
+    .btn-noshow.active{background:#3b1515;color:#f87171;border-color:#f87171}
+    .att-time{font-size:11px;color:#4ade80;text-align:center;margin-top:5px}
+
+    /* Status badge on card */
+    .att-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px}
+    .badge-checkin{background:#14532d;color:#4ade80}
+    .badge-noshow{background:#3b1515;color:#f87171}
+    .badge-pending{background:#252836;color:#6b7280}
+
     .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
-    .ei{font-size:44px;margin-bottom:14px}.empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
-    @media(max-width:640px){header{padding:12px 14px}.board{padding:12px 14px;grid-template-columns:1fr}.controls{padding:8px 14px}}
+    .ei{font-size:44px;margin-bottom:14px}
+    .empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
+
+    @media(max-width:640px){header{padding:12px 14px}.board{padding:12px 14px;grid-template-columns:1fr}.controls{padding:8px 14px}.legend{padding:6px 14px}}
   </style>
 </head>
 <body>
+
 <header>
   <div class="hl"><h1>🌴 Top of the Palms — Reservations</h1><p>POS Board · USF Dining · Compass USA</p></div>
   <div class="hr">
@@ -72,18 +119,32 @@
     <a class="nbtn" href="/manager/dashboard">← Manager</a>
   </div>
 </header>
+
 <div class="controls">
-  <div class="sp g"><strong id="tot">0</strong>Reservations</div>
+  <div class="sp g" onclick="setFilter('all')"><strong id="tot">0</strong>Total</div>
+  <div class="sp ci" onclick="setFilter('checked_in')"><strong id="ci">0</strong>Checked in</div>
+  <div class="sp ns" onclick="setFilter('no_show')"><strong id="ns">0</strong>No-show</div>
+  <div class="sp" onclick="setFilter('pending')"><strong id="pw">0</strong>Waiting</div>
   <div class="sp a"><strong id="cov">0</strong>Covers</div>
-  <div class="sp"><strong id="fac">0</strong>Faculty</div>
-  <div class="sp"><strong id="stu">0</strong>Students</div>
   <span class="viewing" id="vlbl"></span>
 </div>
-<div class="board" id="board"><div class="empty"><div class="ei">🔄</div><h2>Loading…</h2></div></div>
+
+<div class="legend">
+  <span><span class="leg-dot ld-wait"></span>Waiting</span>
+  <span><span class="leg-dot ld-in"></span>Checked in</span>
+  <span><span class="leg-dot ld-ns"></span>No-show</span>
+  <span style="margin-left:auto;color:#4b5563;font-size:11px">Tap a card to check in or mark no-show</span>
+</div>
+
+<div class="board" id="board">
+  <div class="empty"><div class="ei">🔄</div><h2>Loading…</h2></div>
+</div>
 
 <script>
 const todayISO = new Date().toISOString().split('T')[0];
 document.getElementById('dpick').value = todayISO;
+
+let allData = [], activeFilter = 'all';
 
 function goToday(){ document.getElementById('dpick').value=todayISO; load(); }
 
@@ -92,88 +153,154 @@ async function load(){
   try{
     const r = await fetch(`/api/pos?date=${date}`);
     const d = await r.json();
-    render(d.reservations, date);
+    allData = d.reservations;
+    render(date);
   }catch(e){
     document.getElementById('board').innerHTML=`<div class="empty"><div class="ei">⚠️</div><h2>Could not load</h2><p>${e.message}</p></div>`;
   }
 }
 
-function render(data, date){
+function setFilter(f){
+  activeFilter = f;
+  // Update button styles
+  document.querySelectorAll('.controls .sp').forEach(s=>s.classList.remove('active','active-ns'));
+  const idx = ['all','checked_in','no_show','pending'].indexOf(f);
+  if(idx>=0){
+    const btns = document.querySelectorAll('.controls .sp');
+    if(btns[idx]){
+      btns[idx].classList.add(f==='no_show'?'active-ns':'active');
+    }
+  }
+  render(document.getElementById('dpick').value || todayISO);
+}
+
+function render(date){
   const isToday = date === todayISO;
   const label = isToday
     ? 'Today — '+new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
     : new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
   document.getElementById('vlbl').textContent = label;
-  document.getElementById('tot').textContent  = data.length;
-  document.getElementById('cov').textContent  = data.reduce((s,r)=>s+r.party,0);
-  document.getElementById('fac').textContent  = data.filter(r=>r.guest_status==='faculty').length;
-  document.getElementById('stu').textContent  = data.filter(r=>r.guest_status==='student').length;
 
-  if(!data.length){
+  // Counts
+  const ci  = allData.filter(r=>r.attendance==='checked_in').length;
+  const ns  = allData.filter(r=>r.attendance==='no_show').length;
+  const pw  = allData.filter(r=>r.attendance==='pending'||!r.attendance).length;
+  const cov = allData.filter(r=>r.attendance!=='no_show').reduce((s,r)=>s+r.party,0);
+
+  document.getElementById('tot').textContent = allData.length;
+  document.getElementById('ci').textContent  = ci;
+  document.getElementById('ns').textContent  = ns;
+  document.getElementById('pw').textContent  = pw;
+  document.getElementById('cov').textContent = cov;
+
+  // Filter
+  let filtered = allData;
+  if(activeFilter==='checked_in') filtered = allData.filter(r=>r.attendance==='checked_in');
+  else if(activeFilter==='no_show') filtered = allData.filter(r=>r.attendance==='no_show');
+  else if(activeFilter==='pending') filtered = allData.filter(r=>!r.attendance||r.attendance==='pending');
+
+  if(!filtered.length){
+    const msgs = {all:'No confirmed reservations for this date.', checked_in:'No guests checked in yet.', no_show:'No no-shows recorded.', pending:'Everyone is checked in!'};
     document.getElementById('board').innerHTML=`<div class="empty">
-      <div class="ei">🌴</div>
-      <h2>No confirmed reservations</h2>
-      <p>${isToday?'Approved reservations for today appear here automatically.':'No approved reservations found for this date.'}</p>
-      ${!isToday?`<p style="margin-top:12px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">← Back to today</button></p>`:''}
+      <div class="ei">${activeFilter==='checked_in'?'✅':activeFilter==='no_show'?'🚫':'🌴'}</div>
+      <h2>${msgs[activeFilter]||'No reservations.'}</h2>
+      ${!isToday&&activeFilter==='all'?`<p style="margin-top:8px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">← Back to today</button></p>`:''}
     </div>`;
     return;
   }
 
-  document.getElementById('board').innerHTML = data.map(r => {
-    const ref   = r.id.slice(0,8).toUpperCase();
-    const isFac = r.guest_status === 'faculty';
-    const hasTbl= r.table_number && r.table_number.trim() !== '';
+  document.getElementById('board').innerHTML = filtered.map(r => {
+    const ref    = r.id.slice(0,8).toUpperCase();
+    const isFac  = r.guest_status === 'faculty';
+    const att    = r.attendance || 'pending';
+    const hasTbl = r.table_number && r.table_number.trim() !== '';
+
+    // Attendance badge
+    const attBadge = att==='checked_in'
+      ? `<span class="att-badge badge-checkin">✓ Checked in${r.checked_in_at ? ' '+fmtTime(r.checked_in_at) : ''}</span>`
+      : att==='no_show'
+      ? `<span class="att-badge badge-noshow">✕ No-show</span>`
+      : `<span class="att-badge badge-pending">Waiting</span>`;
+
+    // Table section
     const tblSection = hasTbl
       ? `<div class="tbl-section">
-          <div class="tbl-label">Table assigned</div>
+          <div class="tbl-label">Table</div>
           <div class="tbl-assigned">
             <span class="tbl-num">${x(r.table_number)}</span>
-            <button class="tbl-edit-btn" onclick="editTable('${r.id}', this)">Change</button>
+            <button class="tbl-edit-btn" onclick="editTable('${r.id}',this)">Change</button>
           </div>
         </div>`
       : `<div class="tbl-section">
-          <div class="tbl-label">Assign table number</div>
+          <div class="tbl-label">Assign table</div>
           <div class="tbl-unassigned">
-            <input class="tbl-in" id="tbl-${r.id}" placeholder="e.g. T-5 or 12" onkeydown="if(event.key==='Enter')saveTable('${r.id}')">
+            <input class="tbl-in" id="tbl-${r.id}" placeholder="e.g. T-5" onkeydown="if(event.key==='Enter')saveTable('${r.id}')">
             <button class="tbl-save-btn" onclick="saveTable('${r.id}')">Assign</button>
           </div>
         </div>`;
 
-    return `<div class="rc" id="rc-${r.id}">
+    // Attendance buttons
+    const attSection = `<div class="att-section">
+      <div class="att-label">Attendance</div>
+      <div class="att-btns">
+        <button class="att-btn btn-checkin ${att==='checked_in'?'active':''}" onclick="markAttendance('${r.id}','${att==='checked_in'?'pending':'checked_in'}')">
+          ✓ ${att==='checked_in'?'Undo check-in':'Check in'}
+        </button>
+        <button class="att-btn btn-noshow ${att==='no_show'?'active':''}" onclick="markAttendance('${r.id}','${att==='no_show'?'pending':'no_show'}')">
+          ✕ ${att==='no_show'?'Undo':'No-show'}
+        </button>
+      </div>
+    </div>`;
+
+    return `<div class="rc ${att==='checked_in'?'checked-in':att==='no_show'?'no-show':''}" id="rc-${r.id}">
       <div class="rt">
-        <div><div class="rn">${x(r.name)}</div><div class="rs">${x(r.datetime)}</div></div>
-        <div class="rdot ${isFac?'df':'ds'}"></div>
+        <div>
+          <div class="rn">${x(r.name)}</div>
+          <div class="rs">${x(r.datetime)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+          <div class="rdot ${isFac?'df':'ds'}"></div>
+          ${attBadge}
+        </div>
       </div>
       <div class="rb">
         <div class="rr"><span class="rk">Party size</span><span class="rv big">${r.party}</span></div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
         <div class="rr"><span class="rk">Confirmation</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
         <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
-        ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:12px">${x(r.notes)}</span></div>`:''}
+        ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:11px">${x(r.notes)}</span></div>`:''}
       </div>
       ${tblSection}
+      ${attSection}
     </div>`;
   }).join('');
 }
 
+async function markAttendance(id, attendance){
+  await fetch(`/api/reservations/${id}/attendance`, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ attendance })
+  });
+  await load(); // Reload to reflect change
+}
+
 async function saveTable(id){
   const input = document.getElementById(`tbl-${id}`);
-  const val   = (input?.value || '').trim();
-  if (!val) { input?.focus(); return; }
-  await fetch(`/api/pos/table/${id}`, {
+  const val   = (input?.value||'').trim();
+  if(!val){ input?.focus(); return; }
+  await fetch(`/api/pos/table/${id}`,{
     method:'PATCH',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ table_number: val })
   });
-  load(); // Reload to show updated card
+  load();
 }
 
-function editTable(id, btn){
-  // Replace the assigned display with an edit input inline
+function editTable(id,btn){
   const section = btn.closest('.tbl-section');
-  section.innerHTML = `
-    <div class="tbl-label">Change table number</div>
+  section.innerHTML=`<div class="tbl-label">Change table number</div>
     <div class="tbl-unassigned">
       <input class="tbl-in" id="tbl-${id}" placeholder="New table number" onkeydown="if(event.key==='Enter')saveTable('${id}')">
       <button class="tbl-save-btn" onclick="saveTable('${id}')">Save</button>
@@ -181,7 +308,8 @@ function editTable(id, btn){
   document.getElementById(`tbl-${id}`)?.focus();
 }
 
-function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmtTime(iso){ return new Date(iso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+function x(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function tick(){
   const now=new Date();

@@ -168,6 +168,18 @@
       <div class="stat-click">Click to filter ↓</div>
     </div>
   </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div class="stat" style="--c:#4ade80">
+      <div class="stat-lbl">Checked in today</div>
+      <div class="stat-val" id="v-checkin" style="color:#4ade80">–</div>
+      <div class="stat-sub">Guests who showed up</div>
+    </div>
+    <div class="stat" style="--c:#f87171">
+      <div class="stat-lbl">No-shows today</div>
+      <div class="stat-val" id="v-noshow" style="color:#f87171">–</div>
+      <div class="stat-sub">Reservation but didn't come</div>
+    </div>
+  </div>
 
   <!-- Capacity bar -->
   <div class="cap-bar">
@@ -280,6 +292,8 @@ async function loadAll(){
     document.getElementById('v-slots').textContent   = s.slots_left;
     document.getElementById('v-slots-sub').textContent = `of ${s.daily_limit} daily limit`;
     document.getElementById('v-all').textContent     = s.total_all;
+    document.getElementById('v-checkin').textContent = s.checked_in_today ?? '–';
+    document.getElementById('v-noshow').textContent  = s.no_show_today  ?? '–';
     // Capacity bar
     const pct = Math.min(100,Math.round((s.daily_count/s.daily_limit)*100));
     const f = document.getElementById('cap-fill');
