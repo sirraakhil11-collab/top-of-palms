@@ -87,7 +87,9 @@
     .tscroll{overflow-x:auto}
     table{width:100%;border-collapse:collapse;font-size:13px}
     th{text-align:left;padding:10px 13px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-bottom:1px solid #e5e7eb}
-    td{padding:10px 13px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+    td{padding:9px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+    .db-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px}
+    .db-pending{background:#ede9fe;color:#6d28d9}.db-received{background:#dcfce7;color:#15803d}.db-na{display:none}
     tr:last-child td{border-bottom:none}
     tr:hover td{background:#f9fafb}
     .acts{display:flex;gap:4px;flex-wrap:wrap}
@@ -169,6 +171,22 @@
       <div class="stat-click">Click to filter ↓</div>
     </div>
   </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+    <div class="stat" style="--c:#4ade80">
+      <div class="stat-lbl">Checked in today</div>
+      <div class="stat-val" id="v-checkin" style="color:#4ade80">–</div>
+    </div>
+    <div class="stat" style="--c:#f87171">
+      <div class="stat-lbl">No-shows today</div>
+      <div class="stat-val" id="v-noshow" style="color:#f87171">–</div>
+    </div>
+    <div class="stat" onclick="clickStat('directbill')" id="c-directbill" style="--c:#8b5cf6;cursor:pointer">
+      <div class="stat-lbl">Direct Bill Pending</div>
+      <div class="stat-val" id="v-directbill" style="color:#8b5cf6">–</div>
+      <div class="stat-sub">Docs not received</div>
+      <div class="stat-click">Click to filter ↓</div>
+    </div>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
     <div class="stat" style="--c:#4ade80">
       <div class="stat-lbl">Checked in today</div>
@@ -230,10 +248,7 @@
     <div class="tscroll">
       <table>
         <thead><tr>
-          <th>Name</th><th>Status</th><th>Table #</th>
-          <th>Reservation Date &amp; Time</th>
-          <th>Party</th><th>UID</th><th>Email</th>
-          <th>Via</th><th>Submitted</th><th>Actions</th>
+          <th>Name</th><th>Status</th><th>Table #</th><th>Reservation Date &amp; Time</th><th>Party</th><th>Department</th><th>Seating</th><th>Payment</th><th>UID</th><th>Email</th><th>Via</th><th>Submitted</th><th>Actions</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -248,6 +263,8 @@
     <input type="hidden" id="eid">
     <div class="mg">
       <div class="full"><label>Full Name</label><input id="en"></div>
+      <div><label>Department</label><input id="edept" placeholder="e.g. Nursing"></div>
+      <div><label>Phone / Ext</label><input id="ephx" placeholder="optional"></div>
       <div><label>Guest Type</label><select id="et"><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
       <div><label>Status</label><select id="es"><option value="pending_approval">Pending</option><option value="approved">Approved</option><option value="denied">Denied</option></select></div>
       <div><label>USF UID</label><input id="eu" maxlength="9"></div>
@@ -293,6 +310,9 @@ async function loadAll(){
     document.getElementById('v-slots').textContent   = s.slots_left;
     document.getElementById('v-slots-sub').textContent = `of ${s.daily_limit} daily limit`;
     document.getElementById('v-all').textContent     = s.total_all;
+    document.getElementById('v-checkin').textContent  = s.checked_in_today ?? '–';
+    document.getElementById('v-noshow').textContent   = s.no_show_today  ?? '–';
+    document.getElementById('v-directbill').textContent = s.direct_bill_pending ?? '0';
     document.getElementById('v-checkin').textContent = s.checked_in_today ?? '–';
     document.getElementById('v-noshow').textContent  = s.no_show_today  ?? '–';
     // Capacity bar
@@ -314,6 +334,7 @@ function filtered(){
   if(activeStat==='pending') d = allData.filter(r=>r.status==='pending_approval');
   else if(activeStat==='today') d = allData.filter(r=>r.reservation_date===todayISO && r.status!=='denied');
   else if(activeStat==='denied') d = allData.filter(r=>r.status==='denied');
+  else if(activeStat==='directbill') d = allData.filter(r=>r.direct_bill_status==='pending_document');
   // Search filters
   const s=document.getElementById('fs').value.toLowerCase();
   const dt=document.getElementById('fd').value;
@@ -328,7 +349,7 @@ function clickStat(type){
   if(activeStat===type){clearStat();return}
   activeStat=type;
   document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));
-  const map={pending:'c-pending',today:'c-today',denied:'c-denied',all:'c-all'};
+  const map={pending:'c-pending',today:'c-today',denied:'c-denied',all:'c-all',directbill:'c-directbill'};
   if(map[type]) document.getElementById(map[type]).classList.add('active');
   const lbl={pending:'All pending approvals',today:'All reservations for today ('+todayFmt+')',denied:'All denied reservations (ever)',all:'All reservations'};
   document.getElementById('fbanner-txt').textContent = '🔍 '+lbl[type];
@@ -376,8 +397,11 @@ function renderTable(data){
     <td><strong>${x(r.name)}</strong><br>${te(r.guest_status)}</td>
     <td>${pm[r.status]||r.status}</td>
     <td style="font-weight:700;color:#006747;font-size:14px">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
-    <td style="white-space:nowrap;font-size:12px">${x(r.datetime)}<br><span style="color:#9ca3af;font-size:11px">${r.reservation_date||''}</span></td>
+    <td style="white-space:nowrap;font-size:12px">${x(r.datetime)}</td>
     <td>${r.party}</td>
+    <td style="font-size:12px">${x(r.department||'—')}</td>
+    <td style="font-size:12px">${x(r.seating_preference||'—')}</td>
+    <td style="font-size:11px">${x(r.payment_method||'—')}<br>${r.direct_bill_status&&r.direct_bill_status!=='na'?`<span class="db-badge db-${r.direct_bill_status==='pending_document'?'pending':'received'}">${r.direct_bill_status==='pending_document'?'Doc pending':'Doc received'}</span>`:''}</td>
     <td style="font-family:monospace;font-size:12px">${x(r.uid)}</td>
     <td style="font-size:12px">${x(r.email)}</td>
     <td style="font-size:11px;color:#9ca3af">${x(r.channel||'form')}</td>
@@ -385,6 +409,8 @@ function renderTable(data){
     <td><div class="acts">
       ${r.status==='pending_approval'?`<a class="tb tap" href="/manager/approve/${r.id}">Approve</a><a class="tb tdn" href="/manager/deny/${r.id}">Deny</a>`:''}
       <button class="tb ted" onclick="openEdit('${r.id}')">Edit</button>
+      ${r.direct_bill_status==='pending_document'?`<button class="tb" style="background:#ede9fe;color:#6d28d9" onclick="markDocReceived('${r.id}')">Doc ✓</button>`:''}
+      ${r.direct_bill_status==='pending_document'?`<button class="tb" style="background:#f3f4f6;color:#6b7280" onclick="resendDirectBill('${r.id}')">Resend</button>`:''}
       <button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>
     </div></td>
   </tr>`).join('');
@@ -397,13 +423,15 @@ function openEdit(id){
   document.getElementById('et').value=r.guest_status;document.getElementById('es').value=r.status;
   document.getElementById('eu').value=r.uid;document.getElementById('ep').value=r.party;
   document.getElementById('ee').value=r.email;document.getElementById('edt').value=r.datetime;
-  document.getElementById('etbl').value=r.table_number||'';document.getElementById('eno').value=r.notes||'';
+  document.getElementById('etbl').value=r.table_number||'';
+  document.getElementById('eseat').value=r.seating_preference||'';
+  document.getElementById('epay').value=r.payment_method||'';document.getElementById('eno').value=r.notes||'';
   document.getElementById('eovl').classList.add('show');
 }
 function closeEdit(){document.getElementById('eovl').classList.remove('show')}
 async function saveEdit(){
   const id=document.getElementById('eid').value;
-  const b={name:document.getElementById('en').value.trim(),guest_status:document.getElementById('et').value,status:document.getElementById('es').value,uid:document.getElementById('eu').value.trim(),party:parseInt(document.getElementById('ep').value),email:document.getElementById('ee').value.trim(),datetime:document.getElementById('edt').value.trim(),table_number:document.getElementById('etbl').value.trim(),notes:document.getElementById('eno').value.trim()};
+  const b={name:document.getElementById('en').value.trim(),department:document.getElementById('edept').value.trim(),phone_ext:document.getElementById('ephx').value.trim(),guest_status:document.getElementById('et').value,status:document.getElementById('es').value,uid:document.getElementById('eu').value.trim(),party:parseInt(document.getElementById('ep').value),email:document.getElementById('ee').value.trim(),datetime:document.getElementById('edt').value.trim(),table_number:document.getElementById('etbl').value.trim(),seating_preference:document.getElementById('eseat').value,payment_method:document.getElementById('epay').value.trim(),notes:document.getElementById('eno').value.trim()};
   const r=await fetch(`/api/reservations/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
   if(!r.ok){alert('Save failed');return}
   closeEdit();await loadAll();toast('Saved ✓');
@@ -424,6 +452,14 @@ document.getElementById('eovl').addEventListener('click',e=>{if(e.target===docum
 document.getElementById('povl').addEventListener('click',e=>{if(e.target===document.getElementById('povl'))closePin()});
 document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')doDel()});
 
+async function markDocReceived(id){
+  const r=await fetch(`/api/reservations/${id}/directbill`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({direct_bill_status:'document_received'})});
+  if(r.ok){await loadAll();toast('Document marked as received ✓');}
+}
+async function resendDirectBill(id){
+  const r=await fetch(`/api/reservations/${id}/resend-directbill`,{method:'POST',headers:{'Content-Type':'application/json'}});
+  if(r.ok){toast('Direct bill form resent to guest ✓');}else{toast('Failed to resend');}
+}
 function toast(m){let t=document.getElementById('_t');if(!t){t=document.createElement('div');t.id='_t';t.style.cssText='position:fixed;bottom:24px;right:24px;background:#111;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:opacity .25s';document.body.appendChild(t)}t.textContent=m;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',3000)}
 function ago(i){const s=Math.floor((Date.now()-new Date(i))/1000);return s<60?'just now':s<3600?Math.floor(s/60)+'m ago':s<86400?Math.floor(s/3600)+'h ago':Math.floor(s/86400)+'d ago'}
 function fmt(i){return new Date(i).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}

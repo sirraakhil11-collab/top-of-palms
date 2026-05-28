@@ -224,6 +224,15 @@ function render(date){
       ? `<span class="att-badge badge-noshow">✕ No-show</span>`
       : `<span class="att-badge badge-pending">Waiting</span>`;
 
+    // Payment section - update from POS
+    const paymentSection = `<div class="tbl-section">
+      <div class="tbl-label">Payment method</div>
+      <div style="font-size:13px;color:#d1d5db;margin-bottom:6px">${x(r.payment_method)||'<span style="color:#4b5563">Not specified</span>'}</div>
+      ${r.direct_bill_status==='pending_document'?`<div style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:6px 10px;font-size:11px;color:#c4b5fd;margin-bottom:6px">📄 Direct Bill — document pending</div>`:''}
+      ${r.direct_bill_status==='document_received'?`<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:6px 10px;font-size:11px;color:#4ade80;margin-bottom:6px">✓ Direct Bill — document received</div>`:''}
+      <div style="font-size:11px;color:#6b7280">Seating: ${x(r.seating_preference)||'—'}</div>
+    </div>`;
+
     // Table section
     const tblSection = hasTbl
       ? `<div class="tbl-section">
@@ -272,6 +281,7 @@ function render(date){
         <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
         ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:11px">${x(r.notes)}</span></div>`:''}
       </div>
+      ${paymentSection}
       ${tblSection}
       ${attSection}
     </div>`;

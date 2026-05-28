@@ -67,7 +67,7 @@ app.get('/demo.html',(req,res) => res.sendFile(path.join(__dirname, 'views', 'de
 
 app.post('/api/reserve', async (req, res) => {
   try {
-    const { name, guest_type, uid, email, party, datetime_iso, datetime_display, notes } = req.body;
+    const { name, department, phone_ext, guest_type, uid, email, party, datetime_iso, datetime_display, reservation_time, seating_preference, payment_method, notes } = req.body;
     if (!name || !guest_type || !uid || !email || !party || !datetime_iso)
       return res.status(400).json({ error: 'All fields are required.' });
     if (uid.replace(/\D/g,'').length !== 9)
@@ -76,14 +76,18 @@ app.post('/api/reserve', async (req, res) => {
     const reservation_date = datetime_iso.slice(0, 10);
     const display = datetime_display || new Date(datetime_iso).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
 
-    const count = await db.getDailyCount(reservation_date);
-    const limit = parseInt(process.env.DAILY_LIMIT || '30');
-    if (count >= limit)
-      return res.status(429).json({ error: `Fully booked for that date (${limit} limit). Please choose a different date.` });
+    // Check people-based limit (60 covers)
+    const currentPeople = await db.getDailyPeopleCount(reservation_date);
+    const partySize     = parseInt(party, 10);
+    const limit         = parseInt(process.env.DAILY_LIMIT || '60');
+    if (currentPeople + partySize > limit) {
+      const remaining = Math.max(0, limit - currentPeople);
+      return res.status(429).json({ error: `Insufficient capacity for that date. Only ${remaining} covers remaining. Please reduce party size or choose a different date.` });
+    }
 
     const session = {
       channel: 'form', callerNumber: email, callSid: `form-${Date.now()}`,
-      collected: { name, status: guest_type.toLowerCase(), uid: uid.replace(/\D/g,''), email, party: parseInt(party), datetime: display, reservation_date, notes: notes||'' }
+      collected: { name, department:department||'', phone_ext:phone_ext||'', status: guest_type.toLowerCase(), uid: uid.replace(/\D/g,''), email, party: partySize, datetime: display, reservation_date, reservation_time:reservation_time||'', seating_preference:seating_preference||'', payment_method:payment_method||'', notes: notes||'' }
     };
     const result = await processReservation(session);
     res.json({ success: true, status: result.status });
@@ -210,6 +214,36 @@ app.patch('/api/reservations/:id/attendance', auth.requirePos, async (req, res) 
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
+// Direct bill status update
+app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, res) => {
+  try {
+    const { direct_bill_status } = req.body;
+    if (!['na','pending_document','document_received'].includes(direct_bill_status))
+      return res.status(400).json({ error:'Invalid status' });
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    const updated = await db.updateReservation(req.params.id, { direct_bill_status });
+    // Send notification email when document received
+    if (direct_bill_status === 'document_received') {
+      const { sendEmail } = require('./src/email');
+      // Manager can now approve — just update status, manager approves separately
+      console.log(`[DirectBill] Document received for ${r.name}`);
+    }
+    res.json(updated);
+  } catch(err) { res.status(500).json({ error:err.message }); }
+});
+
+// Resend direct bill document email
+app.post('/api/reservations/:id/resend-directbill', auth.requireManager, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    const { sendDirectBillEmail } = require('./src/email');
+    await sendDirectBillEmail(r);
+    res.json({ success:true });
+  } catch(err) { res.status(500).json({ error:err.message }); }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  JSON API
 // ═══════════════════════════════════════════════════════════════════════════
@@ -235,7 +269,7 @@ app.get('/api/stats', auth.requireManager, async (req, res) => {
   catch(err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/health', (req, res) => res.json({ status:'ok', database: process.env.DATABASE_URL?'postgresql':'json-file', time: new Date().toISOString() }));
+app.get('/health', (req, res) => res.json({ status:'ok', version:'v11', database: process.env.DATABASE_URL?'postgresql':'json-file', daily_limit: process.env.DAILY_LIMIT||'60', time: new Date().toISOString() }));
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  HELPERS
@@ -254,7 +288,7 @@ a{display:inline-block;background:${c.btn};color:#fff;text-decoration:none;paddi
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n🌴  Top of the Palms — Reservation Agent v10');
+  console.log('\n🌴  Top of the Palms — Reservation Agent v11');
   console.log('─────────────────────────────────────────────');
   console.log(`   Database:    ${process.env.DATABASE_URL ? '✅ PostgreSQL' : '📁 JSON file'}`);
   console.log(`   POS PIN:     ${process.env.POS_PIN     || '5678 (default)'}`);
