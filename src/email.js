@@ -72,76 +72,68 @@ function deniedEmail(r) {
     <p style="color:#374151;font-size:14px">Please reply here or call ${PHONE} to find an alternative time. We'd love to have you!</p>`) };
 }
 
-// Direct Bill document email — sent at CHECK-IN (not at reservation creation)
+// Direct Bill document email — sent at CHECK-IN
+// Sent when guest arrives and checks in, containing authorization form instructions
 async function sendDirectBillEmail(reservation) {
   if (!process.env.SENDGRID_API_KEY) { console.log('[Email] No key — would send direct bill doc'); return; }
   const ref = reservation.id.slice(0,8).toUpperCase();
+  const managerEmail = process.env.MANAGER_EMAIL || FROM;
   await sgMail.send({
     to:   reservation.email,
     from: { email:FROM, name:NAME },
-    subject: `Direct Bill authorization — Welcome! Confirmation ${ref}`,
+    subject: `Direct Bill Authorization Required — ${ref} | On Top of the Palms`,
     html: layout(`
-      <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">📄 Action required</div>
+      <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">📄 Action Required</div>
       <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Direct Bill Authorization</h2>
-      <p style="color:#6b7280;font-size:14px;margin:0 0 16px">Hi ${reservation.name}, thank you for dining with us today! Since you selected <strong>Direct Bill</strong>, please complete the authorization form below. Payment is due within <strong>30 days of dining</strong>.</p>
+      <p style="color:#6b7280;font-size:14px;margin:0 0 16px">Hi ${reservation.name}, thank you for dining with us today! As you selected <strong>Direct Bill</strong> payment, please complete the authorization below and return it to us.</p>
+
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">
-        ${row('Reservation', ref)}
+        ${row('Reservation #', `<span style="font-family:monospace;background:#f3f4f6;padding:2px 6px;border-radius:4px">${ref}</span>`)}
+        ${row('Name', reservation.name)}
+        ${row('Department', reservation.department||'—')}
         ${row('Date', reservation.datetime)}
-        ${row('Department', reservation.department||'—', true)}
+        ${row('Party size', String(reservation.party)+(reservation.party===1?' guest':' guests'), true)}
       </table></div>
-      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin-bottom:20px">
-        <p style="font-size:14px;font-weight:600;color:#b45309;margin-bottom:8px">📎 Direct Bill Authorization Form</p>
-        <p style="font-size:13px;color:#374151;margin-bottom:12px">Please download, complete, and reply to this email with the signed form attached.</p>
-        <p style="font-size:12px;color:#6b7280">Fields required: Name, Department, USF ID, Account number, Authorized signature, Date</p>
+
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:18px;margin-bottom:20px">
+        <p style="font-size:14px;font-weight:700;color:#b45309;margin-bottom:12px">📋 Direct Bill Authorization Form</p>
+        <p style="font-size:13px;color:#374151;margin-bottom:10px">Please reply to this email with the completed authorization including:</p>
+        <ul style="font-size:13px;color:#374151;margin:0 0 14px 18px;line-height:1.8">
+          <li>Full name and USF UID</li>
+          <li>Department name and account number</li>
+          <li>Authorized signature and title</li>
+          <li>Date of dining: ${reservation.datetime}</li>
+          <li>Amount to be billed</li>
+        </ul>
+        <p style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:8px 12px;margin:0">⚠️ Payment must be received within <strong>30 days of dining</strong>. Please reply to this email with your completed form.</p>
       </div>
-      <p style="color:#374151;font-size:13px">Your reservation will be confirmed once the completed form is received. Reply to this email with any questions.</p>
-      <p style="color:#9ca3af;font-size:12px;margin-top:16px">Reference: ${ref} · ${PHONE}</p>`)
+
+      <p style="color:#374151;font-size:13px">Return the completed form by replying directly to this email or contact us at ${PHONE}.</p>
+      <p style="color:#9ca3af;font-size:12px;margin-top:16px">Reply-to: ${managerEmail} · Reference: ${ref}</p>`)
   });
-  console.log(`[Email] Direct bill doc sent to ${reservation.email}`);
-}
 
-// Manager approval email — links go to confirmation page (not direct action)
-async function sendManagerApprovalEmail(reservation) {
-  const base       = process.env.BASE_URL || 'http://localhost:3000';
-  const approveUrl = `${base}/manager/confirm/approve/${reservation.id}`;
-  const denyUrl    = `${base}/manager/confirm/deny/${reservation.id}`;
-  const dashUrl    = `${base}/manager/dashboard`;
-  const party      = reservation.party+(reservation.party===1?' guest':' guests');
-
-  if (!process.env.SENDGRID_API_KEY || !process.env.MANAGER_EMAIL) {
-    console.log(`[Manager] Not configured. Approve: ${approveUrl} | Deny: ${denyUrl}`); return;
+  // Also notify manager that direct bill guest has checked in
+  if (process.env.MANAGER_EMAIL) {
+    await sgMail.send({
+      to:   process.env.MANAGER_EMAIL,
+      from: { email:FROM, name:NAME },
+      subject: `Direct Bill checked in — ${reservation.name} (${ref})`,
+      html: layout(`
+        <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Direct Bill — Checked In</div>
+        <h2 style="color:#111827;font-size:17px;font-weight:700;margin:0 0 12px">${reservation.name} has checked in</h2>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:16px"><table style="width:100%;border-collapse:collapse">
+          ${row('Confirmation', ref)}
+          ${row('Department', reservation.department||'—')}
+          ${row('Party', String(reservation.party)+(reservation.party===1?' guest':' guests'))}
+          ${row('Email', reservation.email, true)}
+        </table></div>
+        <p style="color:#374151;font-size:13px">Authorization form has been emailed to the guest. Mark as <strong>Document Received</strong> in the dashboard once they return the signed form.</p>
+        <p style="margin-top:12px"><a href="${process.env.BASE_URL||'http://localhost:3000'}/manager/dashboard" style="background:#006747;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">Open Dashboard →</a></p>`)
+    });
   }
 
-  const extraRows = [
-    row('Name', reservation.name),
-    row('USF UID', `<span style="font-family:monospace">${reservation.uid}</span>`),
-    row('Department', reservation.department||'—'),
-    row('Phone Ext', reservation.phone_ext||'—'),
-    row('Email', reservation.email),
-    row('Requested time', reservation.datetime),
-    row('Party size', party),
-    row('Seating preference', reservation.seating_preference||'—'),
-    row('Payment method', reservation.payment_method||'—'),
-    reservation.notes ? row('Notes', reservation.notes) : '',
-    row('Type', reservation.guest_status==='faculty'?'Faculty':'Student', true)
-  ].filter(Boolean).join('');
-
-  await sgMail.send({
-    to:process.env.MANAGER_EMAIL, from:{email:FROM,name:NAME},
-    subject:`Action needed — Reservation: ${reservation.name} (${party}, ${reservation.datetime})`,
-    html: layout(`
-      <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Action required</div>
-      <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">New reservation request</h2>
-      ${(reservation.payment_method||'').includes('Direct Bill')?'<p style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1d4ed8;margin-bottom:16px">💳 <strong>Direct Bill</strong> — authorization document will be sent to guest. Mark as received when you get the form.</p>':''}
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:24px"><table style="width:100%;border-collapse:collapse">${extraRows}</table></div>
-      <p style="color:#374151;font-size:13px;margin-bottom:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px">⚠️ Click a button below — you will see a confirmation page before any action is taken.</p>
-      <div style="text-align:center;margin-bottom:20px">
-        <a href="${approveUrl}" style="display:inline-block;background:#006747;color:#fff;text-decoration:none;padding:13px 32px;border-radius:8px;font-size:15px;font-weight:600;margin-right:12px">✓ Review &amp; Approve</a>
-        <a href="${denyUrl}" style="display:inline-block;background:#fff;color:#b91c1c;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;border:1.5px solid #b91c1c">✕ Review &amp; Deny</a>
-      </div>
-      <p style="text-align:center"><a href="${dashUrl}" style="color:#9ca3af;font-size:12px;text-decoration:none">View all pending reservations →</a></p>`)
-  });
-  console.log(`[Manager] Approval email sent`);
+  console.log(`[DirectBill] Check-in doc sent to ${reservation.email}, manager notified`);
 }
+
 
 module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail };

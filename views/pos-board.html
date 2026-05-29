@@ -73,17 +73,16 @@
     /* POS dropdowns */
     .pos-select{width:100%;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:8px 10px;color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;margin-top:2px}
     .pos-select:focus{border-color:#4ade80}
-    .pos-ms-wrap{position:relative;margin-top:2px}
-    .pos-ms-trigger{width:100%;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:8px 10px;color:#d1d5db;font-size:13px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:36px}
-    .pos-ms-trigger:hover{border-color:#4ade80}
-    .pos-ms-dd{display:none;position:absolute;bottom:calc(100%+4px);left:0;right:0;background:#1e2130;border:1px solid #4ade80;border-radius:8px;z-index:100;overflow:hidden;box-shadow:0 -4px 16px rgba(0,0,0,.4)}
-    .pos-ms-dd.open{display:block}
-    .pos-ms-opt{display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;font-size:13px;color:#d1d5db;transition:background .12s}
-    .pos-ms-opt:hover{background:#252836}
-    .pos-ms-opt input{width:15px;height:15px;accent-color:#4ade80;flex-shrink:0;pointer-events:none}
-    .pos-ms-opt.sel{background:#1a2e1e;color:#4ade80}
-    .save-sm{background:#006747;border:none;color:#fff;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;width:100%;margin:4px 0}
+    .pos-ms-wrap{position:relative}
+    /* Compact payment chips */
+    .pay-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+    .pay-chip{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid #3d4065;color:#6b7280;background:#252836;transition:all .15s;user-select:none}
+    .pay-chip:hover{border-color:#4ade80;color:#d1d5db}
+    .pay-chip.on{background:#1a2e20;color:#4ade80;border-color:#4ade80}
+    .save-sm{background:#006747;border:none;color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;margin-top:5px}
     .save-sm:hover{background:#004d34}
+    /* Compact POS table section */
+    .tbl-label{color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
     /* Empty */
     .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
     .ei{font-size:44px;margin-bottom:14px}
@@ -221,25 +220,17 @@ function render(date){
     </div>`;
 
     const paySection = `<div class="tbl-section">
-      <div class="tbl-label">Payment${isCheckedIn?'':' <span style="color:#6b7280;font-size:10px">(editable until check-in)</span>'}</div>
+      <div class="tbl-label">Payment${isCheckedIn?'':' <span style="color:#6b7280;font-weight:400">(tap to toggle)</span>'}</div>
       ${isCheckedIn
-        ? `<div style="font-size:13px;color:#d1d5db">${r.payment_method||'<span style="color:#4b5563">Not specified</span>'}</div>`
-        : `<div class="pos-ms-wrap" id="pmw-${r.id}">
-            <div class="pos-ms-trigger" onclick="togglePP('${r.id}')">
-              <span id="ppd-${r.id}">${posPaySel[r.id].length?posPaySel[r.id].join(', '):'<span style="color:#4b5563">Select payment…</span>'}</span>
-              <span style="color:#6b7280;font-size:10px">▲</span>
-            </div>
-            <div class="pos-ms-dd" id="pdd-${r.id}">
-              ${PAYMENT.map(pm=>`<label class="pos-ms-opt${posPaySel[r.id].includes(pm)?' sel':''}" onclick="togglePPOpt('${r.id}','${pm}',event)">
-                <input type="checkbox"${posPaySel[r.id].includes(pm)?' checked':''}> ${pm}
-              </label>`).join('')}
-              <div style="padding:6px 10px"><button class="save-sm" onclick="savePay('${r.id}')">Save Payment</button></div>
-            </div>
-          </div>`
+        ? `<div style="font-size:12px;color:#d1d5db;margin-top:2px">${r.payment_method||'<span style="color:#4b5563">Not specified</span>'}</div>`
+        : `<div class="pay-chips" id="pchips-${r.id}">
+            ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
+          </div>
+          <button class="save-sm" id="psave-${r.id}" style="display:none" onclick="savePay('${r.id}')">Save ✓</button>`
       }
-      ${r.direct_bill_status==='pending_document'?`<div style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:5px 9px;font-size:11px;color:#c4b5fd;margin-top:5px">📄 Direct Bill — doc pending</div>`:''}
-      ${r.direct_bill_status==='document_received'?`<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:5px 9px;font-size:11px;color:#4ade80;margin-top:5px">✓ Direct Bill — doc received</div>`:''}
-      ${r.seating_preference?`<div style="font-size:11px;color:#6b7280;margin-top:4px">Preference: ${x(r.seating_preference)}</div>`:''}
+      ${r.direct_bill_status==='pending_document'?`<div style="font-size:10px;color:#c4b5fd;margin-top:4px">📄 Direct Bill — awaiting doc</div>`:''}
+      ${r.direct_bill_status==='document_received'?`<div style="font-size:10px;color:#4ade80;margin-top:4px">✓ Direct Bill — doc received</div>`:''}
+      ${r.seating_preference&&!isCheckedIn?`<div style="font-size:10px;color:#6b7280;margin-top:3px">Pref: ${x(r.seating_preference)}</div>`:''}
     </div>`;
 
     const attSection = `<div class="att-section">
