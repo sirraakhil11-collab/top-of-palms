@@ -1,5 +1,6 @@
 const db = require('./db');
-const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./email');
+const { sendEmail, sendManagerApprovalEmail } = require('./email');
+const directBill = require('./direct-bill');
 
 const DAILY_LIMIT = parseInt(process.env.DAILY_LIMIT || '60'); // 60 PEOPLE not reservations
 
@@ -43,8 +44,11 @@ async function processReservation(session) {
   await sendManagerApprovalEmail(reservation).catch(console.error);
   // Tell guest it's under review
   await sendEmail(reservation, 'pending').catch(console.error);
-  // Direct Bill document email is sent at CHECK-IN, not here
-  // (guest hasn't dined yet — send doc when they arrive)
+  // Auto-send Direct Bill form immediately when reservation is created
+  if ((data.payment_method||'').includes('Direct Bill')) {
+    setImmediate(() => directBill.sendDirectBillForm(reservation).catch(e => console.error('[DirectBill]', e.message)));
+    console.log(`[Reservation] Direct Bill form will be sent to ${reservation.email}`);
+  }
 
   return { success:true, status:'pending' };
 }

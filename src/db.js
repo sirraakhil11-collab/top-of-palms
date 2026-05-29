@@ -257,4 +257,53 @@ async function getStats() {
   };
 }
 
-module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr};
+// ── Document storage ─────────────────────────────────────────────────────
+// Stores received Direct Bill forms as base64 in PostgreSQL
+// To switch to S3/Cloudinary later: only change these functions
+
+async function storeDocument(reservationId, filename, mimeType, dataBase64, sizeBytes) {
+  const { randomUUID } = require('crypto');
+  const id  = randomUUID();
+  const now = new Date().toISOString();
+
+  if (USE_PG) {
+    await pool.query(
+      `INSERT INTO documents (id,reservation_id,filename,mimetype,size_bytes,data_base64,uploaded_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [id, reservationId, filename, mimeType, sizeBytes, dataBase64, now]
+    );
+  } else {
+    const docFile = require('path').join(__dirname,'..','data','documents.json');
+    const fs = require('fs');
+    const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+    docs.unshift({ id, reservation_id:reservationId, filename, mimetype:mimeType, size_bytes:sizeBytes, data_base64:dataBase64, uploaded_at:now });
+    fs.writeFileSync(docFile, JSON.stringify(docs, null, 2));
+  }
+  return { id, reservation_id:reservationId, filename, uploaded_at:now };
+}
+
+async function getDocuments(reservationId) {
+  if (USE_PG) {
+    const { rows } = await pool.query(
+      `SELECT id,reservation_id,filename,mimetype,size_bytes,uploaded_at FROM documents WHERE reservation_id=$1 ORDER BY uploaded_at DESC`,
+      [reservationId]
+    );
+    return rows;
+  }
+  const docFile = require('path').join(__dirname,'..','data','documents.json');
+  const fs = require('fs');
+  const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+  return docs.filter(d=>d.reservation_id===reservationId).map(({data_base64,...rest})=>rest);
+}
+
+async function getDocumentById(docId) {
+  if (USE_PG) {
+    const { rows } = await pool.query('SELECT * FROM documents WHERE id=$1', [docId]);
+    return rows[0] || null;
+  }
+  const docFile = require('path').join(__dirname,'..','data','documents.json');
+  const fs = require('fs');
+  const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+  return docs.find(d=>d.id===docId) || null;
+}
+
+module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById};

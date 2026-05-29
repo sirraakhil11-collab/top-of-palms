@@ -127,6 +127,10 @@
     .pin-err.show{display:block}
     .pdel{width:100%;background:#b91c1c;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px}
 
+    .db-status{font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;display:inline-block}
+    .db-s-pending{background:#ede9fe;color:#6d28d9}
+    .db-s-sent{background:#dbeafe;color:#1d4ed8}
+    .db-s-received{background:#dcfce7;color:#15803d}
     @media(max-width:1000px){.stats-r1,.stats-r2{grid-template-columns:repeat(3,1fr)}}
     @media(max-width:640px){.stats-r1,.stats-r2{grid-template-columns:1fr 1fr}.frow{flex-direction:column}.mg{grid-template-columns:1fr}}
   </style>
@@ -323,6 +327,45 @@
     <div class="mf">
       <button class="mcancel" onclick="closeEdit()">Cancel</button>
       <button class="msave" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DIRECT BILL DOCUMENT MODAL ───────────────────────────────────────── -->
+<div class="ovl" id="db-ovl">
+  <div class="modal" style="max-width:480px">
+    <h3>📄 Direct Bill — <span id="db-res-name"></span></h3>
+    <input type="hidden" id="db-res-id">
+
+    <!-- Status -->
+    <div id="db-status-section" style="margin-bottom:16px"></div>
+
+    <!-- Send form button -->
+    <div id="db-send-section" style="margin-bottom:16px">
+      <p style="font-size:13px;color:#374151;margin-bottom:10px">Send the pre-filled authorization PDF to the guest. They'll reply with the signed form.</p>
+      <button class="msave" onclick="sendDBForm2()" id="db-send-btn">📨 Send Authorization Form to Guest</button>
+    </div>
+
+    <!-- Upload received document -->
+    <div style="border-top:1px solid #f3f4f6;padding-top:16px;margin-top:4px">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Upload Received Document</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:10px">Once guest sends back the signed form, upload it here to mark the reservation complete.</p>
+      <input type="file" id="db-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(this)">
+      <div id="db-file-display" onclick="document.getElementById('db-file').click()" style="border:2px dashed #e5e7eb;border-radius:8px;padding:20px;text-align:center;cursor:pointer;font-size:13px;color:#9ca3af;transition:border-color .15s">
+        <div style="font-size:24px;margin-bottom:6px">📎</div>
+        Click to select PDF or image of signed form
+      </div>
+      <div id="db-file-name" style="display:none;font-size:12px;color:#006747;margin-top:6px;padding:6px 10px;background:#f0fdf4;border-radius:6px"></div>
+      <button class="msave" id="db-upload-btn" style="margin-top:10px;display:none" onclick="uploadDBDoc()">Upload Document</button>
+    </div>
+
+    <!-- Existing documents -->
+    <div id="db-docs-section" style="margin-top:16px"></div>
+
+    <!-- Manual override -->
+    <div style="border-top:1px solid #f3f4f6;padding-top:12px;margin-top:12px;display:flex;gap:8px">
+      <button class="mcancel" onclick="closeDB()" style="flex:1">Close</button>
+      <button class="msave" style="background:#15803d" onclick="manualDBReceived()">✓ Mark Doc Received (no upload)</button>
     </div>
   </div>
 </div>
@@ -617,34 +660,101 @@ async function saveEdit(){
 }
 
 // ── Direct bill ────────────────────────────────────────────────────────────
-// ── Direct Bill Service functions ─────────────────────────────────────────
+// ── Direct Bill functions ──────────────────────────────────────────────────
 function dbBadge(status){
   if(!status||status==='na') return '';
-  const map={pending_send:'<span class="db-badge db-pending">📄 Form not sent</span>',sent:'<span class="db-badge" style="background:#dbeafe;color:#1d4ed8">📨 Form sent</span>',received:'<span class="db-badge db-received">✓ Doc received</span>'};
+  const map={
+    pending_send: '<span class="db-badge db-pending">📄 Form not sent</span>',
+    sent:         '<span class="db-badge" style="background:#dbeafe;color:#1d4ed8">📨 Form sent</span>',
+    received:     '<span class="db-badge db-received">✓ Doc received</span>'
+  };
   return map[status]||'';
 }
-function dbColor(s){return{pending_send:'#ede9fe',sent:'#dbeafe',received:'#dcfce7'}[s]||'#f3f4f6';}
 function dbText(s){return{pending_send:'📄 Direct Bill — form not sent yet',sent:'📨 Direct Bill — form sent, awaiting reply',received:'✓ Direct Bill — document received'}[s]||'';}
 function dbActions(r){
-  if(r.direct_bill_status==='pending_send')
-    return `<button class="tb tdb" onclick="sendDBForm('${r.id}')">📨 Send Form</button>`;
-  if(r.direct_bill_status==='sent')
-    return `<button class="tb" style="background:#dcfce7;color:#15803d" onclick="markDBReceived('${r.id}')">✓ Doc Received</button><button class="tb trs" onclick="sendDBForm('${r.id}')">Resend</button>`;
-  if(r.direct_bill_status==='received')
-    return `<span style="font-size:10px;color:#15803d;font-weight:600">✓ Complete</span>`;
-  return '';
+  if(!r.direct_bill_status||r.direct_bill_status==='na') return '';
+  return `<button class="tb tdb" onclick="openDB('${r.id}','${x(r.name)}')" title="Manage Direct Bill">📄 Direct Bill</button>`;
 }
-async function sendDBForm(id){
-  const btn=event.target; btn.disabled=true; btn.textContent='Sending…';
+
+// Open Direct Bill modal
+let dbSelectedFile = null;
+async function openDB(id, name){
+  document.getElementById('db-res-id').value=id;
+  document.getElementById('db-res-name').textContent=name;
+  dbSelectedFile=null;
+  document.getElementById('db-file').value='';
+  document.getElementById('db-file-name').style.display='none';
+  document.getElementById('db-upload-btn').style.display='none';
+  document.getElementById('db-file-display').innerHTML='<div style="font-size:24px;margin-bottom:6px">📎</div>Click to select PDF or image of signed form';
+  document.getElementById('db-ovl').classList.add('show');
+  await refreshDBModal(id);
+}
+function closeDB(){ document.getElementById('db-ovl').classList.remove('show'); }
+
+async function refreshDBModal(id){
+  const r = allData.find(r=>r.id===id);
+  if(!r) return;
+
+  // Status section
+  const statusMap={pending_send:{cls:'db-s-pending',text:'📄 Form not yet sent to guest'},sent:{cls:'db-s-sent',text:'📨 Form sent — awaiting guest reply'},received:{cls:'db-s-received',text:'✓ Document received — complete'}};
+  const sm=statusMap[r.direct_bill_status]||{cls:'db-s-pending',text:'Unknown'};
+  document.getElementById('db-status-section').innerHTML=`<div class="db-status ${sm.cls}">${sm.text}</div>`;
+
+  // Send button label
+  const btn=document.getElementById('db-send-btn');
+  if(r.direct_bill_status==='received'){ btn.textContent='📨 Resend Form'; btn.style.background='#6b7280'; }
+  else if(r.direct_bill_status==='sent'){ btn.textContent='📨 Resend Form'; btn.style.background='#2563eb'; }
+  else{ btn.textContent='📨 Send Authorization Form to Guest'; btn.style.background='#006747'; }
+
+  // Existing documents
+  const docs = await fetch(`/api/reservations/${id}/documents`).then(r=>r.json()).catch(()=>[]);
+  const docSec=document.getElementById('db-docs-section');
+  if(docs.length){
+    docSec.innerHTML=`<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Received Documents (${docs.length})</div>`+
+      docs.map(d=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;font-size:13px">
+        <span>📎 ${x(d.filename)}<span style="color:#9ca3af;margin-left:8px;font-size:11px">${new Date(d.uploaded_at).toLocaleDateString()}</span></span>
+        <a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;text-decoration:none;font-size:12px">Download</a>
+      </div>`).join('');
+  } else {
+    docSec.innerHTML='';
+  }
+}
+
+async function sendDBForm2(){
+  const id=document.getElementById('db-res-id').value;
+  const btn=document.getElementById('db-send-btn');
+  btn.disabled=true; btn.textContent='Sending…';
   const r=await fetch(`/api/reservations/${id}/directbill/send`,{method:'POST',headers:{'Content-Type':'application/json'}});
-  if(r.ok){await loadAll();toast('Authorization form sent to guest ✓');}
-  else{const e=await r.json();alert('Failed: '+(e.error||'Unknown error'));btn.disabled=false;btn.textContent='📨 Send Form';}
+  btn.disabled=false;
+  if(r.ok){ await loadAll(); await refreshDBModal(id); toast('Authorization form + PDF sent to guest ✓'); }
+  else{ const e=await r.json(); alert('Failed: '+(e.error||'Unknown error')); btn.textContent='📨 Send Authorization Form to Guest'; }
 }
-async function markDBReceived(id){
-  if(!confirm('Mark Direct Bill document as received? This will email the guest a confirmation.')) return;
+
+function handleFileSelect(input){
+  if(!input.files[0]) return;
+  dbSelectedFile=input.files[0];
+  const d=document.getElementById('db-file-name');
+  d.style.display='block';
+  d.textContent=`Selected: ${dbSelectedFile.name} (${(dbSelectedFile.size/1024).toFixed(1)} KB)`;
+  document.getElementById('db-upload-btn').style.display='block';
+}
+
+async function uploadDBDoc(){
+  if(!dbSelectedFile) return;
+  const id=document.getElementById('db-res-id').value;
+  const fd=new FormData(); fd.append('document',dbSelectedFile);
+  const btn=document.getElementById('db-upload-btn'); btn.disabled=true; btn.textContent='Uploading…';
+  const r=await fetch(`/api/reservations/${id}/directbill/upload`,{method:'POST',body:fd});
+  btn.disabled=false;
+  if(r.ok){ dbSelectedFile=null; document.getElementById('db-file').value=''; document.getElementById('db-file-name').style.display='none'; btn.style.display='none'; await loadAll(); await refreshDBModal(id); toast('Document uploaded — guest notified ✓'); }
+  else{ const e=await r.json(); alert('Upload failed: '+(e.error||'Unknown')); btn.textContent='Upload Document'; }
+}
+
+async function manualDBReceived(){
+  const id=document.getElementById('db-res-id').value;
+  if(!confirm('Mark as received without uploading a file?')) return;
   const r=await fetch(`/api/reservations/${id}/directbill/received`,{method:'POST',headers:{'Content-Type':'application/json'}});
-  if(r.ok){await loadAll();toast('Document marked received — guest notified ✓');}
-  else{const e=await r.json();alert('Failed: '+(e.error||'Unknown error'));}
+  if(r.ok){ await loadAll(); await refreshDBModal(id); toast('Marked as received ✓'); }
 }
 
 // ── PIN delete ─────────────────────────────────────────────────────────────
@@ -659,6 +769,7 @@ async function doDel(){
 }
 
 document.getElementById('eovl').addEventListener('click',e=>{if(e.target===document.getElementById('eovl'))closeEdit()});
+document.getElementById('db-ovl').addEventListener('click',e=>{if(e.target===document.getElementById('db-ovl'))closeDB()});
 document.getElementById('povl').addEventListener('click',e=>{if(e.target===document.getElementById('povl'))closePin()});
 document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')doDel()});
 
