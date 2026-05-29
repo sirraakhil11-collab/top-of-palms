@@ -459,6 +459,7 @@ async function removeBlockedDate(date){
 async function loadAll(){
   try{
     const[s,d]=await Promise.all([fetch('/api/stats').then(r=>r.json()),fetch('/api/reservations').then(r=>r.json())]);
+    if(!Array.isArray(d)){console.error('[Dashboard] reservations not array:',d);return;}
     allData=d;
 
     // Row 1
@@ -488,8 +489,8 @@ async function loadAll(){
     f.className='cap-fill'+(pct>=100?' full':pct>=80?' warn':'');
     document.getElementById('cap-num').textContent=`${s.daily_count} / ${s.daily_limit} covers today`;
 
-    renderPending(d.filter(r=>r.status==='pending_approval'));
-    renderTable(filtered());
+    try{renderPending(d.filter(r=>r.status==='pending_approval'));}catch(re){console.error('[Dashboard] renderPending error:',re);document.getElementById('pgrid').innerHTML='<div class="empty"><div class="ei">⚠️</div><p>Error rendering cards — check console</p></div>';}
+    try{renderTable(filtered());}catch(re){console.error('[Dashboard] renderTable error:',re);}
     document.getElementById('upd').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   }catch(e){console.error(e)}
 }
@@ -499,7 +500,7 @@ function filtered(){
   if(activeStat==='pending')    d=allData.filter(r=>r.status==='pending_approval');
   else if(activeStat==='today') d=allData.filter(r=>r.reservation_date===todayISO&&r.status!=='denied');
   else if(activeStat==='denied')d=allData.filter(r=>r.status==='denied');
-  else if(activeStat==='directbill')d=allData.filter(r=>r.direct_bill_status==='pending_document');
+  else if(activeStat==='directbill')d=allData.filter(r=>r.direct_bill_status==='pending_send'||r.direct_bill_status==='sent');
   const s=document.getElementById('fs').value.toLowerCase();
   const dt=document.getElementById('fd').value;
   const tp=document.getElementById('ft').value;
@@ -539,7 +540,7 @@ function renderPending(p){
       <div class="pc-row"><span class="pc-k">Email</span><span class="pc-v">${x(r.email)}</span></div>
       <div class="pc-row"><span class="pc-k">Payment</span><span class="pc-v">${x(r.payment_method||'—')}</span></div>
       ${r.notes?`<div class="pc-row"><span class="pc-k">Notes</span><span class="pc-v">${x(r.notes)}</span></div>`:''}
-      ${r.direct_bill_status&&r.direct_bill_status!=='na'?`<div style="background:${dbColor(r.direct_bill_status)};border-radius:6px;padding:5px 8px;font-size:11px;margin-top:5px">${dbText(r.direct_bill_status)}</div>`:''}
+      ${dbPendingBadge(r.direct_bill_status)}
     </div>
     <div class="pc-acts">
       <a class="b-ap" href="/manager/approve/${r.id}">✓ Approve</a>
@@ -660,7 +661,21 @@ async function saveEdit(){
 }
 
 // ── Direct bill ────────────────────────────────────────────────────────────
+// ── Direct Bill helper functions ──────────────────────────────────────────
+// Safe helper — no nested template literals, avoids renderPending errors
+function dbPendingBadge(s){
+  if(!s||s==='na') return '';
+  const cfg={
+    pending_send:{bg:'#ede9fe',color:'#6d28d9',txt:'📄 Direct Bill — form not sent yet'},
+    sent:        {bg:'#dbeafe',color:'#1d4ed8',txt:'📨 Direct Bill — form sent, awaiting reply'},
+    received:    {bg:'#dcfce7',color:'#15803d',txt:'✓ Direct Bill — document received'}
+  };
+  const t=cfg[s]||cfg['pending_send'];
+  return '<div style="background:'+t.bg+';color:'+t.color+';border-radius:6px;padding:5px 8px;font-size:11px;margin-top:5px">'+t.txt+'</div>';
+}
+
 // ── Direct Bill functions ──────────────────────────────────────────────────
+function dbColor(s){return{pending_send:'#ede9fe',sent:'#dbeafe',received:'#dcfce7'}[s]||'#f3f4f6';}
 function dbBadge(status){
   if(!status||status==='na') return '';
   const map={

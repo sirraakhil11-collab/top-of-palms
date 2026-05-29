@@ -135,48 +135,5 @@ async function sendDirectBillEmail(reservation) {
   console.log(`[DirectBill] Check-in doc sent to ${reservation.email}, manager notified`);
 }
 
-// Manager approval email — links go to confirmation page (not direct action)
-async function sendManagerApprovalEmail(reservation) {
-  const base       = process.env.BASE_URL || 'http://localhost:3000';
-  const approveUrl = `${base}/manager/confirm/approve/${reservation.id}`;
-  const denyUrl    = `${base}/manager/confirm/deny/${reservation.id}`;
-  const dashUrl    = `${base}/manager/dashboard`;
-  const party      = reservation.party+(reservation.party===1?' guest':' guests');
-
-  if (!process.env.SENDGRID_API_KEY || !process.env.MANAGER_EMAIL) {
-    console.log(`[Manager] Not configured. Approve: ${approveUrl} | Deny: ${denyUrl}`); return;
-  }
-
-  const extraRows = [
-    row('Name', reservation.name),
-    row('USF UID', `<span style="font-family:monospace">${reservation.uid}</span>`),
-    row('Department', reservation.department||'—'),
-    row('Phone Ext', reservation.phone_ext||'—'),
-    row('Email', reservation.email),
-    row('Requested time', reservation.datetime),
-    row('Party size', party),
-    row('Seating preference', reservation.seating_preference||'—'),
-    row('Payment method', reservation.payment_method||'—'),
-    reservation.notes ? row('Notes', reservation.notes) : '',
-    row('Type', reservation.guest_status==='faculty'?'Faculty':'Student', true)
-  ].filter(Boolean).join('');
-
-  await sgMail.send({
-    to:process.env.MANAGER_EMAIL, from:{email:FROM,name:NAME},
-    subject:`Action needed — Reservation: ${reservation.name} (${party}, ${reservation.datetime})`,
-    html: layout(`
-      <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Action required</div>
-      <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">New reservation request</h2>
-      ${(reservation.payment_method||'').includes('Direct Bill')?'<p style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1d4ed8;margin-bottom:16px">💳 <strong>Direct Bill</strong> — authorization document will be sent to guest. Mark as received when you get the form.</p>':''}
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:24px"><table style="width:100%;border-collapse:collapse">${extraRows}</table></div>
-      <p style="color:#374151;font-size:13px;margin-bottom:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px">⚠️ Click a button below — you will see a confirmation page before any action is taken.</p>
-      <div style="text-align:center;margin-bottom:20px">
-        <a href="${approveUrl}" style="display:inline-block;background:#006747;color:#fff;text-decoration:none;padding:13px 32px;border-radius:8px;font-size:15px;font-weight:600;margin-right:12px">✓ Review &amp; Approve</a>
-        <a href="${denyUrl}" style="display:inline-block;background:#fff;color:#b91c1c;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;border:1.5px solid #b91c1c">✕ Review &amp; Deny</a>
-      </div>
-      <p style="text-align:center"><a href="${dashUrl}" style="color:#9ca3af;font-size:12px;text-decoration:none">View all pending reservations →</a></p>`)
-  });
-  console.log(`[Manager] Approval email sent`);
-}
 
 module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail };
