@@ -135,5 +135,48 @@ async function sendDirectBillEmail(reservation) {
   console.log(`[DirectBill] Check-in doc sent to ${reservation.email}, manager notified`);
 }
 
+// Manager approval email — links go to confirmation page (not direct action)
+async function sendManagerApprovalEmail(reservation) {
+  const base       = process.env.BASE_URL || 'http://localhost:3000';
+  const approveUrl = `${base}/manager/confirm/approve/${reservation.id}`;
+  const denyUrl    = `${base}/manager/confirm/deny/${reservation.id}`;
+  const dashUrl    = `${base}/manager/dashboard`;
+  const party      = reservation.party+(reservation.party===1?' guest':' guests');
+
+  if (!process.env.SENDGRID_API_KEY || !process.env.MANAGER_EMAIL) {
+    console.log(`[Manager] Not configured. Approve: ${approveUrl} | Deny: ${denyUrl}`); return;
+  }
+
+  const extraRows = [
+    row('Name', reservation.name),
+    row('USF UID', `<span style="font-family:monospace">${reservation.uid}</span>`),
+    row('Department', reservation.department||'—'),
+    row('Phone Ext', reservation.phone_ext||'—'),
+    row('Email', reservation.email),
+    row('Requested time', reservation.datetime),
+    row('Party size', party),
+    row('Seating preference', reservation.seating_preference||'—'),
+    row('Payment method', reservation.payment_method||'—'),
+    reservation.notes ? row('Notes', reservation.notes) : '',
+    row('Type', reservation.guest_status==='faculty'?'Faculty':'Student', true)
+  ].filter(Boolean).join('');
+
+  await sgMail.send({
+    to:process.env.MANAGER_EMAIL, from:{email:FROM,name:NAME},
+    subject:`Action needed — Reservation: ${reservation.name} (${party}, ${reservation.datetime})`,
+    html: layout(`
+      <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Action required</div>
+      <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">New reservation request</h2>
+      <p style="color:#6b7280;font-size:14px;margin:0 0 20px">A new reservation needs your approval.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">${extraRows}</table></div>
+      <div style="text-align:center;margin:24px 0">
+        <a href="${approveUrl}" style="background:#006747;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;margin-right:12px">Review & Approve →</a>
+        <a href="${denyUrl}" style="background:#dc2626;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600">Review & Deny →</a>
+      </div>
+      <p style="text-align:center;margin-top:16px"><a href="${dashUrl}" style="color:#006747;font-size:13px">Open Dashboard</a></p>`)
+  });
+
+  console.log(`[Manager] Approval email sent for ${reservation.name}`);
+}
 
 module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail };
