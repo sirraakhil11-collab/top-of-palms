@@ -47,6 +47,7 @@ if (USE_PG) {
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS seating_preference TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS payment_method     TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_status TEXT DEFAULT 'na';
+    UPDATE reservations SET direct_bill_status='pending_send' WHERE direct_bill_status='pending_document';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS attendance         TEXT DEFAULT 'pending';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS checked_in_at      TEXT;
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS notes              TEXT DEFAULT '';
@@ -128,7 +129,7 @@ async function createReservation(data) {
     reservation_time:   data.reservation_time  || '',
     seating_preference: data.seating_preference|| '',
     payment_method:     data.payment_method    || '',
-    direct_bill_status: hasDB ? 'pending_document' : 'na',
+    direct_bill_status: hasDB ? 'pending_send' : 'na',  // pending_send = chosen but form not sent yet
     notes:              data.notes             || '',
     table_number:       data.table_number      || '',
     status:             data.status            || 'pending_approval',
@@ -225,7 +226,7 @@ async function getStats() {
         COALESCE(SUM(party) FILTER (WHERE reservation_date=$1 AND status IN ('pending_approval','approved')),0) AS people_today,
         COUNT(*) FILTER (WHERE attendance='checked_in'  AND reservation_date=$1)                    AS checked_in_today,
         COUNT(*) FILTER (WHERE attendance='no_show'     AND reservation_date=$1)                    AS no_show_today,
-        COUNT(*) FILTER (WHERE direct_bill_status='pending_document')                               AS direct_bill_pending
+        COUNT(*) FILTER (WHERE direct_bill_status IN ('pending_send','sent'))                       AS direct_bill_pending
       FROM reservations
     `,[today]);
     const s=rows[0];
@@ -251,7 +252,7 @@ async function getStats() {
     total_today:active.length, total_all:rows.length, people_today:pc,
     checked_in_today:forToday.filter(r=>r.attendance==='checked_in').length,
     no_show_today:forToday.filter(r=>r.attendance==='no_show').length,
-    direct_bill_pending:rows.filter(r=>r.direct_bill_status==='pending_document').length,
+    direct_bill_pending:rows.filter(r=>['pending_send','sent'].includes(r.direct_bill_status)).length,
     daily_count:pc,daily_limit:limit,slots_left:Math.max(0,limit-pc)
   };
 }

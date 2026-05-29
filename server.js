@@ -9,6 +9,7 @@ const { handleIncomingSMS }                         = require('./src/sms');
 const { getEmailReply }                             = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./src/email');
+const directBill = require('./src/direct-bill');
 const blockedDates = require('./src/blocked-dates');
 const auth = require('./src/auth');
 const db   = require('./src/db');
@@ -228,24 +229,45 @@ app.patch('/api/reservations/:id/attendance', auth.requirePos, async (req, res) 
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-// Direct bill status
-app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, res) => {
+// ── Direct Bill Service routes ────────────────────────────────────────────
+
+// Send the authorization form to guest (manager clicks "Send Form" button)
+app.post('/api/reservations/:id/directbill/send', auth.requireManager, async (req, res) => {
   try {
-    const { direct_bill_status } = req.body;
-    if (!['na','pending_document','document_received'].includes(direct_bill_status))
-      return res.status(400).json({ error:'Invalid status' });
-    const r=await db.getReservation(req.params.id);
+    const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
-    res.json(await db.updateReservation(req.params.id,{ direct_bill_status }));
+    if (!(r.payment_method||'').includes('Direct Bill'))
+      return res.status(400).json({ error:'This reservation does not use Direct Bill' });
+    const result = await directBill.sendDirectBillForm(r);
+    const updated = await db.updateReservation(r.id, {
+      direct_bill_status: 'sent',
+      processed_at: new Date().toISOString()
+    });
+    res.json({ success:true, sent: result.success, reservation: updated });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-app.post('/api/reservations/:id/resend-directbill', auth.requireManager, async (req, res) => {
+// Mark document as received + notify both manager and guest
+app.post('/api/reservations/:id/directbill/received', auth.requireManager, async (req, res) => {
   try {
-    const r=await db.getReservation(req.params.id);
+    const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
-    await sendDirectBillEmail(r);
-    res.json({ success:true });
+    const updated = await db.updateReservation(r.id, { direct_bill_status:'received' });
+    await directBill.notifyDocReceived(updated).catch(console.error);
+    await directBill.confirmDocReceived(updated).catch(console.error);
+    res.json({ success:true, reservation: updated });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Update direct bill status manually
+app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, res) => {
+  try {
+    const { direct_bill_status } = req.body;
+    if (!['na','pending_send','sent','received'].includes(direct_bill_status))
+      return res.status(400).json({ error:'Invalid status' });
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    res.json(await db.updateReservation(req.params.id,{ direct_bill_status }));
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 

@@ -349,10 +349,22 @@ async function checkSlots(){
   try{
     const resp = await fetch(`/api/slots?date=${d}`);
     const data = await resp.json();
-    document.getElementById('v-slots').textContent = data.slots_left;
-    document.getElementById('v-slots-sub').textContent = `of ${data.daily_limit} covers`;
     const isToday = d===todayISO;
-    document.getElementById('slots-lbl').textContent = isToday?'Covers left today':'Covers left for '+new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dateLabel = isToday ? 'today' : new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+    if(data.is_weekend){
+      document.getElementById('v-slots').textContent = '—';
+      document.getElementById('v-slots-sub').textContent = 'Closed (weekend)';
+      document.getElementById('slots-lbl').textContent = dateLabel;
+    } else if(data.blocked){
+      document.getElementById('v-slots').textContent = '🚫';
+      document.getElementById('v-slots-sub').textContent = data.blocked_reason||'Closed';
+      document.getElementById('slots-lbl').textContent = dateLabel;
+    } else {
+      document.getElementById('v-slots').textContent = data.slots_left;
+      document.getElementById('v-slots-sub').textContent = `of ${data.daily_limit} covers (${data.people_booked} booked)`;
+      document.getElementById('slots-lbl').textContent = 'Covers left for '+dateLabel;
+    }
   }catch(e){console.error(e);}
 }
 
@@ -411,11 +423,14 @@ async function loadAll(){
     document.getElementById('v-today').textContent   = s.total_today;
     document.getElementById('v-today-sub').textContent = 'for '+todayFmt;
     document.getElementById('v-denied').textContent  = s.denied_all;
-    // Set today as default for slots picker if not already set
+    // Only update slots card if it's showing today (don't stomp a custom date lookup)
     const sp=document.getElementById('slots-date');
     if(!sp.value) sp.value=todayISO;
-    document.getElementById('v-slots').textContent   = s.slots_left;
-    document.getElementById('v-slots-sub').textContent = `of ${s.daily_limit} covers`;
+    if(!sp.value || sp.value===todayISO){
+      document.getElementById('v-slots').textContent    = s.slots_left;
+      document.getElementById('v-slots-sub').textContent= `of ${s.daily_limit} covers`;
+      document.getElementById('slots-lbl').textContent  = 'Covers left today';
+    }
     document.getElementById('v-all').textContent     = s.total_all;
     // Row 2
     document.getElementById('v-checkin').textContent   = s.checked_in_today ?? 0;
@@ -481,7 +496,7 @@ function renderPending(p){
       <div class="pc-row"><span class="pc-k">Email</span><span class="pc-v">${x(r.email)}</span></div>
       <div class="pc-row"><span class="pc-k">Payment</span><span class="pc-v">${x(r.payment_method||'—')}</span></div>
       ${r.notes?`<div class="pc-row"><span class="pc-k">Notes</span><span class="pc-v">${x(r.notes)}</span></div>`:''}
-      ${r.direct_bill_status==='pending_document'?'<div style="background:#ede9fe;border-radius:6px;padding:5px 8px;font-size:11px;color:#6d28d9;margin-top:5px">📄 Direct Bill — document pending</div>':''}
+      ${r.direct_bill_status&&r.direct_bill_status!=='na'?`<div style="background:${dbColor(r.direct_bill_status)};border-radius:6px;padding:5px 8px;font-size:11px;margin-top:5px">${dbText(r.direct_bill_status)}</div>`:''}
     </div>
     <div class="pc-acts">
       <a class="b-ap" href="/manager/approve/${r.id}">✓ Approve</a>
@@ -503,7 +518,7 @@ function renderTable(data){
     <td style="white-space:nowrap">${x(r.datetime)}</td>
     <td>${r.party}</td>
     <td style="font-size:11px">${x(r.department||'—')}</td>
-    <td style="font-size:11px">${x(r.payment_method||'—')}<br>${r.direct_bill_status==='pending_document'?'<span class="db-badge db-pending">Doc pending</span>':r.direct_bill_status==='document_received'?'<span class="db-badge db-received">Doc received</span>':''}</td>
+    <td style="font-size:11px">${x(r.payment_method||'—')}<br>${dbBadge(r.direct_bill_status)}</td>
     <td style="font-size:11px">${x(r.seating_preference||'—')}</td>
     <td style="font-weight:700;color:#006747;font-size:13px">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
     <td style="font-family:monospace;font-size:11px">${x(r.uid)}</td>
@@ -512,7 +527,7 @@ function renderTable(data){
     <td><div class="acts">
       ${r.status==='pending_approval'?`<a class="tb tap" href="/manager/approve/${r.id}">Approve</a><a class="tb tdn" href="/manager/deny/${r.id}">Deny</a>`:''}
       <button class="tb ted" onclick="openEdit('${r.id}')">Edit</button>
-      ${r.direct_bill_status==='pending_document'?`<button class="tb tdb" onclick="markDocReceived('${r.id}')">Doc ✓</button><button class="tb trs" onclick="resendDB('${r.id}')">Resend</button>`:''}
+      ${r.direct_bill_status&&r.direct_bill_status!=='na'?dbActions(r):''}
       <button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>
     </div></td>
   </tr>`).join('');
@@ -602,13 +617,34 @@ async function saveEdit(){
 }
 
 // ── Direct bill ────────────────────────────────────────────────────────────
-async function markDocReceived(id){
-  await fetch(`/api/reservations/${id}/directbill`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({direct_bill_status:'document_received'})});
-  await loadAll();toast('Document marked as received ✓');
+// ── Direct Bill Service functions ─────────────────────────────────────────
+function dbBadge(status){
+  if(!status||status==='na') return '';
+  const map={pending_send:'<span class="db-badge db-pending">📄 Form not sent</span>',sent:'<span class="db-badge" style="background:#dbeafe;color:#1d4ed8">📨 Form sent</span>',received:'<span class="db-badge db-received">✓ Doc received</span>'};
+  return map[status]||'';
 }
-async function resendDB(id){
-  await fetch(`/api/reservations/${id}/resend-directbill`,{method:'POST',headers:{'Content-Type':'application/json'}});
-  toast('Direct bill form resent ✓');
+function dbColor(s){return{pending_send:'#ede9fe',sent:'#dbeafe',received:'#dcfce7'}[s]||'#f3f4f6';}
+function dbText(s){return{pending_send:'📄 Direct Bill — form not sent yet',sent:'📨 Direct Bill — form sent, awaiting reply',received:'✓ Direct Bill — document received'}[s]||'';}
+function dbActions(r){
+  if(r.direct_bill_status==='pending_send')
+    return `<button class="tb tdb" onclick="sendDBForm('${r.id}')">📨 Send Form</button>`;
+  if(r.direct_bill_status==='sent')
+    return `<button class="tb" style="background:#dcfce7;color:#15803d" onclick="markDBReceived('${r.id}')">✓ Doc Received</button><button class="tb trs" onclick="sendDBForm('${r.id}')">Resend</button>`;
+  if(r.direct_bill_status==='received')
+    return `<span style="font-size:10px;color:#15803d;font-weight:600">✓ Complete</span>`;
+  return '';
+}
+async function sendDBForm(id){
+  const btn=event.target; btn.disabled=true; btn.textContent='Sending…';
+  const r=await fetch(`/api/reservations/${id}/directbill/send`,{method:'POST',headers:{'Content-Type':'application/json'}});
+  if(r.ok){await loadAll();toast('Authorization form sent to guest ✓');}
+  else{const e=await r.json();alert('Failed: '+(e.error||'Unknown error'));btn.disabled=false;btn.textContent='📨 Send Form';}
+}
+async function markDBReceived(id){
+  if(!confirm('Mark Direct Bill document as received? This will email the guest a confirmation.')) return;
+  const r=await fetch(`/api/reservations/${id}/directbill/received`,{method:'POST',headers:{'Content-Type':'application/json'}});
+  if(r.ok){await loadAll();toast('Document marked received — guest notified ✓');}
+  else{const e=await r.json();alert('Failed: '+(e.error||'Unknown error'));}
 }
 
 // ── PIN delete ─────────────────────────────────────────────────────────────
