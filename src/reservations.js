@@ -43,11 +43,8 @@ async function processReservation(session) {
   await sendManagerApprovalEmail(reservation).catch(console.error);
   // Tell guest it's under review
   await sendEmail(reservation, 'pending').catch(console.error);
-  // If Direct Bill — send document email to guest
-  if ((data.payment_method||'').includes('Direct Bill')) {
-    await sendDirectBillEmail(reservation).catch(console.error);
-    console.log(`[Reservation] Direct Bill document sent to ${data.email}`);
-  }
+  // Direct Bill document email is sent at CHECK-IN, not here
+  // (guest hasn't dined yet — send doc when they arrive)
 
   return { success:true, status:'pending' };
 }

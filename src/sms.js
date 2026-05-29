@@ -1,81 +1,93 @@
 /**
- * SMS channel — Twilio Programmable SMS
- *
- * How it works:
- *   Guest texts your Twilio number → Twilio POSTs to /sms/incoming
- *   We reply with TwiML <Message> responses, building up the conversation
- *   Session is keyed by the guest's phone number (not a call SID)
- *
- * Twilio setup:
- *   Phone Numbers → your number → Messaging → "A message comes in" → Webhook
- *   URL: https://your-server.com/sms/incoming   Method: POST
+ * SMS Reservation Handler — Twilio incoming SMS
+ * Guests text the restaurant number → AI collects info → creates pending reservation
+ * Same flow as email channel
  */
-
-const twilio = require('twilio');
-const { getAgentReply } = require('./agent');
+const { getEmailReply } = require('./agent');
 const { processReservation } = require('./reservations');
 
-// Shared sessions store (same object passed in from server.js)
-let _sessions;
-function init(sessions) { _sessions = sessions; }
+// Active SMS conversations keyed by phone number
+const smsSessions = {};
+// Cooldown after completing reservation (30 min)
+const completedAt = {};
+const COOLDOWN_MS = 30 * 60 * 1000;
 
-async function handleIncoming(req, res) {
-  const from   = req.body.From  || '';
-  const body   = (req.body.Body || '').trim();
-  const key    = `sms:${from}`;
+async function handleIncomingSMS(req, res) {
+  // Always respond with Twilio TwiML
+  const twiml = (msg) => {
+    res.set('Content-Type', 'text/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escXML(msg)}</Message></Response>`);
+  };
 
-  console.log(`\n[SMS] From: ${from} — "${body}"`);
+  const from    = req.body.From || req.body.from || '';
+  const body    = (req.body.Body || req.body.body || '').trim();
+  const phoneNo = from.replace(/\D/g,'').slice(-10); // normalize to 10 digits
 
-  // Start or retrieve session
-  if (!_sessions[key]) {
-    _sessions[key] = {
+  if (!phoneNo || !body) { res.set('Content-Type','text/xml'); res.send('<Response></Response>'); return; }
+
+  console.log(`\n[SMS] From: ${from} | Message: "${body}"`);
+
+  // Cooldown check
+  const key = `sms:${phoneNo}`;
+  if (completedAt[key] && (Date.now() - completedAt[key]) < COOLDOWN_MS) {
+    return twiml('Thank you! Your reservation request has been received. We will send a confirmation email shortly. Reply START to make another reservation.');
+  }
+
+  // Reset command
+  if (body.toLowerCase() === 'start' || body.toLowerCase() === 'restart') {
+    delete smsSessions[key];
+    return twiml('Welcome to On Top of the Palms! 🌴 To make a reservation, please tell us your name and desired date. Example: "Hi, I\'m Dr. Smith and I\'d like a table for 4 on June 15th at noon."');
+  }
+
+  // Start or continue session
+  if (!smsSessions[key]) {
+    smsSessions[key] = {
       channel: 'sms',
-      callerNumber: from,
-      callSid: key,
+      replyTo: from,
+      phoneNumber: from,
       messages: [],
       collected: null
     };
+    console.log(`[SMS] New session for ${phoneNo}`);
   }
 
-  const session = _sessions[key];
+  const session = smsSessions[key];
+  const userContent = session.messages.length === 0
+    ? `I would like to make a reservation. My message: ${body}`
+    : body;
 
-  // First message — greet
-  if (session.messages.length === 0 && body.length > 0) {
-    // Treat whatever they sent as the opener
-    session.messages.push({
-      role: 'user',
-      content: `Hello, I would like to make a reservation. My first message is: ${body}`
-    });
-  } else if (body.length > 0) {
-    session.messages.push({ role: 'user', content: body });
-  } else {
-    // Empty first text — greet them
-    session.messages.push({ role: 'user', content: 'Hi, I want to make a reservation.' });
-  }
-
-  const twiml = new twilio.twiml.MessagingResponse();
+  session.messages.push({ role: 'user', content: userContent });
 
   try {
-    const aiReply = await getAgentReply(session, 'sms');
+    const aiReply = await getEmailReply(session.messages);
     session.messages.push({ role: 'assistant', content: aiReply.text });
 
-    twiml.message(aiReply.text);
-
     if (aiReply.complete && aiReply.collected) {
-      session.collected = aiReply.collected;
-      delete _sessions[key]; // Clean up session
-      setImmediate(() =>
-        processReservation(session).catch(err =>
-          console.error('[SMS Reservation] Error:', err)
-        )
-      );
-    }
-  } catch (err) {
-    console.error('[SMS] Agent error:', err);
-    twiml.message("Sorry, something went wrong. Please text us again or call (813) 974-0000.");
-  }
+      session.collected          = aiReply.collected;
+      session.collected.channel  = 'sms';
+      // Use phone as fallback email placeholder (real email collected in conversation)
+      if (!session.collected.email) session.collected.email = `sms:${from}`;
 
-  res.type('text/xml').send(twiml.toString());
+      delete smsSessions[key];
+      completedAt[key] = Date.now();
+      setTimeout(() => delete completedAt[key], COOLDOWN_MS);
+
+      setImmediate(() => processReservation(session).catch(console.error));
+      return twiml(aiReply.text + '\n\nReply START to make another reservation.');
+    }
+
+    // Truncate SMS to 1600 chars (Twilio limit)
+    const smsText = aiReply.text.length > 1550 ? aiReply.text.slice(0, 1547) + '...' : aiReply.text;
+    return twiml(smsText);
+
+  } catch (err) {
+    console.error('[SMS] Error:', err.message);
+    return twiml('Sorry, something went wrong. Please try again or call us at ' + (process.env.RESTAURANT_PHONE || '(813) 974-0000'));
+  }
 }
 
-module.exports = { init, handleIncoming };
+function escXML(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+module.exports = { handleIncomingSMS };

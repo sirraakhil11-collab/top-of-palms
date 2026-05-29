@@ -72,18 +72,18 @@ function deniedEmail(r) {
     <p style="color:#374151;font-size:14px">Please reply here or call ${PHONE} to find an alternative time. We'd love to have you!</p>`) };
 }
 
-// Direct Bill document email
+// Direct Bill document email — sent at CHECK-IN (not at reservation creation)
 async function sendDirectBillEmail(reservation) {
   if (!process.env.SENDGRID_API_KEY) { console.log('[Email] No key — would send direct bill doc'); return; }
   const ref = reservation.id.slice(0,8).toUpperCase();
   await sgMail.send({
     to:   reservation.email,
     from: { email:FROM, name:NAME },
-    subject: `Direct Bill authorization required — Confirmation ${ref}`,
+    subject: `Direct Bill authorization — Welcome! Confirmation ${ref}`,
     html: layout(`
       <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">📄 Action required</div>
       <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Direct Bill Authorization</h2>
-      <p style="color:#6b7280;font-size:14px;margin:0 0 16px">Hi ${reservation.name}, you selected <strong>Direct Bill</strong> as your payment method. Please complete and return the authorization form below.</p>
+      <p style="color:#6b7280;font-size:14px;margin:0 0 16px">Hi ${reservation.name}, thank you for dining with us today! Since you selected <strong>Direct Bill</strong>, please complete the authorization form below. Payment is due within <strong>30 days of dining</strong>.</p>
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">
         ${row('Reservation', ref)}
         ${row('Date', reservation.datetime)}

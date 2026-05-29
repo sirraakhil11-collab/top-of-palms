@@ -213,10 +213,51 @@
   const PAYMENT_OPTIONS = ['CC/Cash','USF Card','Direct Bill'];
   let selectedPayments = [];
 
-  // Set min date = tomorrow
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate()+1);
-  document.getElementById('f-date').min = tomorrow.toISOString().split('T')[0];
+  function showErr(msg){const el=document.getElementById('err-msg');if(!el)return;el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});const b=document.getElementById('submit-btn');if(b){b.disabled=false;b.textContent='Submit Reservation Request';}}
+
+  // Weekday-only date picker (Mon-Fri, min tomorrow, block holidays)
+  let blockedSet = new Set();
+  async function loadBlocked(){
+    try{
+      const r = await fetch('/api/blocked-dates');
+      const data = await r.json();
+      blockedSet = new Set(data.map(d=>d.date));
+    }catch(e){}
+    setupDatePicker();
+  }
+
+  function setupDatePicker(){
+    const inp = document.getElementById('f-date');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate()+1);
+    // Find next valid weekday as min
+    while(tomorrow.getDay()===0||tomorrow.getDay()===6||blockedSet.has(tomorrow.toISOString().split('T')[0])){
+      tomorrow.setDate(tomorrow.getDate()+1);
+    }
+    inp.min = tomorrow.toISOString().split('T')[0];
+    inp.addEventListener('change', validateDate);
+  }
+
+  function validateDate(){
+    const inp  = document.getElementById('f-date');
+    const val  = inp.value;
+    if(!val) return;
+    const d = new Date(val+'T12:00:00');
+    const day = d.getDay();
+    if(day===0||day===6){
+      showErr('We are only open Monday–Friday. Please select a weekday.');
+      inp.value='';
+      return;
+    }
+    if(blockedSet.has(val)){
+      showErr('This date is not available (holiday or closure). Please choose another date.');
+      inp.value='';
+      return;
+    }
+    document.getElementById('err-msg').classList.remove('show');
+  }
+
+  loadBlocked();
 
   // Time slots 11:00AM - 1:45PM in 15min increments
   const sel = document.getElementById('f-time');

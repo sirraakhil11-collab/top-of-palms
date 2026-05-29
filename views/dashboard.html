@@ -253,6 +253,27 @@
       </table>
     </div>
   </div>
+  <!-- Blocked Dates / Holidays -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">
+      🚫 Blocked Dates &amp; Holidays
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Restaurant is closed on these dates</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Date to block</label>
+          <input type="date" id="bd-date" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Reason</label>
+          <input type="text" id="bd-reason" placeholder="e.g. Thanksgiving Day, Spring Break" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;width:100%">
+        </div>
+        <button onclick="addBlockedDate()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Block Date</button>
+      </div>
+      <div id="bd-list"><div style="text-align:center;color:#9ca3af;padding:20px">Loading…</div></div>
+    </div>
+  </div>
 </main>
 
 <!-- ── EDIT MODAL ─────────────────────────────────────────────────────────── -->
@@ -333,6 +354,51 @@ async function checkSlots(){
     const isToday = d===todayISO;
     document.getElementById('slots-lbl').textContent = isToday?'Covers left today':'Covers left for '+new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   }catch(e){console.error(e);}
+}
+
+// ── Blocked dates ─────────────────────────────────────────────────────────
+async function loadBlockedDates(){
+  try{
+    const data = await fetch('/api/blocked-dates').then(r=>r.json());
+    const el   = document.getElementById('bd-list');
+    if(!data.length){ el.innerHTML='<p style="color:#9ca3af;font-size:13px">No dates blocked. Add holidays above.</p>'; return; }
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>
+        <th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;background:#f9fafb;border-bottom:1px solid #e5e7eb">Date</th>
+        <th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;background:#f9fafb;border-bottom:1px solid #e5e7eb">Day</th>
+        <th style="text-align:left;padding:8px 12px;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;background:#f9fafb;border-bottom:1px solid #e5e7eb">Reason</th>
+        <th style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid #e5e7eb"></th>
+      </tr></thead>
+      <tbody>${data.map(d=>{
+        const day=new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+        const isPast=d.date<new Date().toISOString().split('T')[0];
+        return `<tr style="${isPast?'opacity:.5':''}">
+          <td style="padding:9px 12px;border-bottom:1px solid #f3f4f6;font-family:monospace;font-weight:600">${d.date}</td>
+          <td style="padding:9px 12px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#374151">${day}</td>
+          <td style="padding:9px 12px;border-bottom:1px solid #f3f4f6">${x(d.reason)}</td>
+          <td style="padding:9px 12px;border-bottom:1px solid #f3f4f6;text-align:right">
+            <button onclick="removeBlockedDate('${d.date}')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer">Remove</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }catch(e){ console.error(e); }
+}
+
+async function addBlockedDate(){
+  const date   = document.getElementById('bd-date').value;
+  const reason = document.getElementById('bd-reason').value.trim();
+  if(!date||!reason){ alert('Both date and reason are required.'); return; }
+  const r = await fetch('/api/blocked-dates',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date,reason}) });
+  if(r.ok){ document.getElementById('bd-date').value=''; document.getElementById('bd-reason').value=''; await loadBlockedDates(); toast('Date blocked ✓'); }
+  else { const e=await r.json(); alert(e.error||'Failed'); }
+}
+
+async function removeBlockedDate(date){
+  if(!confirm(`Remove block for ${date}? Reservations will be allowed again.`)) return;
+  await fetch(`/api/blocked-dates/${date}`,{ method:'DELETE' });
+  await loadBlockedDates();
+  toast('Date unblocked ✓');
 }
 
 async function loadAll(){
@@ -566,7 +632,7 @@ function fmt(i){return new Date(i).toLocaleDateString('en-US',{month:'short',day
 function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 async function logout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login?type=manager';}
 
-loadAll();setInterval(loadAll,30000);
+loadAll();loadBlockedDates();setInterval(loadAll,30000);
 </script>
 </body>
 </html>
