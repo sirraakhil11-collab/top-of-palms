@@ -325,6 +325,15 @@ app.patch('/api/pos/table/:id', auth.requirePos, async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
+app.patch('/api/pos/payment/:id', auth.requirePos, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    const { payment_method } = req.body;
+    res.json(await db.updateReservation(req.params.id, { payment_method: payment_method||'' }));
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 //  BLOCKED DATES (holidays)
 // ══════════════════════════════════════════════════════════════════════════

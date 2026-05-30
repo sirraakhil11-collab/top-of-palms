@@ -237,17 +237,14 @@ function render(date){
     </div>`;
 
     const paySection = `<div class="tbl-section">
-      <div class="tbl-label">Payment${isCheckedIn?'':' <span style="color:#6b7280;font-weight:400">(tap to toggle)</span>'}</div>
-      ${isCheckedIn
-        ? `<div style="font-size:12px;color:#d1d5db;margin-top:2px">${r.payment_method||'<span style="color:#4b5563">Not specified</span>'}</div>`
-        : `<div class="pay-chips" id="pchips-${r.id}">
-            ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-val="${pm}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
-          </div>
-          <button class="save-sm" id="psave-${r.id}" style="display:none;margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700" onclick="savePay('${r.id}')">💾 Save Payment</button>`
-      }
-      ${r.direct_bill_status==='pending_document'?`<div style="font-size:10px;color:#c4b5fd;margin-top:4px">📄 Direct Bill — awaiting doc</div>`:''}
-      ${r.direct_bill_status==='document_received'?`<div style="font-size:10px;color:#4ade80;margin-top:4px">✓ Direct Bill — doc received</div>`:''}
-      ${r.seating_preference&&!isCheckedIn?`<div style="font-size:10px;color:#6b7280;margin-top:3px">Pref: ${x(r.seating_preference)}</div>`:''}
+      <div class="tbl-label">Payment <span style="color:#6b7280;font-weight:400">(tap to toggle)</span></div>
+      <div class="pay-chips" id="pchips-${r.id}">
+        ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-rid="${r.id}" data-val="${pm}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
+      </div>
+      <button class="save-sm" id="psave-${r.id}" style="display:none;margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700" onclick="savePay('${r.id}')">💾 Save Payment</button>
+      ${r.direct_bill_status==='pending_send'?`<div style="font-size:10px;color:#c4b5fd;margin-top:4px">📄 Direct Bill — awaiting doc</div>`:''}
+      ${r.direct_bill_status==='received'?`<div style="font-size:10px;color:#4ade80;margin-top:4px">✓ Direct Bill — doc received</div>`:''}
+      ${r.seating_preference?`<div style="font-size:10px;color:#6b7280;margin-top:3px">Pref: ${x(r.seating_preference)}</div>`:''}
     </div>`;
 
     const attSection = `<div class="att-section">
@@ -339,8 +336,8 @@ function toggleChip(id, val){
 
 async function savePay(id){
   const arr = posPaySel[id] || [];
-  const resp = await fetch('/api/reservations/'+id, {
-    method:'PUT',
+  const resp = await fetch('/api/pos/payment/'+id, {
+    method:'PATCH',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ payment_method: arr.join(', ') })
   });
