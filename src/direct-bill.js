@@ -20,129 +20,52 @@ const PHONE      = process.env.RESTAURANT_PHONE || '(813) 974-3573';
 const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL || 'topofthepalms@usf.edu';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// buildFormPDF — generates the pre-filled Direct Bill authorization PDF
-// Uses pdfkit (pure Node.js — no Python needed, works on Railway)
-// TO UPDATE THE FORM: edit only this function
+// buildFormPDF — fills the official Direct Bill template with reservation data
+// Loads On_Top_of_the_Palms_Billing_Form.pdf and overlays pre-filled values
+// TO UPDATE FIELD POSITIONS: adjust the coordinates in the overlay section below
 // ─────────────────────────────────────────────────────────────────────────────
-function buildFormPDF(reservation) {
-  return new Promise((resolve, reject) => {
-    try {
-      const PDFDocument = require('pdfkit');
-      const chunks = [];
-      const doc = new PDFDocument({ size:'LETTER', margins:{top:60,bottom:60,left:72,right:72} });
-      doc.on('data', c => chunks.push(c));
-      doc.on('end',  () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+const path = require('path');
+const TEMPLATE_PATH = path.join(__dirname, '..', 'On_Top_of_the_Palms_Billing_Form.pdf');
 
-      const party = parseInt(reservation.party || 0);
-      const total = (party * 12.75).toFixed(2);
-      const resDate = reservation.reservation_date || '';
-      const resTime = reservation.reservation_time || '';
+async function buildFormPDF(reservation) {
+  const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+  const fs = require('fs');
 
-      // ── Logo / Title area ────────────────────────────────────────────────
-      doc.fontSize(9).font('Helvetica').fillColor('#444')
-         .text('USF Dining · Compass USA', { align:'center' });
-      doc.moveDown(0.3);
-      doc.fontSize(26).font('Helvetica-Bold').fillColor('#000')
-         .text('DIRECT BILL FORM', { align:'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica').fillColor('#000')
-         .text('Phone: (813) 974-3573', { align:'center' });
-      doc.moveDown(0.15);
-      doc.fontSize(11).text('Forward by e-mail only to: topofthepalms@usf.edu', { align:'center' });
-      doc.moveDown(0.7);
+  const party = parseInt(reservation.party || 0);
+  const total = (party * 12.75).toFixed(2);
+  const resDate = reservation.reservation_date || '';
+  const resTime = reservation.reservation_time || '';
 
-      // ── Divider ──────────────────────────────────────────────────────────
-      doc.moveTo(72, doc.y).lineTo(540, doc.y).lineWidth(1).strokeColor('#000').stroke();
-      doc.moveDown(0.7);
+  // Load the official template PDF
+  const templateBytes = fs.readFileSync(TEMPLATE_PATH);
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const page = pdfDoc.getPages()[0];
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontSize = 11;
+  const color = rgb(0, 0, 0);
 
-      // ── Helper: labeled field with underline ─────────────────────────────
-      const lineField = (label, value, x1=72, x2=540, skipMove=false) => {
-        const y = doc.y;
-        doc.font('Helvetica').fontSize(11).fillColor('#000').text(label, x1, y, {continued:false});
-        const lw = doc.widthOfString(label) + 6;
-        if(value) doc.font('Helvetica').fontSize(11).text(value, x1+lw, y, {continued:false});
-        doc.moveTo(x1+lw, y+15).lineTo(x2, y+15).lineWidth(0.5).strokeColor('#000').stroke();
-        if(!skipMove) doc.moveDown(0.9);
-      };
+  // Helper to draw text at absolute coordinates (pdf-lib origin = bottom-left)
+  const draw = (text, x, y) => {
+    if (!text) return;
+    page.drawText(String(text), { x, y, size: fontSize, font, color });
+  };
 
-      // ── Two-column row ───────────────────────────────────────────────────
-      const twoField = (l1,v1,l2,v2) => {
-        const y = doc.y;
-        doc.font('Helvetica').fontSize(11).text(l1, 72, y, {continued:false});
-        const lw1 = doc.widthOfString(l1)+6;
-        if(v1) doc.text(v1, 72+lw1, y, {continued:false});
-        doc.moveTo(72+lw1, y+15).lineTo(285, y+15).lineWidth(0.5).stroke();
+  // ── Pre-filled field overlays ─────────────────────────────────────────────
+  // Coordinates are (x, y) from bottom-left of the Letter page (612 x 792 pt)
+  // Adjust x/y values here if text needs repositioning after visual review
 
-        doc.font('Helvetica').fontSize(11).text(l2, 305, y, {continued:false});
-        const lw2 = doc.widthOfString(l2)+6;
-        if(v2) doc.text(v2, 305+lw2, y, {continued:false});
-        doc.moveTo(305+lw2, y+15).lineTo(540, y+15).lineWidth(0.5).stroke();
-        doc.moveDown(0.9);
-      };
+  draw(resDate,                   178, 533);  // Reservation Date value
+  draw(resTime,                   453, 533);  // Reservation Time value
+  draw(reservation.name || '',    237, 505);  // Invoice to the Attention of
+  draw(reservation.department||'',230, 477);  // Invoice to Department Name
+  draw(reservation.email || '',   103, 449);  // Email
+  draw(reservation.phone_ext||'', 390, 449);  // Phone #
+  draw(reservation.name || '',    177, 421);  // Dining Guest Name
+  draw(String(party),             248, 172);  // Guest Count value
+  draw(total,                     162, 157);  // Total $ value
 
-      // ── Pre-filled fields ────────────────────────────────────────────────
-      twoField('Reservation Date:', resDate, 'Reservation Time:', resTime);
-      lineField('Invoice to the Attention of:  ', reservation.name||'');
-      lineField('Invoice to Department Name:  ', reservation.department||'');
-      twoField('Email:  ', reservation.email||'', 'Phone #:  ', reservation.phone_ext||'');
-      lineField('Dining Guest Name:  ', reservation.name||'');
-
-      doc.moveDown(0.5);
-      doc.moveTo(72, doc.y).lineTo(540, doc.y).lineWidth(1).strokeColor('#000').stroke();
-      doc.moveDown(0.7);
-
-      // ── BILLING section ──────────────────────────────────────────────────
-      doc.fontSize(14).font('Helvetica-Bold').fillColor('#000')
-         .text('BILLING', { align:'center', underline:true });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica-Bold')
-         .text('A Chartfield number, Foundation Fund number, P-card or In-Kind approval is', { align:'center' })
-         .text('required prior to your reservation.', { align:'center' });
-      doc.moveDown(0.6);
-
-      // ── Billing fields (blank for guest to fill) ─────────────────────────
-      const billingField = (label) => {
-        const y = doc.y;
-        const lw = doc.widthOfString(label) + 6;
-        doc.font('Helvetica-Bold').fontSize(11).text(label, 72, y, {continued:false});
-        doc.moveTo(72+lw, y+15).lineTo(480, y+15).lineWidth(0.5).strokeColor('#000').stroke();
-        doc.moveDown(0.9);
-      };
-
-      billingField('Chartfield #');
-      billingField('Foundation #');
-      billingField('In-Kind Account Name (if applicable)');
-
-      doc.moveDown(0.2);
-      doc.fontSize(10).font('Helvetica-Oblique').fillColor('#000')
-         .text('If paying with a P-card, please speak with the Supervisor for more information.');
-      doc.moveDown(0.1);
-      doc.text('If paying with In-Kind, the booking contact must be an authorized user of the In-Kind account.');
-      doc.moveDown(0.7);
-
-      // ── Pre-filled: guest count & total ──────────────────────────────────
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000')
-         .text(`Guest Count: ${party}     @     $12.75 Per Person`, { align:'center' });
-      doc.moveDown(0.2);
-      doc.text(`Total: $${total}`, { align:'center' });
-      doc.moveDown(0.9);
-
-      // ── Signature line ───────────────────────────────────────────────────
-      const sigY = doc.y;
-      doc.font('Helvetica').fontSize(11).text('Signature:  ', 72, sigY, {continued:false});
-      const slw = doc.widthOfString('Signature:  ') + 6;
-      doc.moveTo(72+slw, sigY+15).lineTo(540, sigY+15).lineWidth(0.5).stroke();
-
-      doc.moveDown(2);
-      doc.moveTo(72, doc.y).lineTo(540, doc.y).lineWidth(0.5).strokeColor('#888').stroke();
-      doc.moveDown(0.3);
-      doc.fontSize(8).font('Helvetica').fillColor('#888')
-         .text('Revised Version 10/2025', { align:'center' });
-
-      doc.end();
-    } catch(err) { reject(err); }
-  });
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -242,7 +242,8 @@
   <!-- Search filters -->
   <div class="frow">
     <div class="fg grow"><label>Search</label><input id="fs" placeholder="Name or email…" oninput="applyF()"></div>
-    <div class="fg"><label>Reservation date</label><input type="date" id="fd" onchange="applyF()"></div>
+    <div class="fg"><label>Date from</label><input type="date" id="fd" onchange="applyF()"></div>
+    <div class="fg"><label>Date to</label><input type="date" id="fd2" onchange="applyF()"></div>
     <div class="fg"><label>Type</label><select id="ft" onchange="applyF()"><option value="">All types</option><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
     <button class="clr-btn" onclick="clearF()">✕ Clear</button>
   </div>
@@ -515,10 +516,12 @@ function filtered(){
   else if(activeStat==='directbill')d=allData.filter(r=>r.direct_bill_status==='pending_send'||r.direct_bill_status==='sent');
   const s=document.getElementById('fs').value.toLowerCase();
   const dt=document.getElementById('fd').value;
+  const dt2=document.getElementById('fd2').value;
   const tp=document.getElementById('ft').value;
-  if(s)  d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
-  if(dt) d=d.filter(r=>r.reservation_date===dt);
-  if(tp) d=d.filter(r=>r.guest_status===tp);
+  if(s)   d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
+  if(dt)  d=d.filter(r=>r.reservation_date>=dt);
+  if(dt2) d=d.filter(r=>r.reservation_date<=dt2);
+  if(tp)  d=d.filter(r=>r.guest_status===tp);
   return d;
 }
 
@@ -535,7 +538,7 @@ function clickStat(type){
 }
 function clearStat(){activeStat=null;document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));document.getElementById('fbanner').classList.remove('show');renderTable(filtered())}
 function applyF(){clearStat();renderTable(filtered())}
-function clearF(){document.getElementById('fs').value='';document.getElementById('fd').value='';document.getElementById('ft').value='';clearStat();renderTable(filtered())}
+function clearF(){document.getElementById('fs').value='';document.getElementById('fd').value='';document.getElementById('fd2').value='';document.getElementById('ft').value='';clearStat();renderTable(filtered())}
 function swTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTable(filtered())}
 
 function renderPending(p){
