@@ -189,6 +189,13 @@ function render(date){
   if(activeFilter==='checked_in') filtered=allData.filter(r=>r.attendance==='checked_in');
   else if(activeFilter==='no_show') filtered=allData.filter(r=>r.attendance==='no_show');
   else if(activeFilter==='pending') filtered=allData.filter(r=>!r.attendance||r.attendance==='pending');
+  // Sort: waiting first, then no-show, then checked-in at the bottom
+  const order = {'pending':0,'no_show':1,'checked_in':2};
+  filtered = [...filtered].sort((a,b) => {
+    const ao = order[a.attendance||'pending'] ?? 0;
+    const bo = order[b.attendance||'pending'] ?? 0;
+    return ao - bo;
+  });
 
   if(!filtered.length){
     const msgs={all:'No confirmed reservations for this date.',checked_in:'No guests checked in yet.',no_show:'No no-shows recorded.',pending:'Everyone is checked in!'};
@@ -287,29 +294,47 @@ async function saveSeating(id, val){
 
 // ── Payment chip functions ────────────────────────────────────────────────
 // toggleChip is called by onclick in the HTML chips
-function toggleChip(id, val){
-  // Initialize array from current DB value if not already tracking
+// handleChip reads id and val from the element itself - no quote issues
+function handleChip(el){
+  const id  = el.getAttribute('data-rid');
+  const val = el.getAttribute('data-val');
+  if(!id || !val) return;
+
+  // Initialize from DB value if first tap
   if(!posPaySel[id]){
     const r = allData.find(r=>r.id===id);
     posPaySel[id] = (r?.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean);
   }
-  // Toggle the clicked value
+
+  // Toggle
   const idx = posPaySel[id].indexOf(val);
   if(idx > -1) posPaySel[id].splice(idx,1);
   else          posPaySel[id].push(val);
 
-  // Update chip appearance
-  const chipsEl = document.getElementById('pchips-'+id);
-  if(chipsEl){
-    chipsEl.querySelectorAll('.pay-chip').forEach(ch => {
-      const chipVal = ch.getAttribute('data-val') || ch.textContent.trim();
-      if(posPaySel[id].includes(chipVal)) ch.classList.add('on');
-      else                                 ch.classList.remove('on');
+  // Update ALL chips for this card
+  const container = document.getElementById('pchips-'+id);
+  if(container){
+    container.querySelectorAll('.pay-chip').forEach(chip => {
+      const v = chip.getAttribute('data-val');
+      chip.classList.toggle('on', posPaySel[id].includes(v));
     });
   }
-  // Show the save button
-  const saveBtn = document.getElementById('psave-'+id);
-  if(saveBtn) saveBtn.style.display = 'block';
+
+  // Show save button
+  const btn = document.getElementById('psave-'+id);
+  if(btn) btn.style.display = 'block';
+}
+
+// Keep toggleChip as alias in case called from old HTML
+function toggleChip(id, val){
+  const el = document.querySelector('#pchips-'+id+' [data-val="'+val+'"]');
+  if(el) { handleChip(el); return; }
+  // Fallback if element not found
+  if(!posPaySel[id]){ const r=allData.find(r=>r.id===id); posPaySel[id]=(r?.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean); }
+  const idx=posPaySel[id].indexOf(val);
+  if(idx>-1) posPaySel[id].splice(idx,1); else posPaySel[id].push(val);
+  const btn=document.getElementById('psave-'+id);
+  if(btn) btn.style.display='block';
 }
 
 async function savePay(id){
