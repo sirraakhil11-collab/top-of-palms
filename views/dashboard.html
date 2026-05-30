@@ -132,6 +132,18 @@
     .db-s-sent{background:#dbeafe;color:#1d4ed8}
     .db-s-received{background:#dcfce7;color:#15803d}
     @media(max-width:1000px){.stats-r1,.stats-r2{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:768px){
+      .stats-r1,.stats-r2{grid-template-columns:repeat(2,1fr)}
+      main{padding:16px 12px 40px}
+      header{padding:0 12px}
+      .brand small{display:none}
+      .tscroll{font-size:11px}
+      th,td{padding:7px 8px}
+    }
+    @media(max-width:480px){
+      .stats-r1,.stats-r2{grid-template-columns:1fr 1fr}
+      .hnav a{padding:5px 8px;font-size:12px}
+    }
     @media(max-width:640px){.stats-r1,.stats-r2{grid-template-columns:1fr 1fr}.frow{flex-direction:column}.mg{grid-template-columns:1fr}}
   </style>
 </head>

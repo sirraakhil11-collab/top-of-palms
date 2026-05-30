@@ -75,10 +75,10 @@
     .pos-select:focus{border-color:#4ade80}
     .pos-ms-wrap{position:relative}
     /* Compact payment chips */
-    .pay-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
-    .pay-chip{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid #3d4065;color:#6b7280;background:#252836;transition:all .15s;user-select:none}
-    .pay-chip:hover{border-color:#4ade80;color:#d1d5db}
-    .pay-chip.on{background:#1a2e20;color:#4ade80;border-color:#4ade80}
+    .pay-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
+    .pay-chip{padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #3d4065;color:#6b7280;background:#252836;transition:all .15s;user-select:none;-webkit-tap-highlight-color:transparent;min-height:38px;display:flex;align-items:center}
+    .pay-chip:hover,.pay-chip:active{border-color:#4ade80;color:#d1d5db;background:#2d3148}
+    .pay-chip.on{background:#1a2e20;color:#4ade80;border-color:#4ade80;box-shadow:0 0 8px rgba(74,222,128,.2)}
     .save-sm{background:#006747;border:none;color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;margin-top:5px}
     .save-sm:hover{background:#004d34}
     /* Compact POS table section */
@@ -87,7 +87,17 @@
     .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
     .ei{font-size:44px;margin-bottom:14px}
     .empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
-    @media(max-width:640px){header{padding:12px 14px}.board{padding:12px 14px;grid-template-columns:1fr}.controls{padding:8px 14px}}
+    @media(max-width:640px){
+      header{padding:12px 14px;flex-direction:column;gap:8px}
+      .board{padding:12px 14px;grid-template-columns:1fr}
+      .controls{padding:8px 14px;gap:6px}
+      .sp{font-size:12px;padding:5px 10px}
+      .pay-chip{padding:10px 12px;font-size:13px}
+    }
+    @media(max-width:400px){
+      .board{grid-template-columns:1fr}
+      .att-btns{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -224,9 +234,9 @@ function render(date){
       ${isCheckedIn
         ? `<div style="font-size:12px;color:#d1d5db;margin-top:2px">${r.payment_method||'<span style="color:#4b5563">Not specified</span>'}</div>`
         : `<div class="pay-chips" id="pchips-${r.id}">
-            ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
+            ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-val="${pm}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
           </div>
-          <button class="save-sm" id="psave-${r.id}" style="display:none" onclick="savePay('${r.id}')">Save ✓</button>`
+          <button class="save-sm" id="psave-${r.id}" style="display:none;margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700" onclick="savePay('${r.id}')">💾 Save Payment</button>`
       }
       ${r.direct_bill_status==='pending_document'?`<div style="font-size:10px;color:#c4b5fd;margin-top:4px">📄 Direct Bill — awaiting doc</div>`:''}
       ${r.direct_bill_status==='document_received'?`<div style="font-size:10px;color:#4ade80;margin-top:4px">✓ Direct Bill — doc received</div>`:''}
@@ -275,32 +285,48 @@ async function saveSeating(id, val){
   toast(`Seating set to ${val||'none'}`);
 }
 
-// ── Payment ────────────────────────────────────────────────────────────────
-function togglePP(id){
-  const dd=document.getElementById(`pdd-${id}`);
-  if(!dd) return;
-  document.querySelectorAll('.pos-ms-dd.open').forEach(el=>{ if(el.id!==`pdd-${id}`) el.classList.remove('open'); });
-  dd.classList.toggle('open');
+// ── Payment chip functions ────────────────────────────────────────────────
+// toggleChip is called by onclick in the HTML chips
+function toggleChip(id, val){
+  // Initialize array from current DB value if not already tracking
+  if(!posPaySel[id]){
+    const r = allData.find(r=>r.id===id);
+    posPaySel[id] = (r?.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  // Toggle the clicked value
+  const idx = posPaySel[id].indexOf(val);
+  if(idx > -1) posPaySel[id].splice(idx,1);
+  else          posPaySel[id].push(val);
+
+  // Update chip appearance
+  const chipsEl = document.getElementById('pchips-'+id);
+  if(chipsEl){
+    chipsEl.querySelectorAll('.pay-chip').forEach(ch => {
+      const chipVal = ch.getAttribute('data-val') || ch.textContent.trim();
+      if(posPaySel[id].includes(chipVal)) ch.classList.add('on');
+      else                                 ch.classList.remove('on');
+    });
+  }
+  // Show the save button
+  const saveBtn = document.getElementById('psave-'+id);
+  if(saveBtn) saveBtn.style.display = 'block';
 }
-function togglePPOpt(id, val, e){
-  if(e) e.stopPropagation();
-  if(!posPaySel[id]) posPaySel[id]=[];
-  const idx=posPaySel[id].indexOf(val);
-  if(idx>-1) posPaySel[id].splice(idx,1); else posPaySel[id].push(val);
-  const dd=document.getElementById(`pdd-${id}`);
-  if(dd) dd.querySelectorAll('.pos-ms-opt').forEach((opt,i)=>{
-    const pm=['CC/Cash','USF Card','Direct Bill'][i];
-    opt.classList.toggle('sel',posPaySel[id].includes(pm));
-    const cb=opt.querySelector('input'); if(cb) cb.checked=posPaySel[id].includes(pm);
-  });
-  const disp=document.getElementById(`ppd-${id}`);
-  if(disp) disp.innerHTML=posPaySel[id].length?posPaySel[id].join(', '):'<span style="color:#4b5563">Select payment…</span>';
-}
+
 async function savePay(id){
-  const arr=posPaySel[id]||[];
-  await fetch(`/api/reservations/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_method:arr.join(', ')})});
-  const r=allData.find(r=>r.id===id); if(r) r.payment_method=arr.join(', ');
-  document.getElementById(`pdd-${id}`)?.classList.remove('open');
+  const arr = posPaySel[id] || [];
+  const resp = await fetch('/api/reservations/'+id, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ payment_method: arr.join(', ') })
+  });
+  if(!resp.ok){ toast('Save failed — try again'); return; }
+  // Update local data so re-render shows new value
+  const r = allData.find(r=>r.id===id);
+  if(r) r.payment_method = arr.join(', ');
+  // Clear cache so next auto-reload syncs with DB
+  delete posPaySel[id];
+  const saveBtn = document.getElementById('psave-'+id);
+  if(saveBtn){ saveBtn.style.display='none'; }
   toast('Payment saved ✓');
 }
 
