@@ -10,6 +10,7 @@ const { getEmailReply }                             = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./src/email');
 const directBill = require('./src/direct-bill');
+const multerMem = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } }); // 10MB for doc uploads
 const blockedDates = require('./src/blocked-dates');
 const auth = require('./src/auth');
 const db   = require('./src/db');
@@ -229,33 +230,67 @@ app.patch('/api/reservations/:id/attendance', auth.requirePos, async (req, res) 
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-// ── Direct Bill Service routes ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+//  DIRECT BILL SERVICE
+//  Modular: change direct-bill.js to update form or email templates
+//  Change db.storeDocument() to switch to S3/Cloudinary in future
+// ══════════════════════════════════════════════════════════════════════════
 
-// Send the authorization form to guest (manager clicks "Send Form" button)
+// Send authorization form PDF to guest
 app.post('/api/reservations/:id/directbill/send', auth.requireManager, async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
-    if (!(r.payment_method||'').includes('Direct Bill'))
-      return res.status(400).json({ error:'This reservation does not use Direct Bill' });
     const result = await directBill.sendDirectBillForm(r);
-    const updated = await db.updateReservation(r.id, {
-      direct_bill_status: 'sent',
-      processed_at: new Date().toISOString()
-    });
-    res.json({ success:true, sent: result.success, reservation: updated });
+    const updated = await db.updateReservation(r.id, { direct_bill_status:'sent' });
+    res.json({ success:true, email_sent:result.success, reservation:updated });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-// Mark document as received + notify both manager and guest
+// Manager uploads the received signed document
+app.post('/api/reservations/:id/directbill/upload', auth.requireManager, multerMem.single('document'), async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    if (!req.file) return res.status(400).json({ error:'No file uploaded' });
+
+    const b64      = req.file.buffer.toString('base64');
+    const filename = req.file.originalname || `DirectBill_${r.id.slice(0,8)}.pdf`;
+    const doc      = await db.storeDocument(r.id, filename, req.file.mimetype, b64, req.file.size);
+    const updated  = await db.updateReservation(r.id, { direct_bill_status:'received' });
+
+    // Notify manager + guest
+    await directBill.notifyDocReceived(updated).catch(console.error);
+
+    res.json({ success:true, document:doc, reservation:updated });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Mark as received without file (manual override)
 app.post('/api/reservations/:id/directbill/received', auth.requireManager, async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     const updated = await db.updateReservation(r.id, { direct_bill_status:'received' });
     await directBill.notifyDocReceived(updated).catch(console.error);
-    await directBill.confirmDocReceived(updated).catch(console.error);
-    res.json({ success:true, reservation: updated });
+    res.json({ success:true, reservation:updated });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Get documents for a reservation
+app.get('/api/reservations/:id/documents', auth.requireManager, async (req, res) => {
+  try { res.json(await db.getDocuments(req.params.id)); }
+  catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Download a specific document
+app.get('/api/documents/:docId/download', auth.requireManager, async (req, res) => {
+  try {
+    const doc = await db.getDocumentById(req.params.docId);
+    if (!doc) return res.status(404).json({ error:'Document not found' });
+    const buf = Buffer.from(doc.data_base64, 'base64');
+    res.set({ 'Content-Type':doc.mimetype||'application/pdf', 'Content-Disposition':`attachment; filename="${doc.filename}"`, 'Content-Length':buf.length });
+    res.send(buf);
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
