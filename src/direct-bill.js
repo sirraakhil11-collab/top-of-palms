@@ -34,7 +34,14 @@ async function buildFormPDF(reservation) {
   const party = parseInt(reservation.party || 0);
   const total = (party * 12.75).toFixed(2);
   const resDate = reservation.reservation_date || '';
-  const resTime = reservation.reservation_time || '';
+
+  // Fix old records that have '2026' (year only) stored due to a previous bug.
+  // Extract time from the human-readable datetime string as fallback.
+  let resTime = reservation.reservation_time || '';
+  if (!resTime || /^\d{4}$/.test(resTime.trim())) {
+    const m = (reservation.datetime || '').match(/\d{1,2}:\d{2}\s*[AP]M/i);
+    resTime = m ? m[0] : '';
+  }
 
   // Load the official template PDF
   const templateBytes = fs.readFileSync(TEMPLATE_PATH);
@@ -44,27 +51,31 @@ async function buildFormPDF(reservation) {
   const fontSize = 11;
   const color = rgb(0, 0, 0);
 
-  // Helper to draw text at absolute coordinates (pdf-lib origin = bottom-left)
-  const draw = (text, x, y) => {
+  // Helper — only ASCII/Latin-1 text; pdf-lib Helvetica uses WinAnsi encoding
+  const draw = (text, x, y, size = fontSize) => {
     if (!text) return;
-    page.drawText(String(text), { x, y, size: fontSize, font, color });
+    // Strip any chars outside WinAnsi (0x00-0xFF) to prevent encode errors
+    const safe = String(text).replace(/[^\x00-\xFF]/g, '');
+    if (!safe) return;
+    page.drawText(safe, { x, y, size, font, color });
   };
 
   // ── Pre-filled field overlays ─────────────────────────────────────────────
-  // Coordinates are (x, y) from bottom-left of the Letter page (612 x 792 pt)
-  // Adjust x/y values here if text needs repositioning after visual review
-
   // Coordinates: (x, y) from bottom-left of Letter page (612×792 pt)
-  // y values confirmed from visual review; adjust here if template changes
-  draw(resDate,                   178, 533);  // Reservation Date
-  draw(resTime,                   455, 533);  // Reservation Time  (after "Reservation Time: " label)
+  // Verified against rendered PDF output — adjust here if template changes.
+  //
+  // Guest info rows (confirmed positions):
+  draw(resDate,                   178, 533);  // Reservation Date value
+  draw(resTime,                   455, 533);  // Reservation Time value
   draw(reservation.name || '',    237, 505);  // Invoice to the Attention of
   draw(reservation.department||'',232, 477);  // Invoice to Department Name
   draw(reservation.email || '',   103, 449);  // Email
   draw(reservation.phone_ext||'', 393, 449);  // Phone #
   draw(reservation.name || '',    177, 421);  // Dining Guest Name
-  draw(String(party),             248, 172);  // Guest Count value (blank between "Count: " and "@ $12.75")
-  draw(`$${total}`,               285, 157);  // Total (after the pre-printed "Total: " label; template has "Total: $___")
+  //
+  // Bottom billing rows — template already has "Total: $", so we draw the number only:
+  draw(String(party),             252, 157);  // Guest Count: value (blank is after "Count: ")
+  draw(total,                     168, 137);  // Total amount (no '$' — template prints it)
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
@@ -89,54 +100,65 @@ async function buildSignedFormPDF(reservation, billing) {
   const black  = rgb(0, 0, 0);
   const green  = rgb(0, 0.4, 0.27);
 
+  // Safe draw — strips chars outside WinAnsi (0x00-0xFF) to prevent Helvetica encode crash
   const draw = (text, x, y, opts = {}) => {
     if (!text) return;
-    page.drawText(String(text), { x, y, size: opts.size || 11, font: opts.bold ? fontB : font, color: opts.color || black });
+    const safe = String(text).replace(/[^\x00-\xFF]/g, '');
+    if (!safe) return;
+    page.drawText(safe, { x, y, size: opts.size || 11, font: opts.bold ? fontB : font, color: opts.color || black });
   };
 
-  // ── Guest info (same corrected positions as buildFormPDF) ────────────────
-  draw(reservation.reservation_date || '',    178, 533);
-  draw(reservation.reservation_time || '',    455, 533);
-  draw(reservation.name || '',               237, 505);
-  draw(reservation.department || '',         232, 477);
-  draw(reservation.email || '',             103, 449);
-  draw(reservation.phone_ext || '',         393, 449);
-  draw(reservation.name || '',             177, 421);
-  draw(String(party),                       248, 172);
-  draw(`$${total}`,                         285, 157);
+  // ── Guest info — same corrected positions as buildFormPDF ─────────────────
+  // Fix old records with '2026' stored in reservation_time (data bug)
+  let resTime = reservation.reservation_time || '';
+  if (!resTime || /^\d{4}$/.test(resTime.trim())) {
+    const m = (reservation.datetime || '').match(/\d{1,2}:\d{2}\s*[AP]M/i);
+    resTime = m ? m[0] : '';
+  }
+  draw(reservation.reservation_date || '',  178, 533);
+  draw(resTime,                             455, 533);
+  draw(reservation.name || '',             237, 505);
+  draw(reservation.department || '',       232, 477);
+  draw(reservation.email || '',           103, 449);
+  draw(reservation.phone_ext || '',       393, 449);
+  draw(reservation.name || '',           177, 421);
+  // Guest Count blank (between "Count: " label and "@ $12.75"), Total (template prints "$"):
+  draw(String(party),                     252, 157);
+  draw(total,                             168, 137);
 
   // ── Billing fields ────────────────────────────────────────────────────────
-  // x values start AFTER the bold label text ends on the template underline
-  // "Chartfield #" bold label ends at ~x=250; "Foundation #" similar; "In-Kind Account Name (if applicable)" ends at ~x=382
-  if (billing.chartfield) draw(billing.chartfield, 255, 296);
-  if (billing.foundation) draw(billing.foundation, 252, 269);
-  if (billing.inkind)     draw(billing.inkind,     385, 242);
+  // x starts after the bold label ends on each underline.
+  // Chartfield/Foundation labels end at ~x=252; In-Kind label ends at ~x=382.
+  if (billing.chartfield) draw(billing.chartfield,           255, 296);
+  if (billing.foundation) draw(billing.foundation,           252, 269);
+  if (billing.inkind)     draw(billing.inkind,               385, 242);
   if (billing.pcard) {
-    draw('✓ Paying by P-card — see Supervisor', 165, 222, { color: green, size: 10 });
+    // NOTE: no special Unicode chars — Helvetica WinAnsi only supports Latin-1
+    draw('(P-card) Paying by P-card - see Supervisor', 165, 222, { color: green, size: 10 });
   }
 
   // ── Signature image ───────────────────────────────────────────────────────
-  // Signature line in the template is at y≈87 (from bottom, pdf-lib origin).
-  // Guest Count is at y=172, Total at y=157 — signature must stay BELOW y=140
-  // to avoid overlapping. We place image bottom-edge at y=90, cap height at 40pt.
+  // Template signature line is at y≈107. Guest Count at y=157, Total at y=137.
+  // Image bottom-edge at y=108, capped at maxH=30pt → top reaches y=138.
+  // Keeps it tight on the signature line and safely below Total (y=137).
   if (billing.signature_png) {
     try {
       const b64 = billing.signature_png.replace(/^data:image\/png;base64,/, '');
       const pngBytes = Buffer.from(b64, 'base64');
       const pngImage = await pdfDoc.embedPng(pngBytes);
       const { width: imgW, height: imgH } = pngImage.scale(1);
-      const maxW = 355, maxH = 40;                             // capped at 40pt height
+      const maxW = 355, maxH = 28;
       const scale = Math.min(maxW / imgW, maxH / imgH);
       const drawW = imgW * scale, drawH = imgH * scale;
-      page.drawImage(pngImage, { x: 172, y: 90, width: drawW, height: drawH, opacity: 0.92 });
+      page.drawImage(pngImage, { x: 172, y: 108, width: drawW, height: drawH, opacity: 0.92 });
     } catch (sigErr) {
       console.error('[DirectBill] Could not embed signature PNG:', sigErr.message);
     }
   }
 
-  // ── "Signed at reception" stamp (below signature, above Revised Version) ─
+  // ── "Signed at reception" stamp ───────────────────────────────────────────
   const ts = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  draw(`Signed at reception: ${ts}`, 165, 68, { size: 8, color: rgb(0.5, 0.5, 0.5) });
+  draw(`Signed at reception: ${ts}`, 165, 88, { size: 8, color: rgb(0.5, 0.5, 0.5) });
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
