@@ -15,6 +15,16 @@ if (USE_PG) {
 
   // Use explicit CREATE TABLE with all columns defined upfront
   pool.query(`
+    CREATE TABLE IF NOT EXISTS documents (
+      id             TEXT PRIMARY KEY,
+      reservation_id TEXT NOT NULL,
+      filename       TEXT NOT NULL DEFAULT '',
+      mimetype       TEXT NOT NULL DEFAULT 'application/pdf',
+      size_bytes     INTEGER DEFAULT 0,
+      data_base64    TEXT NOT NULL DEFAULT '',
+      uploaded_at    TEXT NOT NULL DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS reservations (
       id                  TEXT PRIMARY KEY,
       name                TEXT NOT NULL DEFAULT '',
@@ -180,11 +190,6 @@ async function getReservationsByStatus(status) {
 
 async function updateReservation(id, updates) {
   if (updates.datetime) updates.reservation_date = toDateStr(updates.datetime);
-  // Auto-set direct_bill_status when payment_method changes
-  if (updates.payment_method !== undefined) {
-    const hasDB = (updates.payment_method||'').includes('Direct Bill');
-    if (!updates.direct_bill_status) updates.direct_bill_status = hasDB ? 'pending_document' : 'na';
-  }
   if (USE_PG) {
     const keys = Object.keys(updates);
     const sets = keys.map((k,i)=>`${k}=$${i+2}`).join(', ');

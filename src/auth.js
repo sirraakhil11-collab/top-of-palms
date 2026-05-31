@@ -53,12 +53,14 @@ function clearSession(res) {
 function requirePos(req, res, next) {
   const s = getSession(req);
   if (s && (s.role === 'pos' || s.role === 'manager')) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error:'Not authenticated' });
   res.redirect(`/login?next=${encodeURIComponent(req.path)}&type=pos`);
 }
 
 function requireManager(req, res, next) {
   const s = getSession(req);
   if (s && s.role === 'manager') return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error:'Not authenticated' });
   res.redirect(`/login?next=${encodeURIComponent(req.path)}&type=manager`);
 }
 

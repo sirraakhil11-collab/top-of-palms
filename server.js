@@ -189,6 +189,16 @@ app.put('/api/reservations/:id', auth.requireManager, async (req, res) => {
     const updates={};
     allowed.forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; });
     if (updates.status) updates.processed_at=new Date().toISOString();
+    // Smart direct_bill_status: only transition, never downgrade sent/received
+    if (updates.payment_method !== undefined) {
+      const hadDB = (r.payment_method||'').includes('Direct Bill');
+      const hasDB = (updates.payment_method||'').includes('Direct Bill');
+      if (!hadDB && hasDB) {
+        updates.direct_bill_status = 'pending_send';
+      } else if (hadDB && !hasDB) {
+        updates.direct_bill_status = 'na';
+      }
+    }
     const updated=await db.updateReservation(r.id,updates);
     if (updates.status==='approved') await sendEmail(updated,'confirmed').catch(console.error);
     if (updates.status==='denied')   await sendEmail(updated,'denied').catch(console.error);
@@ -329,8 +339,18 @@ app.patch('/api/pos/payment/:id', auth.requirePos, async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
-    const { payment_method } = req.body;
-    res.json(await db.updateReservation(req.params.id, { payment_method: payment_method||'' }));
+    const payment_method = req.body.payment_method || '';
+    const updates = { payment_method };
+    // Smart direct_bill_status: only transition, never downgrade sent/received
+    const hadDB = (r.payment_method||'').includes('Direct Bill');
+    const hasDB = payment_method.includes('Direct Bill');
+    if (!hadDB && hasDB) {
+      updates.direct_bill_status = 'pending_send'; // newly added Direct Bill
+    } else if (hadDB && !hasDB) {
+      updates.direct_bill_status = 'na';           // removed Direct Bill
+    }
+    // If Direct Bill unchanged (or already sent/received), leave direct_bill_status alone
+    res.json(await db.updateReservation(req.params.id, updates));
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
