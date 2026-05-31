@@ -311,4 +311,37 @@ async function getDocumentById(docId) {
   return docs.find(d=>d.id===docId) || null;
 }
 
-module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById};
+// Get all received docs in a date range, joined with reservation info
+// includeBase64=true only when needed (batch send) — omit for dashboard listing
+async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) {
+  const b64col = includeBase64 ? ', d.data_base64' : '';
+  if (USE_PG) {
+    const { rows } = await pool.query(`
+      SELECT d.id, d.reservation_id, d.filename, d.mimetype, d.size_bytes, d.uploaded_at${b64col},
+             r.name, r.department, r.email, r.datetime, r.reservation_date, r.party
+      FROM documents d
+      JOIN reservations r ON d.reservation_id = r.id
+      WHERE r.reservation_date >= $1 AND r.reservation_date <= $2
+        AND r.direct_bill_status = 'received'
+      ORDER BY r.reservation_date ASC, d.uploaded_at ASC
+    `, [fromDate, toDate]);
+    return rows;
+  }
+  const docFile = path.join(__dirname,'..','data','documents.json');
+  const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+  const reservations = readJSON();
+  return docs
+    .filter(d => {
+      const r = reservations.find(r => r.id === d.reservation_id);
+      return r && r.reservation_date >= fromDate && r.reservation_date <= toDate && r.direct_bill_status === 'received';
+    })
+    .map(d => {
+      const r = reservations.find(r => r.id === d.reservation_id) || {};
+      const out = { id:d.id, reservation_id:d.reservation_id, filename:d.filename, mimetype:d.mimetype, size_bytes:d.size_bytes, uploaded_at:d.uploaded_at,
+        name:r.name, department:r.department, email:r.email, datetime:r.datetime, reservation_date:r.reservation_date, party:r.party };
+      if (includeBase64) out.data_base64 = d.data_base64;
+      return out;
+    });
+}
+
+module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange};

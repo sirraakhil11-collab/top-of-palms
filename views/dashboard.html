@@ -270,6 +270,27 @@
       </table>
     </div>
   </div>
+  <!-- Direct Bill — Weekly Batch -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">📋 Direct Bill Documents — Weekly Batch</div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <p style="font-size:13px;color:#6b7280;margin-bottom:16px">Select a date range to view all received signed forms. Use <strong>Send Batch to Manager</strong> to email all documents at once for weekly processing.</p>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">From date</label>
+          <input type="date" id="batch-from" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit" onchange="loadBatchDocs()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">To date</label>
+          <input type="date" id="batch-to" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit" onchange="loadBatchDocs()">
+        </div>
+        <button onclick="loadBatchDocs()" style="padding:9px 18px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🔍 Load Docs</button>
+        <button id="batch-send-btn" onclick="sendBatch()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:none">📨 Send Batch to Manager Email</button>
+      </div>
+      <div id="batch-docs-list"></div>
+    </div>
+  </div>
+
   <!-- Blocked Dates / Holidays -->
   <div style="margin-top:28px">
     <div class="sec-hd">
@@ -422,6 +443,62 @@ async function checkSlots(){
       document.getElementById('slots-lbl').textContent = 'Covers left for '+dateLabel;
     }
   }catch(e){console.error(e);}
+}
+
+// ── Direct Bill weekly batch ───────────────────────────────────────────────
+async function loadBatchDocs(){
+  const from = document.getElementById('batch-from').value;
+  const to   = document.getElementById('batch-to').value;
+  const list = document.getElementById('batch-docs-list');
+  const btn  = document.getElementById('batch-send-btn');
+  if(!from||!to){ list.innerHTML='<p style="font-size:13px;color:#9ca3af">Select both dates to load documents.</p>'; btn.style.display='none'; return; }
+  list.innerHTML='<p style="font-size:13px;color:#9ca3af">Loading…</p>';
+  btn.style.display='none';
+  try{
+    const docs=await fetch(`/api/directbill/documents?from=${from}&to=${to}`).then(r=>r.json());
+    if(!Array.isArray(docs)||!docs.length){
+      list.innerHTML='<p style="font-size:13px;color:#9ca3af">No received Direct Bill documents found for this date range.</p>';
+      return;
+    }
+    btn.style.display='block';
+    list.innerHTML=`<div style="font-size:12px;color:#6b7280;margin-bottom:8px">${docs.length} document${docs.length===1?'':'s'} found</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+      <thead><tr style="background:#f9fafb">
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Guest</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Department</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Dining Date</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Amount</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">File</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Received</th>
+        <th style="padding:8px 12px;background:#f9fafb"></th>
+      </tr></thead>
+      <tbody>${docs.map(d=>`<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><strong>${x(d.name||'—')}</strong></td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px">${x(d.department||'—')}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${x(d.reservation_date||'—')}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">$${((d.party||0)*12.75).toFixed(2)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">📎 ${x(d.filename)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#9ca3af;white-space:nowrap">${new Date(d.uploaded_at).toLocaleDateString()}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;font-size:12px;text-decoration:none">Download</a></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }catch(e){list.innerHTML=`<p style="font-size:13px;color:#b91c1c">Error loading documents: ${e.message}</p>`;}
+}
+
+async function sendBatch(){
+  const from=document.getElementById('batch-from').value;
+  const to  =document.getElementById('batch-to').value;
+  if(!from||!to){alert('Select both dates first.');return;}
+  const btn=document.getElementById('batch-send-btn');
+  if(!confirm(`Send all Direct Bill documents (${from} – ${to}) to the manager email?`))return;
+  btn.disabled=true; btn.textContent='Sending…';
+  try{
+    const r=await fetch('/api/directbill/send-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from_date:from,to_date:to})});
+    const data=await r.json();
+    if(r.ok) toast(`✓ Batch sent — ${data.count} document${data.count===1?'':'s'} emailed to ${data.sent_to}`);
+    else alert('Send failed: '+(data.error||r.status));
+  }catch(e){alert('Send failed: '+e.message);}
+  btn.disabled=false; btn.textContent='📨 Send Batch to Manager Email';
 }
 
 // ── Blocked dates ─────────────────────────────────────────────────────────

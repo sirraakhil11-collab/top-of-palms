@@ -50,7 +50,8 @@ app.post('/api/logout', (req, res) => { auth.clearSession(res); res.json({ succe
 // ══════════════════════════════════════════════════════════════════════════
 //  EMAIL INBOUND (SendGrid Inbound Parse)
 // ══════════════════════════════════════════════════════════════════════════
-app.post('/email/incoming', upload.none(), handleIncomingEmail);
+// multerMem.any() captures attachments (signed Direct Bill PDFs/images) into req.files
+app.post('/email/incoming', multerMem.any(), handleIncomingEmail);
 
 // ══════════════════════════════════════════════════════════════════════════
 //  SMS INBOUND (Twilio)
@@ -301,6 +302,78 @@ app.get('/api/documents/:docId/download', auth.requireManager, async (req, res) 
     const buf = Buffer.from(doc.data_base64, 'base64');
     res.set({ 'Content-Type':doc.mimetype||'application/pdf', 'Content-Disposition':`attachment; filename="${doc.filename}"`, 'Content-Length':buf.length });
     res.send(buf);
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// List received documents across reservations for a date range (no base64 — for the dashboard table)
+app.get('/api/directbill/documents', auth.requireManager, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    if (!from || !to) return res.status(400).json({ error:'from and to date params required (YYYY-MM-DD)' });
+    const docs = await db.getDocumentsByDateRange(from, to);
+    res.json(docs);
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Send weekly batch — email all received docs for a date range to the manager
+app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => {
+  try {
+    const { from_date, to_date } = req.body;
+    if (!from_date || !to_date) return res.status(400).json({ error:'from_date and to_date required' });
+
+    const docs = await db.getDocumentsByDateRange(from_date, to_date, true); // true = include base64
+    if (!docs.length) return res.status(404).json({ error:'No received documents found for that date range' });
+
+    const managerEmail = process.env.MANAGER_EMAIL;
+    if (!managerEmail) return res.status(400).json({ error:'MANAGER_EMAIL not configured' });
+    if (!process.env.SENDGRID_API_KEY) return res.status(400).json({ error:'SENDGRID_API_KEY not configured' });
+
+    const sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+
+    // Build attachments array
+    const attachments = docs.map(d => ({
+      content:     d.data_base64,
+      filename:    d.filename,
+      type:        d.mimetype || 'application/pdf',
+      disposition: 'attachment'
+    }));
+
+    // Build summary table rows
+    const rows = docs.map(d => `
+      <tr>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.name||'—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.department||'—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.reservation_date||'—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">$${((d.party||0)*12.75).toFixed(2)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${d.filename}</td>
+      </tr>`).join('');
+
+    await sgMail.send({
+      to:      managerEmail,
+      from:    { email: FROM_EMAIL, name: 'On Top of the Palms' },
+      subject: `Weekly Direct Bill Batch — ${from_date} to ${to_date} (${docs.length} document${docs.length===1?'':'s'})`,
+      attachments,
+      html: `<div style="font-family:-apple-system,sans-serif;padding:24px;max-width:640px">
+        <h2 style="color:#006747">📋 Weekly Direct Bill Batch</h2>
+        <p style="font-size:14px;color:#374151;margin-bottom:4px">Date range: <strong>${from_date}</strong> to <strong>${to_date}</strong></p>
+        <p style="font-size:14px;color:#374151;margin-bottom:20px">Total documents: <strong>${docs.length}</strong></p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+          <thead><tr style="background:#f9fafb">
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Guest</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Department</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Date</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Amount</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">File</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="font-size:12px;color:#9ca3af;margin-top:20px">All signed documents are attached to this email. Generated by On Top of the Palms reservation system.</p>
+      </div>`
+    });
+
+    res.json({ success: true, count: docs.length, sent_to: managerEmail });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
