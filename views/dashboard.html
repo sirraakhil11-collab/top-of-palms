@@ -139,12 +139,16 @@
       .brand small{display:none}
       .tscroll{font-size:11px}
       th,td{padding:7px 8px}
+      .frow{flex-direction:column}
+      .mg{grid-template-columns:1fr}
     }
+    @media(max-width:640px){.stats-r1,.stats-r2{grid-template-columns:1fr 1fr}}
     @media(max-width:480px){
-      .stats-r1,.stats-r2{grid-template-columns:1fr 1fr}
+      .stats-r1,.stats-r2{grid-template-columns:1fr}
       .hnav a{padding:5px 8px;font-size:12px}
+      .stat{padding:12px 14px}
+      .stat-val{font-size:22px}
     }
-    @media(max-width:640px){.stats-r1,.stats-r2{grid-template-columns:1fr 1fr}.frow{flex-direction:column}.mg{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -270,8 +274,8 @@
       </table>
     </div>
   </div>
-  <!-- Direct Bill — Weekly Batch -->
-  <div style="margin-top:28px">
+  <!-- Direct Bill — Weekly Batch (hidden until email MX is configured) -->
+  <div style="margin-top:28px;display:none">
     <div class="sec-hd">📋 Direct Bill Documents — Weekly Batch</div>
     <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
       <p style="font-size:13px;color:#6b7280;margin-bottom:16px">Select a date range to view all received signed forms. Use <strong>Send Batch to Manager</strong> to email all documents at once for weekly processing.</p>
@@ -328,7 +332,7 @@
       <div><label>Guest Type</label><select id="et"><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
       <div><label>Status</label><select id="es"><option value="pending_approval">Pending</option><option value="approved">Approved</option><option value="denied">Denied</option></select></div>
       <div><label>USF UID</label><input id="eu" type="text" maxlength="9"></div>
-      <div><label>Party Size</label><input id="ep" type="number" min="1" max="50"></div>
+      <div><label>Party Size</label><input id="ep" type="number" min="1" max="15"></div>
       <div class="full"><label>Email</label><input id="ee" type="email"></div>
     </div>
 

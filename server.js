@@ -36,6 +36,8 @@ app.use(express.static(path.join(__dirname, 'views')));
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname,'views','login.html')));
 app.post('/api/login', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!rateLimit(ip, 'login', 10, 60000)) return res.status(429).json({ success:false, error:'Too many attempts — try again in a minute.' });
   const { pin, role } = req.body;
   if (!pin || !role) return res.json({ success:false });
   if ((role==='pos'     && pin===auth.POS_PIN) ||
@@ -86,6 +88,8 @@ app.get('/demo.html',(req, res) => res.sendFile(path.join(__dirname,'views','dem
 // ══════════════════════════════════════════════════════════════════════════
 app.post('/api/reserve', async (req, res) => {
   try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    if (!rateLimit(ip, 'reserve', 5, 60000)) return res.status(429).json({ error:'Too many submissions — please wait a minute.' });
     const { name, department, phone_ext, guest_type, uid, email, party, datetime_iso, datetime_display, reservation_time, seating_preference, payment_method, notes } = req.body;
 
     if (!name||!guest_type||!uid||!email||!party||!datetime_iso)
@@ -166,7 +170,7 @@ app.get('/manager/approve/:id', async (req, res) => {
     await db.updateReservation(r.id,{ status:'approved', processed_at:new Date().toISOString() });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'confirmed').catch(console.error);
-    res.send(statusPage('✓ Approved',`<strong>${r.name}</strong> (${r.party} guests) on ${r.datetime}<br>Confirmation sent to ${r.email}.`,'success'));
+    res.send(statusPage('✓ Approved',`<strong>${esc(r.name)}</strong> (${esc(String(r.party))} guests) on ${esc(r.datetime)}<br>Confirmation sent to ${esc(r.email)}.`,'success'));
   } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
 });
 
@@ -178,7 +182,7 @@ app.get('/manager/deny/:id', async (req, res) => {
     await db.updateReservation(r.id,{ status:'denied', processed_at:new Date().toISOString() });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'denied').catch(console.error);
-    res.send(statusPage('Denied',`<strong>${r.name}</strong> notified at ${r.email}.`,'info'));
+    res.send(statusPage('Denied',`<strong>${esc(r.name)}</strong> notified at ${esc(r.email)}.`,'info'));
   } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
 });
 
@@ -210,7 +214,9 @@ app.put('/api/reservations/:id', auth.requireManager, async (req, res) => {
 app.delete('/api/reservations/:id', auth.requireManager, async (req, res) => {
   try {
     const { pin } = req.body;
-    if (!pin||pin!==(process.env.DELETE_PIN||'1234')) return res.status(403).json({ error:'Invalid PIN.' });
+    const deletePIN = process.env.DELETE_PIN;
+    if (!deletePIN) console.warn('[SECURITY] DELETE_PIN env var not set — set it in Railway Variables before going to production!');
+    if (!pin || pin!==(deletePIN||'1234')) return res.status(403).json({ error:'Invalid PIN.' });
     const r=await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     await db.deleteReservation(req.params.id);
@@ -486,16 +492,28 @@ app.get('/health', (req,res)=>res.json({ status:'ok', version:'v14', env:process
 // ══════════════════════════════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════════════════════════════
+// Escape user data before embedding in HTML — prevents XSS
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Simple in-memory rate limiter — no extra packages needed
+const _rl = new Map();
+function rateLimit(ip, key, max, windowMs=60000){
+  const k=`${key}:${ip}`, now=Date.now();
+  const hits=(_rl.get(k)||[]).filter(t=>now-t<windowMs);
+  if(hits.length>=max) return false;
+  hits.push(now); _rl.set(k,hits); return true;
+}
+
 function statusPage(title,message,type){
   const c={success:{bg:'#f0fdf4',badge:'#dcfce7',text:'#15803d',btn:'#006747'},info:{bg:'#eff6ff',badge:'#dbeafe',text:'#1d4ed8',btn:'#2563eb'},error:{bg:'#fef2f2',badge:'#fee2e2',text:'#991b1b',btn:'#b91c1c'}}[type]||{};
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:${c.bg};display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
 .card{background:#fff;border-radius:16px;padding:40px;max-width:500px;width:100%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.08)}
 .badge{display:inline-block;background:${c.badge};color:${c.text};font-size:12px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:16px}
 h1{font-size:22px;font-weight:700;color:#111827;margin-bottom:12px}p{color:#374151;font-size:14px;line-height:1.6;margin-bottom:28px}
 a{display:inline-block;background:${c.btn};color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:600}</style>
 </head><body><div class="card"><div class="badge">${type==='success'?'✓ Success':type==='error'?'✕ Error':'ℹ Info'}</div>
-<h1>${title}</h1><p>${message}</p><a href="/manager/dashboard">← Back to dashboard</a></div></body></html>`;
+<h1>${esc(title)}</h1><p>${message}</p><a href="/manager/dashboard">← Back to dashboard</a></div></body></html>`;
 }
 
 const PORT = process.env.PORT || 3000;

@@ -87,16 +87,23 @@
     .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
     .ei{font-size:44px;margin-bottom:14px}
     .empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
+    @media(max-width:768px){
+      .board{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+    }
     @media(max-width:640px){
-      header{padding:12px 14px;flex-direction:column;gap:8px}
-      .board{padding:12px 14px;grid-template-columns:1fr}
-      .controls{padding:8px 14px;gap:6px}
+      header{padding:10px 14px;flex-direction:column;align-items:flex-start;gap:8px}
+      .hr{width:100%;justify-content:space-between}
+      .board{padding:10px 12px;grid-template-columns:1fr;gap:10px}
+      .controls{padding:8px 12px;gap:6px}
       .sp{font-size:12px;padding:5px 10px}
-      .pay-chip{padding:10px 12px;font-size:13px}
+      .pay-chip{padding:10px 12px;font-size:13px;flex:1;justify-content:center}
+      .pay-chips{gap:6px}
+      .save-sm{font-size:13px;padding:10px}
+      .rn{font-size:14px}
     }
     @media(max-width:400px){
-      .board{grid-template-columns:1fr}
       .att-btns{grid-template-columns:1fr}
+      .dp-wrap label{display:none}
     }
   </style>
 </head>
@@ -271,6 +278,8 @@ function render(date){
         <div class="rr"><span class="rk">Party</span><span class="rv big">${r.party}</span></div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
         ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:12px">${x(r.department)}</span></div>`:''}
+        ${r.phone_ext?`<div class="rr"><span class="rk">Phone</span><span class="rv" style="font-size:12px">${x(r.phone_ext)}</span></div>`:''}
+        <div class="rr"><span class="rk">Email</span><span class="rv" style="font-size:11px;word-break:break-all">${x(r.email)}</span></div>
         <div class="rr"><span class="rk">Confirm #</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
         <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
         ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:11px">${x(r.notes)}</span></div>`:''}

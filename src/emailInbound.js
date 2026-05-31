@@ -18,6 +18,9 @@ const { processReservation } = require('./reservations');
 const db          = require('./db');
 const directBill  = require('./direct-bill');
 
+// Set DIRECT_BILL_INBOUND=true in Railway Variables once MX/SendGrid is configured
+const DIRECT_BILL_INBOUND = process.env.DIRECT_BILL_INBOUND === 'true';
+
 // Active AI reservation conversations
 const sessions = {};
 
@@ -210,8 +213,8 @@ async function handleIncomingEmail(req, res) {
 
   console.log(`\n[Email] From: ${senderEmail} | Subject: "${subject}"`);
 
-  // ── Priority 1: Direct Bill return ────────────────────────────────────────
-  if (isDirectBillSubject(subject)) {
+  // ── Priority 1: Direct Bill return (enabled once email MX is configured) ──
+  if (DIRECT_BILL_INBOUND && isDirectBillSubject(subject)) {
     const handled = await handleDirectBillReturn(req).catch(err => {
       console.error('[DirectBill] Return handler error:', err.message);
       return false;
