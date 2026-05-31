@@ -392,7 +392,7 @@
         body:JSON.stringify({
           name, department:dept, phone_ext:phone, guest_type:type, uid, email,
           party, datetime_iso:`${date}T${time}`, datetime_display:displayTime,
-          reservation_time:displayTime.split(',')[1]?.trim()||time,
+          reservation_time:new Date(`${date}T${time}:00`).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
           seating_preference:seat,
           payment_method:selectedPayments.join(', '),
           notes

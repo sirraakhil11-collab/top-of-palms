@@ -54,15 +54,17 @@ async function buildFormPDF(reservation) {
   // Coordinates are (x, y) from bottom-left of the Letter page (612 x 792 pt)
   // Adjust x/y values here if text needs repositioning after visual review
 
-  draw(resDate,                   178, 533);  // Reservation Date value
-  draw(resTime,                   453, 533);  // Reservation Time value
+  // Coordinates: (x, y) from bottom-left of Letter page (612×792 pt)
+  // y values confirmed from visual review; adjust here if template changes
+  draw(resDate,                   178, 533);  // Reservation Date
+  draw(resTime,                   455, 533);  // Reservation Time  (after "Reservation Time: " label)
   draw(reservation.name || '',    237, 505);  // Invoice to the Attention of
-  draw(reservation.department||'',230, 477);  // Invoice to Department Name
+  draw(reservation.department||'',232, 477);  // Invoice to Department Name
   draw(reservation.email || '',   103, 449);  // Email
-  draw(reservation.phone_ext||'', 390, 449);  // Phone #
+  draw(reservation.phone_ext||'', 393, 449);  // Phone #
   draw(reservation.name || '',    177, 421);  // Dining Guest Name
-  draw(String(party),             248, 172);  // Guest Count value
-  draw(total,                     162, 157);  // Total $ value
+  draw(String(party),             248, 172);  // Guest Count value (blank between "Count: " and "@ $12.75")
+  draw(`$${total}`,               285, 157);  // Total (after the pre-printed "Total: " label; template has "Total: $___")
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
@@ -92,46 +94,49 @@ async function buildSignedFormPDF(reservation, billing) {
     page.drawText(String(text), { x, y, size: opts.size || 11, font: opts.bold ? fontB : font, color: opts.color || black });
   };
 
-  // ── Guest info (same positions as buildFormPDF) ───────────────────────────
+  // ── Guest info (same corrected positions as buildFormPDF) ────────────────
   draw(reservation.reservation_date || '',    178, 533);
-  draw(reservation.reservation_time || '',    453, 533);
+  draw(reservation.reservation_time || '',    455, 533);
   draw(reservation.name || '',               237, 505);
-  draw(reservation.department || '',         230, 477);
+  draw(reservation.department || '',         232, 477);
   draw(reservation.email || '',             103, 449);
-  draw(reservation.phone_ext || '',         390, 449);
+  draw(reservation.phone_ext || '',         393, 449);
   draw(reservation.name || '',             177, 421);
   draw(String(party),                       248, 172);
-  draw(total,                               162, 157);
+  draw(`$${total}`,                         285, 157);
 
-  // ── Billing fields (filled in by guest at reception) ─────────────────────
-  if (billing.chartfield) draw(billing.chartfield, 185, 296);  // Chartfield # value
-  if (billing.foundation) draw(billing.foundation, 182, 269);  // Foundation # value
-  if (billing.inkind)     draw(billing.inkind,     385, 242);  // In-Kind Account value
+  // ── Billing fields ────────────────────────────────────────────────────────
+  // x values start AFTER the bold label text ends on the template underline
+  // "Chartfield #" bold label ends at ~x=250; "Foundation #" similar; "In-Kind Account Name (if applicable)" ends at ~x=382
+  if (billing.chartfield) draw(billing.chartfield, 255, 296);
+  if (billing.foundation) draw(billing.foundation, 252, 269);
+  if (billing.inkind)     draw(billing.inkind,     385, 242);
   if (billing.pcard) {
-    draw('✓ P-card — see supervisor', 185, 220, { color: green });
+    draw('✓ Paying by P-card — see Supervisor', 165, 222, { color: green, size: 10 });
   }
 
   // ── Signature image ───────────────────────────────────────────────────────
+  // Signature line in the template is at y≈87 (from bottom, pdf-lib origin).
+  // Guest Count is at y=172, Total at y=157 — signature must stay BELOW y=140
+  // to avoid overlapping. We place image bottom-edge at y=90, cap height at 40pt.
   if (billing.signature_png) {
     try {
-      // Strip the data:image/png;base64, prefix
       const b64 = billing.signature_png.replace(/^data:image\/png;base64,/, '');
       const pngBytes = Buffer.from(b64, 'base64');
       const pngImage = await pdfDoc.embedPng(pngBytes);
       const { width: imgW, height: imgH } = pngImage.scale(1);
-      // Target area: x=165 to x=540, centered at y≈130 (above signature line at ~118)
-      const maxW = 370, maxH = 60;
+      const maxW = 355, maxH = 40;                             // capped at 40pt height
       const scale = Math.min(maxW / imgW, maxH / imgH);
       const drawW = imgW * scale, drawH = imgH * scale;
-      page.drawImage(pngImage, { x: 165, y: 118, width: drawW, height: drawH, opacity: 0.9 });
+      page.drawImage(pngImage, { x: 172, y: 90, width: drawW, height: drawH, opacity: 0.92 });
     } catch (sigErr) {
       console.error('[DirectBill] Could not embed signature PNG:', sigErr.message);
     }
   }
 
-  // ── "Signed at reception" stamp ───────────────────────────────────────────
+  // ── "Signed at reception" stamp (below signature, above Revised Version) ─
   const ts = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  draw(`Signed at reception: ${ts}`, 165, 90, { size: 8, color: rgb(0.5, 0.5, 0.5) });
+  draw(`Signed at reception: ${ts}`, 165, 68, { size: 8, color: rgb(0.5, 0.5, 0.5) });
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
