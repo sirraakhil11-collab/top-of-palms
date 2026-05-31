@@ -400,6 +400,13 @@
     <!-- Existing documents -->
     <div id="db-docs-section" style="margin-top:16px"></div>
 
+    <!-- Sign at Reception -->
+    <div id="db-sign-section" style="border-top:1px solid #f3f4f6;padding-top:14px;margin-top:8px">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sign at Reception</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:10px">Guest is here? Open the prefilled form on screen, fill billing details, and capture their signature — saves directly to this record.</p>
+      <button class="msave" style="background:#7c3aed;width:100%" onclick="openSignPage()">✍️ Open Signing Screen</button>
+    </div>
+
     <!-- Manual override -->
     <div style="border-top:1px solid #f3f4f6;padding-top:12px;margin-top:12px;display:flex;gap:8px">
       <button class="mcancel" onclick="closeDB()" style="flex:1">Close</button>
@@ -859,6 +866,12 @@ async function uploadDBDoc(){
   btn.disabled=false;
   if(r.ok){ dbSelectedFile=null; document.getElementById('db-file').value=''; document.getElementById('db-file-name').style.display='none'; btn.style.display='none'; await loadAll(); await refreshDBModal(id); toast('Document uploaded — guest notified ✓'); }
   else{ const e=await r.json(); alert('Upload failed: '+(e.error||'Unknown')); btn.textContent='Upload Document'; }
+}
+
+function openSignPage(){
+  const id=document.getElementById('db-res-id').value;
+  if(!id){alert('No reservation selected');return;}
+  window.open(`/directbill/sign?id=${id}`,'_blank');
 }
 
 async function manualDBReceived(){

@@ -249,9 +249,17 @@ function render(date){
         ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-rid="${r.id}" data-val="${pm}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
       </div>
       <button class="save-sm" id="psave-${r.id}" style="display:none;margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700" onclick="savePay('${r.id}')">💾 Save Payment</button>
-      ${r.direct_bill_status==='pending_send'?`<div style="font-size:10px;color:#c4b5fd;margin-top:4px">📄 Direct Bill — awaiting doc</div>`:''}
-      ${r.direct_bill_status==='received'?`<div style="font-size:10px;color:#4ade80;margin-top:4px">✓ Direct Bill — doc received</div>`:''}
-      ${r.seating_preference?`<div style="font-size:10px;color:#6b7280;margin-top:3px">Pref: ${x(r.seating_preference)}</div>`:''}
+      ${r.direct_bill_status==='pending_send'||r.direct_bill_status==='sent'?`
+        <div style="margin-top:8px">
+          <div style="font-size:10px;color:#c4b5fd;margin-bottom:5px">📄 Direct Bill — ${r.direct_bill_status==='sent'?'form sent, awaiting return':'form not yet sent'}</div>
+          <a href="/directbill/sign?id=${r.id}" style="display:block;text-align:center;background:#7c3aed;color:#fff;border-radius:7px;padding:9px;font-size:12px;font-weight:700;text-decoration:none">✍️ Sign at Reception</a>
+        </div>`:''}
+      ${r.direct_bill_status==='received'?`<div style="font-size:10px;color:#4ade80;margin-top:6px;font-weight:600">✓ Direct Bill — document received</div>`:''}
+      ${(r.payment_method||'').includes('Direct Bill')&&(!r.direct_bill_status||r.direct_bill_status==='na')?`
+        <div style="margin-top:8px">
+          <a href="/directbill/sign?id=${r.id}" style="display:block;text-align:center;background:#7c3aed;color:#fff;border-radius:7px;padding:9px;font-size:12px;font-weight:700;text-decoration:none">✍️ Sign Direct Bill at Reception</a>
+        </div>`:''}
+      ${r.seating_preference?`<div style="font-size:10px;color:#6b7280;margin-top:5px">Pref: ${x(r.seating_preference)}</div>`:''}
     </div>`;
 
     const attSection = `<div class="att-section">

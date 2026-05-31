@@ -283,6 +283,42 @@ app.post('/api/reservations/:id/directbill/upload', auth.requireManager, multerM
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
+// In-person reception signing page (POS + manager access)
+app.get('/directbill/sign', auth.requirePos, (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'sign-directbill.html'))
+);
+
+// In-person reception signing — generate signed PDF, store, update status
+app.post('/api/reservations/:id/directbill/sign-reception', auth.requirePos, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Not found' });
+
+    const { chartfield, foundation, inkind, pcard, signature_png } = req.body;
+    if (!chartfield && !foundation && !inkind && !pcard)
+      return res.status(400).json({ error: 'At least one billing field is required.' });
+    if (!signature_png)
+      return res.status(400).json({ error: 'Signature is required.' });
+
+    // Generate signed PDF with all fields + signature overlaid on the template
+    const pdfBuffer = await directBill.buildSignedFormPDF(r, { chartfield, foundation, inkind, pcard, signature_png });
+
+    const ref = r.id.slice(0, 8).toUpperCase();
+    const filename = `DirectBill_Signed_${ref}_${(r.name || 'Guest').replace(/\s+/g, '_')}.pdf`;
+    await db.storeDocument(r.id, filename, 'application/pdf', pdfBuffer.toString('base64'), pdfBuffer.length);
+
+    const updated = await db.updateReservation(r.id, { direct_bill_status: 'received' });
+
+    // Notify manager that form was signed at reception
+    await directBill.notifyDocReceived(updated).catch(console.error);
+
+    res.json({ success: true, reservation: updated });
+  } catch(err) {
+    console.error('[Sign] Reception sign error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Mark as received without file (manual override)
 app.post('/api/reservations/:id/directbill/received', auth.requireManager, async (req, res) => {
   try {

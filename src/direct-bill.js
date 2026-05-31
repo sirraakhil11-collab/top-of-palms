@@ -69,6 +69,75 @@ async function buildFormPDF(reservation) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// buildSignedFormPDF — complete signed version for in-person reception signing
+// Overlays guest info + billing fields + signature image on the template
+// ─────────────────────────────────────────────────────────────────────────────
+async function buildSignedFormPDF(reservation, billing) {
+  const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+  const fs = require('fs');
+
+  const party = parseInt(reservation.party || 0);
+  const total = (party * 12.75).toFixed(2);
+
+  const templateBytes = fs.readFileSync(TEMPLATE_PATH);
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const page   = pdfDoc.getPages()[0];
+  const font   = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontB  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const black  = rgb(0, 0, 0);
+  const green  = rgb(0, 0.4, 0.27);
+
+  const draw = (text, x, y, opts = {}) => {
+    if (!text) return;
+    page.drawText(String(text), { x, y, size: opts.size || 11, font: opts.bold ? fontB : font, color: opts.color || black });
+  };
+
+  // ── Guest info (same positions as buildFormPDF) ───────────────────────────
+  draw(reservation.reservation_date || '',    178, 533);
+  draw(reservation.reservation_time || '',    453, 533);
+  draw(reservation.name || '',               237, 505);
+  draw(reservation.department || '',         230, 477);
+  draw(reservation.email || '',             103, 449);
+  draw(reservation.phone_ext || '',         390, 449);
+  draw(reservation.name || '',             177, 421);
+  draw(String(party),                       248, 172);
+  draw(total,                               162, 157);
+
+  // ── Billing fields (filled in by guest at reception) ─────────────────────
+  if (billing.chartfield) draw(billing.chartfield, 185, 296);  // Chartfield # value
+  if (billing.foundation) draw(billing.foundation, 182, 269);  // Foundation # value
+  if (billing.inkind)     draw(billing.inkind,     385, 242);  // In-Kind Account value
+  if (billing.pcard) {
+    draw('✓ P-card — see supervisor', 185, 220, { color: green });
+  }
+
+  // ── Signature image ───────────────────────────────────────────────────────
+  if (billing.signature_png) {
+    try {
+      // Strip the data:image/png;base64, prefix
+      const b64 = billing.signature_png.replace(/^data:image\/png;base64,/, '');
+      const pngBytes = Buffer.from(b64, 'base64');
+      const pngImage = await pdfDoc.embedPng(pngBytes);
+      const { width: imgW, height: imgH } = pngImage.scale(1);
+      // Target area: x=165 to x=540, centered at y≈130 (above signature line at ~118)
+      const maxW = 370, maxH = 60;
+      const scale = Math.min(maxW / imgW, maxH / imgH);
+      const drawW = imgW * scale, drawH = imgH * scale;
+      page.drawImage(pngImage, { x: 165, y: 118, width: drawW, height: drawH, opacity: 0.9 });
+    } catch (sigErr) {
+      console.error('[DirectBill] Could not embed signature PNG:', sigErr.message);
+    }
+  }
+
+  // ── "Signed at reception" stamp ───────────────────────────────────────────
+  const ts = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  draw(`Signed at reception: ${ts}`, 165, 90, { size: 8, color: rgb(0.5, 0.5, 0.5) });
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // sendDirectBillForm — sends pre-filled PDF to guest as email attachment
 // ─────────────────────────────────────────────────────────────────────────────
 async function sendDirectBillForm(reservation) {
@@ -185,4 +254,4 @@ async function notifyDocReceived(reservation) {
   }).catch(console.error);
 }
 
-module.exports = { sendDirectBillForm, notifyDocReceived, buildFormPDF };
+module.exports = { sendDirectBillForm, notifyDocReceived, buildFormPDF, buildSignedFormPDF };
