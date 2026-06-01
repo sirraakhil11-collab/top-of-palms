@@ -41,11 +41,19 @@ app.post('/api/login', (req, res) => {
   const { pin, role } = req.body;
   if (!pin || !role) return res.json({ success:false });
   if ((role==='pos'     && pin===auth.POS_PIN) ||
-      (role==='manager' && pin===auth.MANAGER_PIN)) {
+      (role==='manager' && pin===auth.MANAGER_PIN) ||
+      (role==='admin'   && auth.ADMIN_PIN && pin===auth.ADMIN_PIN)) {
     auth.setSession(res, role);
     return res.json({ success:true, role });
   }
   res.json({ success:false });
+});
+
+// Current user info — used by dashboard to gate admin-only UI elements
+app.get('/api/me', (req, res) => {
+  const s = auth.getSession(req);
+  if (!s) return res.status(401).json({ error:'Not authenticated' });
+  res.json({ role: s.role });
 });
 app.post('/api/logout', (req, res) => { auth.clearSession(res); res.json({ success:true }); });
 
@@ -229,7 +237,7 @@ app.put('/api/reservations/:id', auth.requireManager, async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-app.delete('/api/reservations/:id', auth.requireManager, async (req, res) => {
+app.delete('/api/reservations/:id', auth.requireAdmin, async (req, res) => {
   try {
     const { pin } = req.body;
     const deletePIN = process.env.DELETE_PIN;
@@ -375,19 +383,33 @@ app.get('/api/directbill/documents', auth.requireManager, async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-// Send weekly batch — email all received docs for a date range to the manager
+// Send batch — email selected docs to a specified recipient
+// Accepts: { from_date, to_date, doc_ids (optional array), recipient_email, save_email (bool) }
 app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => {
   try {
-    const { from_date, to_date } = req.body;
-    if (!from_date || !to_date) return res.status(400).json({ error:'from_date and to_date required' });
+    const { from_date, to_date, doc_ids, recipient_email, save_email } = req.body;
 
-    const docs = await db.getDocumentsByDateRange(from_date, to_date, true); // true = include base64
-    if (!docs.length) return res.status(404).json({ error:'No received documents found for that date range' });
+    // Resolve docs: either by specific IDs or by date range
+    let docs;
+    if (doc_ids && Array.isArray(doc_ids) && doc_ids.length > 0) {
+      const all = await db.getDocumentsByDateRange('1900-01-01','2999-12-31',true);
+      docs = all.filter(d => doc_ids.includes(d.id));
+    } else {
+      if (!from_date || !to_date) return res.status(400).json({ error:'from_date and to_date required when not specifying doc_ids' });
+      docs = await db.getDocumentsByDateRange(from_date, to_date, true);
+    }
+    if (!docs.length) return res.status(404).json({ error:'No documents found for the given selection' });
 
-    const managerEmail = process.env.MANAGER_EMAIL;
-    if (!managerEmail) return res.status(400).json({ error:'MANAGER_EMAIL not configured' });
+    // Resolve recipient — use provided email or fall back to MANAGER_EMAIL
+    const toEmail = (recipient_email || '').trim() || process.env.MANAGER_EMAIL;
+    if (!toEmail) return res.status(400).json({ error:'No recipient email provided and MANAGER_EMAIL not configured' });
+
+    // Optionally save the email for future use
+    if (save_email && recipient_email) {
+      await db.updateSetting('batch_recipient_email', recipient_email.trim()).catch(()=>{});
+    }
+
     if (!process.env.SENDGRID_API_KEY) return res.status(400).json({ error:'SENDGRID_API_KEY not configured' });
-
     const sgMail = require('@sendgrid/mail');
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
@@ -410,10 +432,11 @@ app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => 
         <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${d.filename}</td>
       </tr>`).join('');
 
+    const rangeLabel = from_date && to_date ? `${from_date} to ${to_date}` : `${docs.length} selected document${docs.length===1?'':'s'}`;
     await sgMail.send({
-      to:      managerEmail,
+      to:      toEmail,
       from:    { email: FROM_EMAIL, name: 'On Top of the Palms' },
-      subject: `Weekly Direct Bill Batch — ${from_date} to ${to_date} (${docs.length} document${docs.length===1?'':'s'})`,
+      subject: `Direct Bill Batch — ${rangeLabel} (${docs.length} document${docs.length===1?'':'s'})`,
       attachments,
       html: `<div style="font-family:-apple-system,sans-serif;padding:24px;max-width:640px">
         <h2 style="color:#006747">📋 Weekly Direct Bill Batch</h2>
@@ -433,7 +456,7 @@ app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => 
       </div>`
     });
 
-    res.json({ success: true, count: docs.length, sent_to: managerEmail });
+    res.json({ success: true, count: docs.length, sent_to: toEmail });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
@@ -457,7 +480,7 @@ app.get('/api/settings', auth.requireManager, async (req, res) => {
   catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
+app.patch('/api/settings/:key', auth.requireAdmin, async (req, res) => {
   try {
     const allowed = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
     if (!allowed.includes(req.params.key)) return res.status(400).json({ error:'Unknown setting key' });

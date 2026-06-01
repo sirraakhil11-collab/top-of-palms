@@ -358,7 +358,7 @@ async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) 
 // ── Service settings (feature flags) ────────────────────────────────────────
 // JSON fallback: persist in a settings.json file in the data directory
 const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
-const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false' };
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'' };
 
 async function getAllSettings() {
   if (USE_PG) {

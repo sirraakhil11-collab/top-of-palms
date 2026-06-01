@@ -75,7 +75,7 @@ async function buildFormPDF(reservation) {
   //
   // Bottom billing rows — template already has "Total: $", so we draw the number only:
   draw(String(party),             252, 157);  // Guest Count: value (blank is after "Count: ")
-  draw(total,                     168, 137);  // Total amount (no '$' — template prints it)
+  draw(total,                     210, 137);  // Total amount (no '$' — template prints it; x=210 starts after 'Total: $' label)
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);

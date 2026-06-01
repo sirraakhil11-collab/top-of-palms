@@ -246,9 +246,11 @@
   <!-- Search filters -->
   <div class="frow">
     <div class="fg grow"><label>Search</label><input id="fs" placeholder="Name or email…" oninput="applyF()"></div>
+    <div class="fg"><label>Dept</label><input id="fdept" placeholder="Department…" oninput="applyF()"></div>
     <div class="fg"><label>Date from</label><input type="date" id="fd" onchange="applyF()"></div>
     <div class="fg"><label>Date to</label><input type="date" id="fd2" onchange="applyF()"></div>
     <div class="fg"><label>Type</label><select id="ft" onchange="applyF()"><option value="">All types</option><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
+    <div class="fg"><label>Payment</label><select id="fpay" onchange="applyF()"><option value="">All payments</option><option value="CC/Cash">CC / Cash</option><option value="USF Card">USF Card</option><option value="Direct Bill">Direct Bill</option></select></div>
     <button class="clr-btn" onclick="clearF()">✕ Clear</button>
   </div>
 
@@ -274,29 +276,53 @@
       </table>
     </div>
   </div>
-  <!-- Direct Bill — Weekly Batch (hidden until email MX is configured) -->
-  <div style="margin-top:28px;display:none">
-    <div class="sec-hd">📋 Direct Bill Documents — Weekly Batch</div>
+  <!-- Direct Bill — Batch Send -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">📋 Direct Bill Documents — Send Batch
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Select docs by date range, check the ones to send, enter a recipient and send</span>
+    </div>
     <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
-      <p style="font-size:13px;color:#6b7280;margin-bottom:16px">Select a date range to view all received signed forms. Use <strong>Send Batch to Manager</strong> to email all documents at once for weekly processing.</p>
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
+
+      <!-- Recipient email row -->
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #f3f4f6">
+        <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Send to email</label>
+          <input type="email" id="batch-email" placeholder="accounting@usf.edu" style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit" oninput="document.getElementById('batch-send-btn').style.display='block'">
+        </div>
+        <div style="display:flex;gap:8px;align-self:flex-end">
+          <button onclick="saveBatchEmail()" style="padding:9px 14px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">💾 Save email</button>
+          <span style="font-size:11px;color:#9ca3af;align-self:center" id="batch-saved-lbl"></span>
+        </div>
+      </div>
+
+      <!-- Date range row -->
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
         <div style="display:flex;flex-direction:column;gap:4px">
           <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">From date</label>
-          <input type="date" id="batch-from" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit" onchange="loadBatchDocs()">
+          <input type="date" id="batch-from" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">To date</label>
-          <input type="date" id="batch-to" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit" onchange="loadBatchDocs()">
+          <input type="date" id="batch-to" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
         </div>
-        <button onclick="loadBatchDocs()" style="padding:9px 18px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🔍 Load Docs</button>
-        <button id="batch-send-btn" onclick="sendBatch()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:none">📨 Send Batch to Manager Email</button>
+        <button onclick="loadBatchDocs()" style="padding:9px 18px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;align-self:flex-end">🔍 Load Docs</button>
       </div>
+
+      <!-- Doc list -->
       <div id="batch-docs-list"></div>
+
+      <!-- Send row -->
+      <div id="batch-send-row" style="display:none;margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <span id="batch-sel-count" style="font-size:13px;color:#6b7280"></span>
+        <button id="batch-send-btn" onclick="sendBatch()" style="padding:10px 22px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">📨 Send Selected to Email</button>
+        <button onclick="selectAllBatch(true)" style="padding:8px 12px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;color:#374151;cursor:pointer">Select all</button>
+        <button onclick="selectAllBatch(false)" style="padding:8px 12px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;color:#374151;cursor:pointer">Deselect all</button>
+      </div>
     </div>
   </div>
 
-  <!-- Service Controls -->
-  <div style="margin-top:28px">
+  <!-- Service Controls (admin only) -->
+  <div style="margin-top:28px" id="service-controls-section">
     <div class="sec-hd">⚙️ Reservation Channels
       <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Enable or disable how guests can make reservations</span>
     </div>
@@ -438,7 +464,7 @@
 </div>
 
 <script>
-let allData=[], atab='all', activeStat=null, delId='';
+let allData=[], atab='all', activeStat=null, delId='', currentUserRole='manager';
 const todayISO = new Date().toISOString().split('T')[0];
 const todayFmt = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
@@ -516,25 +542,25 @@ async function toggleService(key, newValue){
   }catch(e){alert('Error: '+e.message);}
 }
 
-// ── Direct Bill weekly batch ───────────────────────────────────────────────
+// ── Direct Bill batch ─────────────────────────────────────────────────────
 async function loadBatchDocs(){
   const from = document.getElementById('batch-from').value;
   const to   = document.getElementById('batch-to').value;
   const list = document.getElementById('batch-docs-list');
-  const btn  = document.getElementById('batch-send-btn');
-  if(!from||!to){ list.innerHTML='<p style="font-size:13px;color:#9ca3af">Select both dates to load documents.</p>'; btn.style.display='none'; return; }
+  const row  = document.getElementById('batch-send-row');
+  if(!from||!to){ list.innerHTML='<p style="font-size:13px;color:#9ca3af">Select both dates then click Load Docs.</p>'; row.style.display='none'; return; }
   list.innerHTML='<p style="font-size:13px;color:#9ca3af">Loading…</p>';
-  btn.style.display='none';
+  row.style.display='none';
   try{
     const docs=await fetch(`/api/directbill/documents?from=${from}&to=${to}`).then(r=>r.json());
     if(!Array.isArray(docs)||!docs.length){
       list.innerHTML='<p style="font-size:13px;color:#9ca3af">No received Direct Bill documents found for this date range.</p>';
       return;
     }
-    btn.style.display='block';
     list.innerHTML=`<div style="font-size:12px;color:#6b7280;margin-bottom:8px">${docs.length} document${docs.length===1?'':'s'} found</div>
     <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
       <thead><tr style="background:#f9fafb">
+        <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:#9ca3af"><input type="checkbox" onchange="selectAllBatch(this.checked)" title="Select all"></th>
         <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Guest</th>
         <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Department</th>
         <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Dining Date</th>
@@ -544,32 +570,70 @@ async function loadBatchDocs(){
         <th style="padding:8px 12px;background:#f9fafb"></th>
       </tr></thead>
       <tbody>${docs.map(d=>`<tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;text-align:center"><input type="checkbox" class="batch-chk" data-id="${d.id}" onchange="updateBatchCount()" checked></td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><strong>${x(d.name||'—')}</strong></td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px">${x(d.department||'—')}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${x(d.reservation_date||'—')}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">$${((d.party||0)*12.75).toFixed(2)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">$${Number(d.total_amount||0).toFixed(2)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">📎 ${x(d.filename)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#9ca3af;white-space:nowrap">${new Date(d.uploaded_at).toLocaleDateString()}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;font-size:12px;text-decoration:none">Download</a></td>
       </tr>`).join('')}</tbody>
     </table>`;
+    row.style.display='flex';
+    updateBatchCount();
   }catch(e){list.innerHTML=`<p style="font-size:13px;color:#b91c1c">Error loading documents: ${e.message}</p>`;}
 }
 
+function updateBatchCount(){
+  const total=document.querySelectorAll('.batch-chk').length;
+  const sel=document.querySelectorAll('.batch-chk:checked').length;
+  document.getElementById('batch-sel-count').textContent=`${sel} of ${total} selected`;
+}
+
+function selectAllBatch(check){
+  document.querySelectorAll('.batch-chk').forEach(c=>c.checked=check);
+  updateBatchCount();
+}
+
+async function saveBatchEmail(){
+  const email=document.getElementById('batch-email').value.trim();
+  if(!email){alert('Enter an email address first.');return;}
+  try{
+    await fetch('/api/directbill/send-batch',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({save_email:true,recipient_email:email,doc_ids:[]})
+    }).catch(()=>{});
+    document.getElementById('batch-saved-lbl').textContent='✓ Saved';
+    setTimeout(()=>document.getElementById('batch-saved-lbl').textContent='',3000);
+  }catch(e){}
+}
+
+async function loadSavedBatchEmail(){
+  try{
+    const s=await fetch('/api/settings').then(r=>r.json());
+    const saved=(s.batch_recipient_email||'').trim();
+    if(saved) document.getElementById('batch-email').value=saved;
+  }catch(e){}
+}
+
 async function sendBatch(){
-  const from=document.getElementById('batch-from').value;
-  const to  =document.getElementById('batch-to').value;
-  if(!from||!to){alert('Select both dates first.');return;}
+  const email=document.getElementById('batch-email').value.trim();
+  if(!email){alert('Enter a recipient email address first.');return;}
+  const ids=[...document.querySelectorAll('.batch-chk:checked')].map(c=>Number(c.dataset.id));
+  if(!ids.length){alert('No documents selected.');return;}
   const btn=document.getElementById('batch-send-btn');
-  if(!confirm(`Send all Direct Bill documents (${from} – ${to}) to the manager email?`))return;
+  if(!confirm(`Send ${ids.length} document${ids.length===1?'':'s'} to ${email}?`))return;
   btn.disabled=true; btn.textContent='Sending…';
   try{
-    const r=await fetch('/api/directbill/send-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from_date:from,to_date:to})});
+    const from=document.getElementById('batch-from').value;
+    const to  =document.getElementById('batch-to').value;
+    const r=await fetch('/api/directbill/send-batch',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({doc_ids:ids,recipient_email:email,from_date:from,to_date:to})});
     const data=await r.json();
-    if(r.ok) toast(`✓ Batch sent — ${data.count} document${data.count===1?'':'s'} emailed to ${data.sent_to}`);
+    if(r.ok) toast(`✓ Sent — ${data.count} document${data.count===1?'':'s'} emailed to ${data.sent_to}`);
     else alert('Send failed: '+(data.error||r.status));
   }catch(e){alert('Send failed: '+e.message);}
-  btn.disabled=false; btn.textContent='📨 Send Batch to Manager Email';
+  btn.disabled=false; btn.textContent='📨 Send Selected to Email';
 }
 
 // ── Blocked dates ─────────────────────────────────────────────────────────
@@ -662,14 +726,18 @@ function filtered(){
   else if(activeStat==='today') d=allData.filter(r=>r.reservation_date===todayISO&&r.status!=='denied');
   else if(activeStat==='denied')d=allData.filter(r=>r.status==='denied');
   else if(activeStat==='directbill')d=allData.filter(r=>r.direct_bill_status==='pending_send'||r.direct_bill_status==='sent');
-  const s=document.getElementById('fs').value.toLowerCase();
-  const dt=document.getElementById('fd').value;
-  const dt2=document.getElementById('fd2').value;
-  const tp=document.getElementById('ft').value;
-  if(s)   d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
-  if(dt)  d=d.filter(r=>r.reservation_date>=dt);
-  if(dt2) d=d.filter(r=>r.reservation_date<=dt2);
-  if(tp)  d=d.filter(r=>r.guest_status===tp);
+  const s    = document.getElementById('fs').value.toLowerCase();
+  const dept = document.getElementById('fdept').value.toLowerCase();
+  const dt   = document.getElementById('fd').value;
+  const dt2  = document.getElementById('fd2').value;
+  const tp   = document.getElementById('ft').value;
+  const pay  = document.getElementById('fpay').value;
+  if(s)    d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
+  if(dept) d=d.filter(r=>(r.department||'').toLowerCase().includes(dept));
+  if(dt)   d=d.filter(r=>r.reservation_date>=dt);
+  if(dt2)  d=d.filter(r=>r.reservation_date<=dt2);
+  if(tp)   d=d.filter(r=>r.guest_status===tp);
+  if(pay)  d=d.filter(r=>(r.payment_method||'').includes(pay));
   return d;
 }
 
@@ -686,7 +754,7 @@ function clickStat(type){
 }
 function clearStat(){activeStat=null;document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));document.getElementById('fbanner').classList.remove('show');renderTable(filtered())}
 function applyF(){clearStat();renderTable(filtered())}
-function clearF(){document.getElementById('fs').value='';document.getElementById('fd').value='';document.getElementById('fd2').value='';document.getElementById('ft').value='';clearStat();renderTable(filtered())}
+function clearF(){['fs','fdept','fd','fd2','ft','fpay'].forEach(id=>document.getElementById(id).value='');clearStat();renderTable(filtered())}
 function swTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTable(filtered())}
 
 function renderPending(p){
@@ -735,7 +803,7 @@ function renderTable(data){
       ${r.status==='pending_approval'?`<a class="tb tap" href="/manager/approve/${r.id}">Approve</a><a class="tb tdn" href="/manager/deny/${r.id}">Deny</a>`:''}
       <button class="tb ted" onclick="openEdit('${r.id}')">Edit</button>
       ${r.direct_bill_status&&r.direct_bill_status!=='na'?dbActions(r):''}
-      <button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>
+      ${currentUserRole==='admin'?`<button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>`:''}
     </div></td>
   </tr>`).join('');
 }
@@ -963,7 +1031,17 @@ function fmt(i){return new Date(i).toLocaleDateString('en-US',{month:'short',day
 function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 async function logout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login?type=manager';}
 
-loadAll();loadBlockedDates();loadServiceControls();setInterval(loadAll,30000);
+// Load current user role — gates delete button and service controls
+fetch('/api/me').then(r=>r.json()).then(d=>{ currentUserRole=d.role||'manager'; applyRoleUI(); }).catch(()=>{});
+function applyRoleUI(){
+  // Service controls: admin only
+  const sc=document.getElementById('service-controls-section');
+  if(sc) sc.style.display = currentUserRole==='admin' ? 'block' : 'none';
+  // Re-render table so delete buttons show/hide correctly
+  renderTable(filtered());
+}
+
+loadAll();loadBlockedDates();loadServiceControls();loadSavedBatchEmail();setInterval(loadAll,30000);
 </script>
 </body>
 </html>
