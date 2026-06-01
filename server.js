@@ -53,12 +53,30 @@ app.post('/api/logout', (req, res) => { auth.clearSession(res); res.json({ succe
 //  EMAIL INBOUND (SendGrid Inbound Parse)
 // ══════════════════════════════════════════════════════════════════════════
 // multerMem.any() captures attachments (signed Direct Bill PDFs/images) into req.files
-app.post('/email/incoming', multerMem.any(), handleIncomingEmail);
+// Guard: only process email intake when enabled via service settings
+app.post('/email/incoming', multerMem.any(), async (req, res, next) => {
+  const s = await db.getAllSettings().catch(() => ({}));
+  if (s.email_intake_enabled !== 'true') {
+    console.log('[Email] Email intake is disabled — ignoring inbound email');
+    return res.sendStatus(200); // Always return 200 to SendGrid
+  }
+  next();
+}, handleIncomingEmail);
 
 // ══════════════════════════════════════════════════════════════════════════
 //  SMS INBOUND (Twilio)
 //  Webhook URL to set in Twilio: https://your-app.railway.app/sms/incoming
 // ══════════════════════════════════════════════════════════════════════════
+app.post('/sms/incoming', upload.none(), async (req, res, next) => {
+  const s = await db.getAllSettings().catch(() => ({}));
+  if (s.sms_intake_enabled !== 'true') {
+    console.log('[SMS] SMS intake is disabled');
+    res.set('Content-Type','text/xml');
+    return res.send('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Reservations via text are not currently available. Please visit our website or call us.</Message></Response>');
+  }
+  next();
+});
+
 app.post('/sms/incoming', upload.none(), (req, res) => {
   // Validate Twilio signature in production
   if (process.env.TWILIO_AUTH_TOKEN && process.env.NODE_ENV !== 'staging') {
@@ -428,6 +446,26 @@ app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, r
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     res.json(await db.updateReservation(req.params.id,{ direct_bill_status }));
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+//  SERVICE SETTINGS (feature flags — manager only)
+// ══════════════════════════════════════════════════════════════════════════
+app.get('/api/settings', auth.requireManager, async (req, res) => {
+  try { res.json(await db.getAllSettings()); }
+  catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
+  try {
+    const allowed = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
+    if (!allowed.includes(req.params.key)) return res.status(400).json({ error:'Unknown setting key' });
+    const { value } = req.body;
+    if (value !== 'true' && value !== 'false') return res.status(400).json({ error:'Value must be "true" or "false"' });
+    await db.updateSetting(req.params.key, value);
+    console.log(`[Settings] ${req.params.key} = ${value}`);
+    res.json({ key: req.params.key, value });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 

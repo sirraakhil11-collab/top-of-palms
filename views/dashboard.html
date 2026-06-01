@@ -295,6 +295,16 @@
     </div>
   </div>
 
+  <!-- Service Controls -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">⚙️ Reservation Channels
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Enable or disable how guests can make reservations</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px" id="service-controls">
+      <div style="text-align:center;color:#9ca3af;padding:16px">Loading…</div>
+    </div>
+  </div>
+
   <!-- Blocked Dates / Holidays -->
   <div style="margin-top:28px">
     <div class="sec-hd">
@@ -454,6 +464,56 @@ async function checkSlots(){
       document.getElementById('slots-lbl').textContent = 'Covers left for '+dateLabel;
     }
   }catch(e){console.error(e);}
+}
+
+// ── Service Controls ──────────────────────────────────────────────────────
+const SERVICES = [
+  { key:'web_form_enabled',    icon:'🌐', label:'Web Reservation Form',    desc:'Guests visit the website to submit a reservation request.',          setupNote:'' },
+  { key:'email_intake_enabled',icon:'📧', label:'Email Reservations (AI)', desc:'Guests email the restaurant. AI collects info and creates request.', setupNote:'Requires SendGrid Inbound Parse + MX record setup.' },
+  { key:'sms_intake_enabled',  icon:'💬', label:'SMS / Text Reservations', desc:'Guests text the Twilio number. AI guides them through the process.', setupNote:'Requires Twilio phone number with webhook configured.' }
+];
+let svcSettings = {};
+
+async function loadServiceControls(){
+  try{
+    svcSettings = await fetch('/api/settings').then(r=>r.json());
+    renderServiceControls();
+  }catch(e){ document.getElementById('service-controls').innerHTML=`<p style="color:#b91c1c;font-size:13px">Error loading settings: ${e.message}</p>`; }
+}
+
+function renderServiceControls(){
+  const el = document.getElementById('service-controls');
+  el.innerHTML = SERVICES.map(s => {
+    const on = svcSettings[s.key] === 'true';
+    return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #f3f4f6;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${s.icon} ${s.label}</div>
+        <div style="font-size:12px;color:#6b7280">${s.desc}</div>
+        ${s.setupNote&&!on?`<div style="font-size:11px;color:#f59e0b;margin-top:3px;font-weight:600">⚠️ ${s.setupNote}</div>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding-top:4px">
+        <span style="font-size:12px;font-weight:600;color:${on?'#15803d':'#9ca3af'}">${on?'ON':'OFF'}</span>
+        <button onclick="toggleService('${s.key}',${!on})" style="
+          width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;
+          background:${on?'#006747':'#d1d5db'};position:relative;transition:background .2s;flex-shrink:0">
+          <div style="
+            width:22px;height:22px;background:#fff;border-radius:50%;position:absolute;
+            top:3px;${on?'right:3px':'left:3px'};transition:all .2s;
+            box-shadow:0 1px 4px rgba(0,0,0,.2)"></div>
+        </button>
+      </div>
+    </div>`;
+  }).join('') + `<p style="font-size:11px;color:#9ca3af;margin-top:12px">Changes take effect immediately. No restart needed.</p>`;
+}
+
+async function toggleService(key, newValue){
+  try{
+    const r = await fetch(`/api/settings/${key}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(newValue)})});
+    if(!r.ok){const e=await r.json();alert('Failed: '+(e.error||r.status));return;}
+    svcSettings[key] = String(newValue);
+    renderServiceControls();
+    toast(`${key.replace(/_/g,' ')} ${newValue?'enabled':'disabled'} ✓`);
+  }catch(e){alert('Error: '+e.message);}
 }
 
 // ── Direct Bill weekly batch ───────────────────────────────────────────────
@@ -903,7 +963,7 @@ function fmt(i){return new Date(i).toLocaleDateString('en-US',{month:'short',day
 function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 async function logout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login?type=manager';}
 
-loadAll();loadBlockedDates();setInterval(loadAll,30000);
+loadAll();loadBlockedDates();loadServiceControls();setInterval(loadAll,30000);
 </script>
 </body>
 </html>

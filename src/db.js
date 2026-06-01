@@ -15,6 +15,17 @@ if (USE_PG) {
 
   // Use explicit CREATE TABLE with all columns defined upfront
   pool.query(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
+
+    -- Default service toggles (insert only if not already present)
+    INSERT INTO settings (key, value, updated_at) VALUES ('web_form_enabled',   'true',  NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('email_intake_enabled','false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('sms_intake_enabled',  'false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+
     CREATE TABLE IF NOT EXISTS documents (
       id             TEXT PRIMARY KEY,
       reservation_id TEXT NOT NULL,
@@ -344,4 +355,33 @@ async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) 
     });
 }
 
-module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange};
+// ── Service settings (feature flags) ────────────────────────────────────────
+// JSON fallback: persist in a settings.json file in the data directory
+const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false' };
+
+async function getAllSettings() {
+  if (USE_PG) {
+    const { rows } = await pool.query('SELECT key, value, updated_at FROM settings');
+    const out = { ...DEFAULT_SETTINGS };
+    rows.forEach(r => { out[r.key] = r.value; });
+    return out;
+  }
+  if (!fs.existsSync(SETTINGS_FILE)) return { ...DEFAULT_SETTINGS };
+  try { return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')) }; }
+  catch { return { ...DEFAULT_SETTINGS }; }
+}
+
+async function updateSetting(key, value) {
+  const now = new Date().toISOString();
+  if (USE_PG) {
+    await pool.query(`INSERT INTO settings (key,value,updated_at) VALUES ($1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=$3`, [key, value, now]);
+    return;
+  }
+  if (!fs.existsSync(path.dirname(SETTINGS_FILE))) fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true});
+  const s = await getAllSettings();
+  s[key] = value;
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+}
+
+module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange,getAllSettings,updateSetting};
