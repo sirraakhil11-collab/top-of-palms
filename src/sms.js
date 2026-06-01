@@ -3,7 +3,7 @@
  * Guests text the restaurant number → AI collects info → creates pending reservation
  * Same flow as email channel
  */
-const { getEmailReply } = require('./agent');
+const { getSMSReply } = require('./agent');
 const { processReservation } = require('./reservations');
 
 // Active SMS conversations keyed by phone number
@@ -59,7 +59,7 @@ async function handleIncomingSMS(req, res) {
   session.messages.push({ role: 'user', content: userContent });
 
   try {
-    const aiReply = await getEmailReply(session.messages);
+    const aiReply = await getSMSReply(session.messages);
     session.messages.push({ role: 'assistant', content: aiReply.text });
 
     if (aiReply.complete && aiReply.collected) {

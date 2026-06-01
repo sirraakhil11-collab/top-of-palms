@@ -6,6 +6,7 @@ const crypto  = require('crypto');
 
 const { handleIncomingEmail }                       = require('./src/emailInbound');
 const { handleIncomingSMS }                         = require('./src/sms');
+const { handleIncomingCall, handleVoiceCollect, handleCallStatus } = require('./src/voice');
 const { getEmailReply }                             = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./src/email');
@@ -36,26 +37,55 @@ app.use(express.static(path.join(__dirname, 'views')));
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname,'views','login.html')));
 app.post('/api/login', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!rateLimit(ip, 'login', 10, 60000)) return res.status(429).json({ success:false, error:'Too many attempts — try again in a minute.' });
   const { pin, role } = req.body;
   if (!pin || !role) return res.json({ success:false });
   if ((role==='pos'     && pin===auth.POS_PIN) ||
-      (role==='manager' && pin===auth.MANAGER_PIN)) {
+      (role==='manager' && pin===auth.MANAGER_PIN) ||
+      (role==='admin'   && auth.ADMIN_PIN && pin===auth.ADMIN_PIN)) {
     auth.setSession(res, role);
     return res.json({ success:true, role });
   }
   res.json({ success:false });
+});
+
+// Current user info — used by dashboard to gate admin-only UI elements
+app.get('/api/me', (req, res) => {
+  const s = auth.getSession(req);
+  if (!s) return res.status(401).json({ error:'Not authenticated' });
+  res.json({ role: s.role });
 });
 app.post('/api/logout', (req, res) => { auth.clearSession(res); res.json({ success:true }); });
 
 // ══════════════════════════════════════════════════════════════════════════
 //  EMAIL INBOUND (SendGrid Inbound Parse)
 // ══════════════════════════════════════════════════════════════════════════
-app.post('/email/incoming', upload.none(), handleIncomingEmail);
+// multerMem.any() captures attachments (signed Direct Bill PDFs/images) into req.files
+// Guard: only process email intake when enabled via service settings
+app.post('/email/incoming', multerMem.any(), async (req, res, next) => {
+  const s = await db.getAllSettings().catch(() => ({}));
+  if (s.email_intake_enabled !== 'true') {
+    console.log('[Email] Email intake is disabled — ignoring inbound email');
+    return res.sendStatus(200); // Always return 200 to SendGrid
+  }
+  next();
+}, handleIncomingEmail);
 
 // ══════════════════════════════════════════════════════════════════════════
 //  SMS INBOUND (Twilio)
 //  Webhook URL to set in Twilio: https://your-app.railway.app/sms/incoming
 // ══════════════════════════════════════════════════════════════════════════
+app.post('/sms/incoming', upload.none(), async (req, res, next) => {
+  const s = await db.getAllSettings().catch(() => ({}));
+  if (s.sms_intake_enabled !== 'true') {
+    console.log('[SMS] SMS intake is disabled');
+    res.set('Content-Type','text/xml');
+    return res.send('<?xml version="1.0" encoding="UTF-8"?><Response><Message>Reservations via text are not currently available. Please visit our website or call us.</Message></Response>');
+  }
+  next();
+});
+
 app.post('/sms/incoming', upload.none(), (req, res) => {
   // Validate Twilio signature in production
   if (process.env.TWILIO_AUTH_TOKEN && process.env.NODE_ENV !== 'staging') {
@@ -74,6 +104,14 @@ app.post('/sms/incoming', upload.none(), (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════
+//  VOICE INBOUND (Twilio Voice)
+//  Webhook URL to set in Twilio: https://your-app.railway.app/voice/incoming
+// ══════════════════════════════════════════════════════════════════════════
+app.post('/voice/incoming', upload.none(), handleIncomingCall);
+app.post('/voice/collect',  upload.none(), handleVoiceCollect);
+app.post('/voice/status',   upload.none(), handleCallStatus);
+
+// ══════════════════════════════════════════════════════════════════════════
 //  PUBLIC PAGES
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/',         (req, res) => res.redirect('/reserve'));
@@ -85,6 +123,8 @@ app.get('/demo.html',(req, res) => res.sendFile(path.join(__dirname,'views','dem
 // ══════════════════════════════════════════════════════════════════════════
 app.post('/api/reserve', async (req, res) => {
   try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    if (!rateLimit(ip, 'reserve', 5, 60000)) return res.status(429).json({ error:'Too many submissions — please wait a minute.' });
     const { name, department, phone_ext, guest_type, uid, email, party, datetime_iso, datetime_display, reservation_time, seating_preference, payment_method, notes } = req.body;
 
     if (!name||!guest_type||!uid||!email||!party||!datetime_iso)
@@ -165,7 +205,7 @@ app.get('/manager/approve/:id', async (req, res) => {
     await db.updateReservation(r.id,{ status:'approved', processed_at:new Date().toISOString() });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'confirmed').catch(console.error);
-    res.send(statusPage('✓ Approved',`<strong>${r.name}</strong> (${r.party} guests) on ${r.datetime}<br>Confirmation sent to ${r.email}.`,'success'));
+    res.send(statusPage('✓ Approved',`<strong>${esc(r.name)}</strong> (${esc(String(r.party))} guests) on ${esc(r.datetime)}<br>Confirmation sent to ${esc(r.email)}.`,'success'));
   } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
 });
 
@@ -177,7 +217,7 @@ app.get('/manager/deny/:id', async (req, res) => {
     await db.updateReservation(r.id,{ status:'denied', processed_at:new Date().toISOString() });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'denied').catch(console.error);
-    res.send(statusPage('Denied',`<strong>${r.name}</strong> notified at ${r.email}.`,'info'));
+    res.send(statusPage('Denied',`<strong>${esc(r.name)}</strong> notified at ${esc(r.email)}.`,'info'));
   } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
 });
 
@@ -189,6 +229,16 @@ app.put('/api/reservations/:id', auth.requireManager, async (req, res) => {
     const updates={};
     allowed.forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; });
     if (updates.status) updates.processed_at=new Date().toISOString();
+    // Smart direct_bill_status: only transition, never downgrade sent/received
+    if (updates.payment_method !== undefined) {
+      const hadDB = (r.payment_method||'').includes('Direct Bill');
+      const hasDB = (updates.payment_method||'').includes('Direct Bill');
+      if (!hadDB && hasDB) {
+        updates.direct_bill_status = 'pending_send';
+      } else if (hadDB && !hasDB) {
+        updates.direct_bill_status = 'na';
+      }
+    }
     const updated=await db.updateReservation(r.id,updates);
     if (updates.status==='approved') await sendEmail(updated,'confirmed').catch(console.error);
     if (updates.status==='denied')   await sendEmail(updated,'denied').catch(console.error);
@@ -196,10 +246,12 @@ app.put('/api/reservations/:id', auth.requireManager, async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-app.delete('/api/reservations/:id', auth.requireManager, async (req, res) => {
+app.delete('/api/reservations/:id', auth.requireAdmin, async (req, res) => {
   try {
     const { pin } = req.body;
-    if (!pin||pin!==(process.env.DELETE_PIN||'1234')) return res.status(403).json({ error:'Invalid PIN.' });
+    const deletePIN = process.env.DELETE_PIN;
+    if (!deletePIN) console.warn('[SECURITY] DELETE_PIN env var not set — set it in Railway Variables before going to production!');
+    if (!pin || pin!==(deletePIN||'1234')) return res.status(403).json({ error:'Invalid PIN.' });
     const r=await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     await db.deleteReservation(req.params.id);
@@ -266,6 +318,42 @@ app.post('/api/reservations/:id/directbill/upload', auth.requireManager, multerM
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
+// In-person reception signing page (POS + manager access)
+app.get('/directbill/sign', auth.requirePos, (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'sign-directbill.html'))
+);
+
+// In-person reception signing — generate signed PDF, store, update status
+app.post('/api/reservations/:id/directbill/sign-reception', auth.requirePos, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Not found' });
+
+    const { chartfield, foundation, inkind, pcard, signature_png } = req.body;
+    if (!chartfield && !foundation && !inkind && !pcard)
+      return res.status(400).json({ error: 'At least one billing field is required.' });
+    if (!signature_png)
+      return res.status(400).json({ error: 'Signature is required.' });
+
+    // Generate signed PDF with all fields + signature overlaid on the template
+    const pdfBuffer = await directBill.buildSignedFormPDF(r, { chartfield, foundation, inkind, pcard, signature_png });
+
+    const ref = r.id.slice(0, 8).toUpperCase();
+    const filename = `DirectBill_Signed_${ref}_${(r.name || 'Guest').replace(/\s+/g, '_')}.pdf`;
+    await db.storeDocument(r.id, filename, 'application/pdf', pdfBuffer.toString('base64'), pdfBuffer.length);
+
+    const updated = await db.updateReservation(r.id, { direct_bill_status: 'received' });
+
+    // Notify manager that form was signed at reception
+    await directBill.notifyDocReceived(updated).catch(console.error);
+
+    res.json({ success: true, reservation: updated });
+  } catch(err) {
+    console.error('[Sign] Reception sign error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Mark as received without file (manual override)
 app.post('/api/reservations/:id/directbill/received', auth.requireManager, async (req, res) => {
   try {
@@ -294,6 +382,93 @@ app.get('/api/documents/:docId/download', auth.requireManager, async (req, res) 
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
+// List received documents across reservations for a date range (no base64 — for the dashboard table)
+app.get('/api/directbill/documents', auth.requireManager, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    if (!from || !to) return res.status(400).json({ error:'from and to date params required (YYYY-MM-DD)' });
+    const docs = await db.getDocumentsByDateRange(from, to);
+    res.json(docs);
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Send batch — email selected docs to a specified recipient
+// Accepts: { from_date, to_date, doc_ids (optional array), recipient_email, save_email (bool) }
+app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => {
+  try {
+    const { from_date, to_date, doc_ids, recipient_email, save_email } = req.body;
+
+    // Resolve docs: either by specific IDs or by date range
+    let docs;
+    if (doc_ids && Array.isArray(doc_ids) && doc_ids.length > 0) {
+      const all = await db.getDocumentsByDateRange('1900-01-01','2999-12-31',true);
+      docs = all.filter(d => doc_ids.includes(d.id));
+    } else {
+      if (!from_date || !to_date) return res.status(400).json({ error:'from_date and to_date required when not specifying doc_ids' });
+      docs = await db.getDocumentsByDateRange(from_date, to_date, true);
+    }
+    if (!docs.length) return res.status(404).json({ error:'No documents found for the given selection' });
+
+    // Resolve recipient — use provided email or fall back to MANAGER_EMAIL
+    const toEmail = (recipient_email || '').trim() || process.env.MANAGER_EMAIL;
+    if (!toEmail) return res.status(400).json({ error:'No recipient email provided and MANAGER_EMAIL not configured' });
+
+    // Optionally save the email for future use
+    if (save_email && recipient_email) {
+      await db.updateSetting('batch_recipient_email', recipient_email.trim()).catch(()=>{});
+    }
+
+    if (!process.env.SENDGRID_API_KEY) return res.status(400).json({ error:'SENDGRID_API_KEY not configured' });
+    const sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+
+    // Build attachments array
+    const attachments = docs.map(d => ({
+      content:     d.data_base64,
+      filename:    d.filename,
+      type:        d.mimetype || 'application/pdf',
+      disposition: 'attachment'
+    }));
+
+    // Build summary table rows
+    const rows = docs.map(d => `
+      <tr>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.name||'—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.department||'—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.reservation_date||'—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">$${((d.party||0)*12.75).toFixed(2)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${d.filename}</td>
+      </tr>`).join('');
+
+    const rangeLabel = from_date && to_date ? `${from_date} to ${to_date}` : `${docs.length} selected document${docs.length===1?'':'s'}`;
+    await sgMail.send({
+      to:      toEmail,
+      from:    { email: FROM_EMAIL, name: 'On Top of the Palms' },
+      subject: `Direct Bill Batch — ${rangeLabel} (${docs.length} document${docs.length===1?'':'s'})`,
+      attachments,
+      html: `<div style="font-family:-apple-system,sans-serif;padding:24px;max-width:640px">
+        <h2 style="color:#006747">📋 Weekly Direct Bill Batch</h2>
+        <p style="font-size:14px;color:#374151;margin-bottom:4px">Date range: <strong>${from_date}</strong> to <strong>${to_date}</strong></p>
+        <p style="font-size:14px;color:#374151;margin-bottom:20px">Total documents: <strong>${docs.length}</strong></p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+          <thead><tr style="background:#f9fafb">
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Guest</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Department</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Date</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Amount</th>
+            <th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">File</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="font-size:12px;color:#9ca3af;margin-top:20px">All signed documents are attached to this email. Generated by On Top of the Palms reservation system.</p>
+      </div>`
+    });
+
+    res.json({ success: true, count: docs.length, sent_to: toEmail });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
 // Update direct bill status manually
 app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, res) => {
   try {
@@ -303,6 +478,26 @@ app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, r
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     res.json(await db.updateReservation(req.params.id,{ direct_bill_status }));
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+//  SERVICE SETTINGS (feature flags — manager only)
+// ══════════════════════════════════════════════════════════════════════════
+app.get('/api/settings', auth.requireManager, async (req, res) => {
+  try { res.json(await db.getAllSettings()); }
+  catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+app.patch('/api/settings/:key', auth.requireAdmin, async (req, res) => {
+  try {
+    const allowed = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
+    if (!allowed.includes(req.params.key)) return res.status(400).json({ error:'Unknown setting key' });
+    const { value } = req.body;
+    if (value !== 'true' && value !== 'false') return res.status(400).json({ error:'Value must be "true" or "false"' });
+    await db.updateSetting(req.params.key, value);
+    console.log(`[Settings] ${req.params.key} = ${value}`);
+    res.json({ key: req.params.key, value });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
@@ -322,6 +517,25 @@ app.patch('/api/pos/table/:id', auth.requirePos, async (req, res) => {
     const r=await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     res.json(await db.updateReservation(req.params.id,{ table_number:req.body.table_number||'' }));
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+app.patch('/api/pos/payment/:id', auth.requirePos, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    const payment_method = req.body.payment_method || '';
+    const updates = { payment_method };
+    // Smart direct_bill_status: only transition, never downgrade sent/received
+    const hadDB = (r.payment_method||'').includes('Direct Bill');
+    const hasDB = payment_method.includes('Direct Bill');
+    if (!hadDB && hasDB) {
+      updates.direct_bill_status = 'pending_send'; // newly added Direct Bill
+    } else if (hadDB && !hasDB) {
+      updates.direct_bill_status = 'na';           // removed Direct Bill
+    }
+    // If Direct Bill unchanged (or already sent/received), leave direct_bill_status alone
+    res.json(await db.updateReservation(req.params.id, updates));
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
@@ -381,19 +595,67 @@ app.get('/api/slots', async (req, res) => {
 
 app.get('/health', (req,res)=>res.json({ status:'ok', version:'v14', env:process.env.NODE_ENV||'production', database:process.env.DATABASE_URL?'postgresql':'json-file', time:new Date().toISOString() }));
 
+// Admin-only diagnostics — shows which env vars are set (never exposes values)
+app.get('/api/diagnostics', auth.requireAdmin, async (req, res) => {
+  const chk = (k) => !!process.env[k];
+  const settings = await db.getAllSettings().catch(()=>({}));
+  res.json({
+    railway_vars: {
+      SENDGRID_API_KEY:    chk('SENDGRID_API_KEY'),
+      FROM_EMAIL:          process.env.FROM_EMAIL || '(not set — default used)',
+      MANAGER_EMAIL:       process.env.MANAGER_EMAIL || '(not set)',
+      DIRECT_BILL_EMAIL:   process.env.DIRECT_BILL_EMAIL || '(not set — falls back to MANAGER_EMAIL)',
+      GROQ_API_KEY:        chk('GROQ_API_KEY'),
+      TWILIO_ACCOUNT_SID:  chk('TWILIO_ACCOUNT_SID'),
+      TWILIO_AUTH_TOKEN:   chk('TWILIO_AUTH_TOKEN'),
+      TWILIO_PHONE:        process.env.TWILIO_PHONE || '(not set)',
+      BASE_URL:            process.env.BASE_URL || '(not set)',
+      DIRECT_BILL_INBOUND: process.env.DIRECT_BILL_INBOUND || 'false',
+      ADMIN_PIN:           chk('ADMIN_PIN'),
+      SESSION_SECRET:      chk('SESSION_SECRET'),
+      DATABASE_URL:        chk('DATABASE_URL'),
+    },
+    service_toggles: {
+      web_form_enabled:    settings.web_form_enabled,
+      email_intake_enabled:settings.email_intake_enabled,
+      sms_intake_enabled:  settings.sms_intake_enabled,
+    },
+    channels: {
+      email_sending:  chk('SENDGRID_API_KEY') ? '✅ ready' : '❌ SENDGRID_API_KEY missing',
+      email_inbound:  chk('SENDGRID_API_KEY') && settings.email_intake_enabled==='true' ? '✅ ready' : `❌ ${!chk('SENDGRID_API_KEY')?'SENDGRID_API_KEY missing':'email_intake_enabled is off'}`,
+      sms:            chk('GROQ_API_KEY') && chk('TWILIO_ACCOUNT_SID') && settings.sms_intake_enabled==='true' ? '✅ ready' : `❌ missing: ${[!chk('GROQ_API_KEY')&&'GROQ_API_KEY',!chk('TWILIO_ACCOUNT_SID')&&'TWILIO_ACCOUNT_SID',settings.sms_intake_enabled!=='true'&&'sms_intake_enabled=off'].filter(Boolean).join(', ')}`,
+      voice:          chk('GROQ_API_KEY') && chk('TWILIO_ACCOUNT_SID') ? '✅ ready' : `❌ missing: ${[!chk('GROQ_API_KEY')&&'GROQ_API_KEY',!chk('TWILIO_ACCOUNT_SID')&&'TWILIO_ACCOUNT_SID'].filter(Boolean).join(', ')}`,
+      direct_bill_pdf:chk('SENDGRID_API_KEY') ? '✅ ready' : '❌ SENDGRID_API_KEY missing',
+      direct_bill_inbound: process.env.DIRECT_BILL_INBOUND==='true' && chk('SENDGRID_API_KEY') ? '✅ ready' : `❌ ${process.env.DIRECT_BILL_INBOUND!=='true'?'DIRECT_BILL_INBOUND not true':'SENDGRID_API_KEY missing'}`,
+    }
+  });
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════════════════════════════
+// Escape user data before embedding in HTML — prevents XSS
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Simple in-memory rate limiter — no extra packages needed
+const _rl = new Map();
+function rateLimit(ip, key, max, windowMs=60000){
+  const k=`${key}:${ip}`, now=Date.now();
+  const hits=(_rl.get(k)||[]).filter(t=>now-t<windowMs);
+  if(hits.length>=max) return false;
+  hits.push(now); _rl.set(k,hits); return true;
+}
+
 function statusPage(title,message,type){
   const c={success:{bg:'#f0fdf4',badge:'#dcfce7',text:'#15803d',btn:'#006747'},info:{bg:'#eff6ff',badge:'#dbeafe',text:'#1d4ed8',btn:'#2563eb'},error:{bg:'#fef2f2',badge:'#fee2e2',text:'#991b1b',btn:'#b91c1c'}}[type]||{};
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:${c.bg};display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
 .card{background:#fff;border-radius:16px;padding:40px;max-width:500px;width:100%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.08)}
 .badge{display:inline-block;background:${c.badge};color:${c.text};font-size:12px;font-weight:600;padding:4px 14px;border-radius:20px;margin-bottom:16px}
 h1{font-size:22px;font-weight:700;color:#111827;margin-bottom:12px}p{color:#374151;font-size:14px;line-height:1.6;margin-bottom:28px}
 a{display:inline-block;background:${c.btn};color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:600}</style>
 </head><body><div class="card"><div class="badge">${type==='success'?'✓ Success':type==='error'?'✕ Error':'ℹ Info'}</div>
-<h1>${title}</h1><p>${message}</p><a href="/manager/dashboard">← Back to dashboard</a></div></body></html>`;
+<h1>${esc(title)}</h1><p>${message}</p><a href="/manager/dashboard">← Back to dashboard</a></div></body></html>`;
 }
 
 const PORT = process.env.PORT || 3000;

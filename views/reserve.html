@@ -67,11 +67,19 @@
     .new-btn{background:#006747;color:#fff;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer}
   /* Mobile responsive */
   @media(max-width:600px){
-    .container{padding:0 10px 40px}
+    header{padding:16px}
+    header h1{font-size:18px}
+    .container{padding:0 10px 40px;margin:16px auto}
     .card{padding:20px 16px;border-radius:12px}
     .form-row{grid-template-columns:1fr}
     .radio-group{grid-template-columns:1fr 1fr}
     .submit-btn{font-size:16px;padding:16px}
+    .sec-title{margin-top:16px}
+  }
+  @media(max-width:380px){
+    .radio-group{grid-template-columns:1fr}
+    .card{padding:16px 12px}
+    header h1{font-size:16px}
   }
   </style>
 </head>
@@ -155,26 +163,41 @@
         <div class="hint">11:00 AM – 1:45 PM</div>
       </div>
     </div>
-    <div class="form-group">
-      <label>Number of Guests <span class="req">*</span></label>
-      <select id="f-party">
-        <option value="">Select party size (2–15)</option>
-        <option value="2">2 guests</option>
-        <option value="3">3 guests</option>
-        <option value="4">4 guests</option>
-        <option value="5">5 guests</option>
-        <option value="6">6 guests</option>
-        <option value="7">7 guests</option>
-        <option value="8">8 guests</option>
-        <option value="9">9 guests</option>
-        <option value="10">10 guests</option>
-        <option value="11">11 guests</option>
-        <option value="12">12 guests</option>
-        <option value="13">13 guests</option>
-        <option value="14">14 guests</option>
-        <option value="15">15 guests</option>
-      </select>
-      <div class="hint">Minimum 2, maximum 15 guests per reservation</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Number of Guests <span class="req">*</span></label>
+        <select id="f-party">
+          <option value="">Select party size</option>
+          <option value="2">2 guests</option>
+          <option value="3">3 guests</option>
+          <option value="4">4 guests</option>
+          <option value="5">5 guests</option>
+          <option value="6">6 guests</option>
+          <option value="7">7 guests</option>
+          <option value="8">8 guests</option>
+          <option value="9">9 guests</option>
+          <option value="10">10 guests</option>
+          <option value="11">11 guests</option>
+          <option value="12">12 guests</option>
+          <option value="13">13 guests</option>
+          <option value="14">14 guests</option>
+          <option value="15">15 guests</option>
+        </select>
+        <div class="hint">Min 2 · Max 15 per reservation</div>
+      </div>
+      <div class="form-group">
+        <label>Seating Preference <span class="opt">(optional)</span></label>
+        <select id="f-seat">
+          <option value="">No preference</option>
+          <option value="Window">Window</option>
+          <option value="Middle">Middle</option>
+          <option value="Bench">Bench</option>
+          <option value="Private Room A">Private Room A</option>
+          <option value="Private Room B">Private Room B</option>
+          <option value="Private Room C">Private Room C</option>
+        </select>
+        <div class="hint">Subject to availability</div>
+      </div>
     </div>
 
     <div class="sec-title">Method of Payment <span class="req" style="font-size:13px">*</span></div>
@@ -312,75 +335,105 @@
     }
   });
 
+  const EMAIL_RX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+  // Safe text helper — never put user input into innerHTML directly
+  function safeText(el, text){ el.textContent = text; }
+  function safeRow(label, value){
+    const d=document.createElement('div');
+    d.style.cssText='padding:3px 0;font-size:13px;color:#374151;line-height:1.6';
+    const s=document.createElement('strong'); s.textContent=label+': '; d.appendChild(s);
+    d.appendChild(document.createTextNode(value));
+    return d;
+  }
+
   async function submitForm(){
     const name  = document.getElementById('f-name').value.trim();
     const dept  = document.getElementById('f-dept').value.trim();
     const phone = document.getElementById('f-phone').value.trim();
     const uid   = document.getElementById('f-uid').value.trim().replace(/\D/g,'');
-    const email = document.getElementById('f-email').value.trim();
+    const email = document.getElementById('f-email').value.trim().toLowerCase();
     const type  = document.querySelector('input[name="guest_type"]:checked')?.value;
     const date  = document.getElementById('f-date').value;
     const time  = document.getElementById('f-time').value;
     const party = parseInt(document.getElementById('f-party').value||'0');
+    const seat  = document.getElementById('f-seat').value;
     const notes = document.getElementById('f-notes').value.trim();
 
     const showErr=msg=>{const el=document.getElementById('err-msg');el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});const b=document.getElementById('submit-btn');b.disabled=false;b.textContent='Submit Reservation Request';};
 
-    if(!name)  return showErr('Please enter your full name.');
-    if(!dept)  return showErr('Please enter your department.');
-    if(uid.length!==9) return showErr('USF UID must be exactly 9 digits.');
-    if(!email||!email.includes('@')) return showErr('Please enter a valid email address.');
-    if(!type)  return showErr('Please select Faculty or Student.');
-    if(!date)  return showErr('Please select a date.');
-    if(!time)  return showErr('Please select a time.');
-    if(!party||party<2) return showErr('Minimum party size is 2 guests.');
-    if(party>15) return showErr('Maximum party size is 15 guests.');
+    if(!name)               return showErr('Please enter your full name.');
+    if(name.length>100)     return showErr('Name is too long (max 100 characters).');
+    if(!dept)               return showErr('Please enter your department.');
+    if(dept.length>100)     return showErr('Department name is too long (max 100 characters).');
+    if(uid.length!==9)      return showErr('USF UID must be exactly 9 digits.');
+    if(!EMAIL_RX.test(email)) return showErr('Please enter a valid email address (e.g. name@usf.edu).');
+    if(!type)               return showErr('Please select Faculty or Student.');
+    if(!date)               return showErr('Please select a date.');
+    if(!time)               return showErr('Please select a time.');
+    if(!party||party<2)     return showErr('Minimum party size is 2 guests.');
+    if(party>15)            return showErr('Maximum party size is 15 guests.');
     if(selectedPayments.length===0) return showErr('Please select at least one payment method.');
+    if(notes.length>500)    return showErr('Notes are too long (max 500 characters).');
 
     const reservationDT = new Date(`${date}T${time}:00`);
-    if(reservationDT < new Date(Date.now()+24*60*60*1000)) return showErr('Reservations must be made at least 24 hours in advance. Walk-ups are welcome on the day.');
+    if(reservationDT < new Date(Date.now()+24*60*60*1000))
+      return showErr('Reservations must be made at least 24 hours in advance. Walk-ups are welcome on the day.');
 
     document.getElementById('err-msg').classList.remove('show');
     const btn=document.getElementById('submit-btn');
-    btn.disabled=true;btn.textContent='Submitting…';
+    btn.disabled=true; btn.textContent='Submitting…';
 
     const displayTime=new Date(`${date}T${time}:00`).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
 
     try{
       const resp=await fetch('/api/reserve',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+        method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          name,department:dept,phone_ext:phone,guest_type:type,uid,email,
-          party,datetime_iso:`${date}T${time}`,datetime_display:displayTime,
-          reservation_time:displayTime.split(',')[1]?.trim()||time,
-          seating_preference:'',
+          name, department:dept, phone_ext:phone, guest_type:type, uid, email,
+          party, datetime_iso:`${date}T${time}`, datetime_display:displayTime,
+          reservation_time:new Date(`${date}T${time}:00`).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+          seating_preference:seat,
           payment_method:selectedPayments.join(', '),
           notes
         })
       });
       const data=await resp.json();
       if(!resp.ok) return showErr(data.error||'Submission failed. Please try again.');
+
       document.getElementById('form-section').style.display='none';
       document.getElementById('success-screen').classList.add('show');
-      document.getElementById('success-detail').innerHTML=`
-        <strong>Name:</strong> ${name}<br>
-        <strong>Department:</strong> ${dept}<br>
-        <strong>Date & time:</strong> ${displayTime}<br>
-        <strong>Party size:</strong> ${party} guest${party===1?'':'s'}<br>
-        <strong>Payment:</strong> ${selectedPayments.join(', ')}<br>
-        ${selectedPayments.includes('Direct Bill')?'<br>⚠️ A Direct Bill authorization form has been emailed to you. Please complete and return it within 30 days of dining.':''}`;
-    }catch(e){showErr('Could not reach server. Please try again.');}
+
+      // Build success detail safely — no innerHTML with user data
+      const detail = document.getElementById('success-detail');
+      detail.innerHTML = '';
+      [
+        ['Name', name],
+        ['Department', dept],
+        ['Date & time', displayTime],
+        ['Party size', `${party} guest${party===1?'':'s'}`],
+        seat ? ['Seating preference', seat] : null,
+        ['Payment', selectedPayments.join(', ')],
+      ].filter(Boolean).forEach(([k,v]) => detail.appendChild(safeRow(k, v)));
+
+      if(selectedPayments.includes('Direct Bill')){
+        const note=document.createElement('div');
+        note.style.cssText='margin-top:10px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#b45309';
+        note.textContent='⚠️ A Direct Bill authorization form has been emailed to you. Please complete and return it within 30 days of dining.';
+        detail.appendChild(note);
+      }
+    }catch(e){ showErr('Could not reach server. Please try again.'); }
   }
 
   function resetForm(){
     document.getElementById('form-section').style.display='block';
     document.getElementById('success-screen').classList.remove('show');
     ['f-name','f-dept','f-phone','f-uid','f-email','f-notes'].forEach(id=>document.getElementById(id).value='');
-    ['f-date','f-time','f-party'].forEach(id=>document.getElementById(id).value='');
+    ['f-date','f-time','f-party','f-seat'].forEach(id=>document.getElementById(id).value='');
     document.querySelectorAll('input[name="guest_type"]').forEach(i=>i.checked=false);
-    selectedPayments=[];updatePaymentDisplay();
+    selectedPayments=[]; updatePaymentDisplay();
     document.getElementById('err-msg').classList.remove('show');
-    const btn=document.getElementById('submit-btn');btn.disabled=false;btn.textContent='Submit Reservation Request';
+    const btn=document.getElementById('submit-btn'); btn.disabled=false; btn.textContent='Submit Reservation Request';
   }
 </script>
 </body>

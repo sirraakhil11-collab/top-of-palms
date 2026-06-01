@@ -48,12 +48,15 @@
   <h2>Enter your PIN</h2>
   <p id="desc">Select your role and enter your PIN to continue.</p>
 
-  <div class="tabs">
+  <div class="tabs" style="grid-template-columns:1fr 1fr 1fr">
     <button class="tab-btn active" id="tab-pos" onclick="setRole('pos')">
       <span class="tab-icon">🖥️</span>POS / Floor
     </button>
     <button class="tab-btn" id="tab-manager" onclick="setRole('manager')">
       <span class="tab-icon">📊</span>Manager
+    </button>
+    <button class="tab-btn" id="tab-admin" onclick="setRole('admin')">
+      <span class="tab-icon">🔐</span>Admin
     </button>
   </div>
 
@@ -93,18 +96,21 @@
   const next   = params.get('next') || '/pos';
   const type   = params.get('type') || 'pos';
 
-  // Auto-select role based on where they were going
-  if (type === 'manager') setRole('manager');
+  // (role auto-selected above inside setRole definition)
 
   function setRole(r) {
     role = r;
     document.getElementById('tab-pos').classList.toggle('active', r==='pos');
     document.getElementById('tab-manager').classList.toggle('active', r==='manager');
-    document.getElementById('desc').textContent = r==='pos'
-      ? 'Floor staff and POS access.'
-      : 'Manager access — approve reservations and view all data.';
+    document.getElementById('tab-admin').classList.toggle('active', r==='admin');
+    const desc = { pos:'Floor staff and POS access.', manager:'Manager access — approve reservations, view and edit records.', admin:'Admin access — full control including delete and service settings.' };
+    document.getElementById('desc').textContent = desc[r] || '';
     clearPin();
   }
+
+  // Auto-select role from URL param
+  if (type === 'manager') setRole('manager');
+  else if (type === 'admin') setRole('admin');
 
   function addDigit(d) {
     if (pin.length >= 6) return;

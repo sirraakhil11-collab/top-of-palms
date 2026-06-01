@@ -15,6 +15,27 @@ if (USE_PG) {
 
   // Use explicit CREATE TABLE with all columns defined upfront
   pool.query(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
+
+    -- Default service toggles (insert only if not already present)
+    INSERT INTO settings (key, value, updated_at) VALUES ('web_form_enabled',   'true',  NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('email_intake_enabled','false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('sms_intake_enabled',  'false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS documents (
+      id             TEXT PRIMARY KEY,
+      reservation_id TEXT NOT NULL,
+      filename       TEXT NOT NULL DEFAULT '',
+      mimetype       TEXT NOT NULL DEFAULT 'application/pdf',
+      size_bytes     INTEGER DEFAULT 0,
+      data_base64    TEXT NOT NULL DEFAULT '',
+      uploaded_at    TEXT NOT NULL DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS reservations (
       id                  TEXT PRIMARY KEY,
       name                TEXT NOT NULL DEFAULT '',
@@ -180,11 +201,6 @@ async function getReservationsByStatus(status) {
 
 async function updateReservation(id, updates) {
   if (updates.datetime) updates.reservation_date = toDateStr(updates.datetime);
-  // Auto-set direct_bill_status when payment_method changes
-  if (updates.payment_method !== undefined) {
-    const hasDB = (updates.payment_method||'').includes('Direct Bill');
-    if (!updates.direct_bill_status) updates.direct_bill_status = hasDB ? 'pending_document' : 'na';
-  }
   if (USE_PG) {
     const keys = Object.keys(updates);
     const sets = keys.map((k,i)=>`${k}=$${i+2}`).join(', ');
@@ -306,4 +322,66 @@ async function getDocumentById(docId) {
   return docs.find(d=>d.id===docId) || null;
 }
 
-module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById};
+// Get all received docs in a date range, joined with reservation info
+// includeBase64=true only when needed (batch send) — omit for dashboard listing
+async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) {
+  const b64col = includeBase64 ? ', d.data_base64' : '';
+  if (USE_PG) {
+    const { rows } = await pool.query(`
+      SELECT d.id, d.reservation_id, d.filename, d.mimetype, d.size_bytes, d.uploaded_at${b64col},
+             r.name, r.department, r.email, r.datetime, r.reservation_date, r.party
+      FROM documents d
+      JOIN reservations r ON d.reservation_id = r.id
+      WHERE r.reservation_date >= $1 AND r.reservation_date <= $2
+        AND r.direct_bill_status = 'received'
+      ORDER BY r.reservation_date ASC, d.uploaded_at ASC
+    `, [fromDate, toDate]);
+    return rows;
+  }
+  const docFile = path.join(__dirname,'..','data','documents.json');
+  const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+  const reservations = readJSON();
+  return docs
+    .filter(d => {
+      const r = reservations.find(r => r.id === d.reservation_id);
+      return r && r.reservation_date >= fromDate && r.reservation_date <= toDate && r.direct_bill_status === 'received';
+    })
+    .map(d => {
+      const r = reservations.find(r => r.id === d.reservation_id) || {};
+      const out = { id:d.id, reservation_id:d.reservation_id, filename:d.filename, mimetype:d.mimetype, size_bytes:d.size_bytes, uploaded_at:d.uploaded_at,
+        name:r.name, department:r.department, email:r.email, datetime:r.datetime, reservation_date:r.reservation_date, party:r.party };
+      if (includeBase64) out.data_base64 = d.data_base64;
+      return out;
+    });
+}
+
+// ── Service settings (feature flags) ────────────────────────────────────────
+// JSON fallback: persist in a settings.json file in the data directory
+const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'' };
+
+async function getAllSettings() {
+  if (USE_PG) {
+    const { rows } = await pool.query('SELECT key, value, updated_at FROM settings');
+    const out = { ...DEFAULT_SETTINGS };
+    rows.forEach(r => { out[r.key] = r.value; });
+    return out;
+  }
+  if (!fs.existsSync(SETTINGS_FILE)) return { ...DEFAULT_SETTINGS };
+  try { return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')) }; }
+  catch { return { ...DEFAULT_SETTINGS }; }
+}
+
+async function updateSetting(key, value) {
+  const now = new Date().toISOString();
+  if (USE_PG) {
+    await pool.query(`INSERT INTO settings (key,value,updated_at) VALUES ($1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=$3`, [key, value, now]);
+    return;
+  }
+  if (!fs.existsSync(path.dirname(SETTINGS_FILE))) fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true});
+  const s = await getAllSettings();
+  s[key] = value;
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+}
+
+module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange,getAllSettings,updateSetting};

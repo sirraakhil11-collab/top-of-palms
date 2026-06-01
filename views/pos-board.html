@@ -36,7 +36,7 @@
     .legend{padding:7px 24px;background:#1a1d27;border-bottom:1px solid #2d3148;display:flex;align-items:center;gap:20px;font-size:12px;color:#6b7280}
     .ldot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
     .lw{background:#60a5fa}.li{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.5)}.ln{background:#f87171;opacity:.6}
-    .board{padding:18px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+    .board{padding:18px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
     /* Card */
     .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s}
     .rc:hover{transform:translateY(-1px)}
@@ -87,16 +87,23 @@
     .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
     .ei{font-size:44px;margin-bottom:14px}
     .empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
+    @media(max-width:768px){
+      .board{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+    }
     @media(max-width:640px){
-      header{padding:12px 14px;flex-direction:column;gap:8px}
-      .board{padding:12px 14px;grid-template-columns:1fr}
-      .controls{padding:8px 14px;gap:6px}
+      header{padding:10px 14px;flex-direction:column;align-items:flex-start;gap:8px}
+      .hr{width:100%;justify-content:space-between}
+      .board{padding:10px 12px;grid-template-columns:1fr;gap:10px}
+      .controls{padding:8px 12px;gap:6px}
       .sp{font-size:12px;padding:5px 10px}
-      .pay-chip{padding:10px 12px;font-size:13px}
+      .pay-chip{padding:10px 12px;font-size:13px;flex:1;justify-content:center}
+      .pay-chips{gap:6px}
+      .save-sm{font-size:13px;padding:10px}
+      .rn{font-size:14px}
     }
     @media(max-width:400px){
-      .board{grid-template-columns:1fr}
       .att-btns{grid-template-columns:1fr}
+      .dp-wrap label{display:none}
     }
   </style>
 </head>
@@ -237,17 +244,22 @@ function render(date){
     </div>`;
 
     const paySection = `<div class="tbl-section">
-      <div class="tbl-label">Payment${isCheckedIn?'':' <span style="color:#6b7280;font-weight:400">(tap to toggle)</span>'}</div>
-      ${isCheckedIn
-        ? `<div style="font-size:12px;color:#d1d5db;margin-top:2px">${r.payment_method||'<span style="color:#4b5563">Not specified</span>'}</div>`
-        : `<div class="pay-chips" id="pchips-${r.id}">
-            ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-val="${pm}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
-          </div>
-          <button class="save-sm" id="psave-${r.id}" style="display:none;margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700" onclick="savePay('${r.id}')">💾 Save Payment</button>`
-      }
-      ${r.direct_bill_status==='pending_document'?`<div style="font-size:10px;color:#c4b5fd;margin-top:4px">📄 Direct Bill — awaiting doc</div>`:''}
-      ${r.direct_bill_status==='document_received'?`<div style="font-size:10px;color:#4ade80;margin-top:4px">✓ Direct Bill — doc received</div>`:''}
-      ${r.seating_preference&&!isCheckedIn?`<div style="font-size:10px;color:#6b7280;margin-top:3px">Pref: ${x(r.seating_preference)}</div>`:''}
+      <div class="tbl-label">Payment <span style="color:#6b7280;font-weight:400">(tap to toggle)</span></div>
+      <div class="pay-chips" id="pchips-${r.id}">
+        ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-rid="${r.id}" data-val="${pm}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
+      </div>
+      <button class="save-sm" id="psave-${r.id}" style="display:none;margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700" onclick="savePay('${r.id}')">💾 Save Payment</button>
+      ${r.direct_bill_status==='pending_send'||r.direct_bill_status==='sent'?`
+        <div style="margin-top:8px">
+          <div style="font-size:10px;color:#c4b5fd;margin-bottom:5px">📄 Direct Bill — ${r.direct_bill_status==='sent'?'form sent, awaiting return':'form not yet sent'}</div>
+          <a href="/directbill/sign?id=${r.id}" style="display:block;text-align:center;background:#7c3aed;color:#fff;border-radius:7px;padding:9px;font-size:12px;font-weight:700;text-decoration:none">✍️ Sign at Reception</a>
+        </div>`:''}
+      ${r.direct_bill_status==='received'?`<div style="font-size:10px;color:#4ade80;margin-top:6px;font-weight:600">✓ Direct Bill — document received</div>`:''}
+      ${(r.payment_method||'').includes('Direct Bill')&&(!r.direct_bill_status||r.direct_bill_status==='na')?`
+        <div style="margin-top:8px">
+          <a href="/directbill/sign?id=${r.id}" style="display:block;text-align:center;background:#7c3aed;color:#fff;border-radius:7px;padding:9px;font-size:12px;font-weight:700;text-decoration:none">✍️ Sign Direct Bill at Reception</a>
+        </div>`:''}
+      ${r.seating_preference?`<div style="font-size:10px;color:#6b7280;margin-top:5px">Pref: ${x(r.seating_preference)}</div>`:''}
     </div>`;
 
     const attSection = `<div class="att-section">
@@ -274,6 +286,8 @@ function render(date){
         <div class="rr"><span class="rk">Party</span><span class="rv big">${r.party}</span></div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
         ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:12px">${x(r.department)}</span></div>`:''}
+        ${r.phone_ext?`<div class="rr"><span class="rk">Phone</span><span class="rv" style="font-size:12px">${x(r.phone_ext)}</span></div>`:''}
+        <div class="rr"><span class="rk">Email</span><span class="rv" style="font-size:11px;word-break:break-all">${x(r.email)}</span></div>
         <div class="rr"><span class="rk">Confirm #</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
         <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
         ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:11px">${x(r.notes)}</span></div>`:''}
@@ -339,8 +353,8 @@ function toggleChip(id, val){
 
 async function savePay(id){
   const arr = posPaySel[id] || [];
-  const resp = await fetch('/api/reservations/'+id, {
-    method:'PUT',
+  const resp = await fetch('/api/pos/payment/'+id, {
+    method:'PATCH',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ payment_method: arr.join(', ') })
   });

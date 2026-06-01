@@ -46,7 +46,15 @@ async function processReservation(session) {
   await sendEmail(reservation, 'pending').catch(console.error);
   // Auto-send Direct Bill form immediately when reservation is created
   if ((data.payment_method||'').includes('Direct Bill')) {
-    setImmediate(() => directBill.sendDirectBillForm(reservation).catch(e => console.error('[DirectBill]', e.message)));
+    setImmediate(async () => {
+      try {
+        await directBill.sendDirectBillForm(reservation);
+        await db.updateReservation(reservation.id, { direct_bill_status: 'sent' });
+        console.log(`[DirectBill] Form sent and status updated to 'sent' for ${reservation.email}`);
+      } catch(e) {
+        console.error('[DirectBill] Auto-send failed:', e.message);
+      }
+    });
     console.log(`[Reservation] Direct Bill form will be sent to ${reservation.email}`);
   }
 

@@ -20,129 +20,148 @@ const PHONE      = process.env.RESTAURANT_PHONE || '(813) 974-3573';
 const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL || 'topofthepalms@usf.edu';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// buildFormPDF — generates the pre-filled Direct Bill authorization PDF
-// Uses pdfkit (pure Node.js — no Python needed, works on Railway)
-// TO UPDATE THE FORM: edit only this function
+// buildFormPDF — fills the official Direct Bill template with reservation data
+// Loads On_Top_of_the_Palms_Billing_Form.pdf and overlays pre-filled values
+// TO UPDATE FIELD POSITIONS: adjust the coordinates in the overlay section below
 // ─────────────────────────────────────────────────────────────────────────────
-function buildFormPDF(reservation) {
-  return new Promise((resolve, reject) => {
+const path = require('path');
+const TEMPLATE_PATH = path.join(__dirname, '..', 'On_Top_of_the_Palms_Billing_Form.pdf');
+
+async function buildFormPDF(reservation) {
+  const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+  const fs = require('fs');
+
+  const party = parseInt(reservation.party || 0);
+  const total = (party * 12.75).toFixed(2);
+  const resDate = reservation.reservation_date || '';
+
+  // Fix old records that have '2026' (year only) stored due to a previous bug.
+  // Extract time from the human-readable datetime string as fallback.
+  let resTime = reservation.reservation_time || '';
+  if (!resTime || /^\d{4}$/.test(resTime.trim())) {
+    const m = (reservation.datetime || '').match(/\d{1,2}:\d{2}\s*[AP]M/i);
+    resTime = m ? m[0] : '';
+  }
+
+  // Load the official template PDF
+  const templateBytes = fs.readFileSync(TEMPLATE_PATH);
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const page = pdfDoc.getPages()[0];
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontSize = 11;
+  const color = rgb(0, 0, 0);
+
+  // Helper — only ASCII/Latin-1 text; pdf-lib Helvetica uses WinAnsi encoding
+  const draw = (text, x, y, size = fontSize) => {
+    if (!text) return;
+    // Strip any chars outside WinAnsi (0x00-0xFF) to prevent encode errors
+    const safe = String(text).replace(/[^\x00-\xFF]/g, '');
+    if (!safe) return;
+    page.drawText(safe, { x, y, size, font, color });
+  };
+
+  // ── Pre-filled field overlays ─────────────────────────────────────────────
+  // Coordinates: (x, y) from bottom-left of Letter page (612×792 pt)
+  // Verified against rendered PDF output — adjust here if template changes.
+  //
+  // Guest info rows (confirmed positions):
+  draw(resDate,                   178, 533);  // Reservation Date value
+  draw(resTime,                   455, 533);  // Reservation Time value
+  draw(reservation.name || '',    237, 505);  // Invoice to the Attention of
+  draw(reservation.department||'',232, 477);  // Invoice to Department Name
+  draw(reservation.email || '',   103, 449);  // Email
+  draw(reservation.phone_ext||'', 393, 449);  // Phone #
+  draw(reservation.name || '',    177, 421);  // Dining Guest Name
+  //
+  // Bottom billing rows — template already has "Total: $", so we draw the number only:
+  draw(String(party),             252, 157);  // Guest Count: value (blank is after "Count: ")
+  draw(total,                     210, 137);  // Total amount (no '$' — template prints it; x=210 starts after 'Total: $' label)
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// buildSignedFormPDF — complete signed version for in-person reception signing
+// Overlays guest info + billing fields + signature image on the template
+// ─────────────────────────────────────────────────────────────────────────────
+async function buildSignedFormPDF(reservation, billing) {
+  const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+  const fs = require('fs');
+
+  const party = parseInt(reservation.party || 0);
+  const total = (party * 12.75).toFixed(2);
+
+  const templateBytes = fs.readFileSync(TEMPLATE_PATH);
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const page   = pdfDoc.getPages()[0];
+  const font   = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontB  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const black  = rgb(0, 0, 0);
+  const green  = rgb(0, 0.4, 0.27);
+
+  // Safe draw — strips chars outside WinAnsi (0x00-0xFF) to prevent Helvetica encode crash
+  const draw = (text, x, y, opts = {}) => {
+    if (!text) return;
+    const safe = String(text).replace(/[^\x00-\xFF]/g, '');
+    if (!safe) return;
+    page.drawText(safe, { x, y, size: opts.size || 11, font: opts.bold ? fontB : font, color: opts.color || black });
+  };
+
+  // ── Guest info — same corrected positions as buildFormPDF ─────────────────
+  // Fix old records with '2026' stored in reservation_time (data bug)
+  let resTime = reservation.reservation_time || '';
+  if (!resTime || /^\d{4}$/.test(resTime.trim())) {
+    const m = (reservation.datetime || '').match(/\d{1,2}:\d{2}\s*[AP]M/i);
+    resTime = m ? m[0] : '';
+  }
+  draw(reservation.reservation_date || '',  178, 533);
+  draw(resTime,                             455, 533);
+  draw(reservation.name || '',             237, 505);
+  draw(reservation.department || '',       232, 477);
+  draw(reservation.email || '',           103, 449);
+  draw(reservation.phone_ext || '',       393, 449);
+  draw(reservation.name || '',           177, 421);
+  // Guest Count blank (between "Count: " label and "@ $12.75"), Total (template prints "$"):
+  draw(String(party),                     252, 157);
+  draw(total,                             168, 137);
+
+  // ── Billing fields ────────────────────────────────────────────────────────
+  // x starts after the bold label ends on each underline.
+  // Chartfield/Foundation labels end at ~x=252; In-Kind label ends at ~x=382.
+  if (billing.chartfield) draw(billing.chartfield,           255, 296);
+  if (billing.foundation) draw(billing.foundation,           252, 269);
+  if (billing.inkind)     draw(billing.inkind,               385, 242);
+  if (billing.pcard) {
+    // NOTE: no special Unicode chars — Helvetica WinAnsi only supports Latin-1
+    draw('(P-card) Paying by P-card - see Supervisor', 165, 222, { color: green, size: 10 });
+  }
+
+  // ── Signature image ───────────────────────────────────────────────────────
+  // Template signature line is at y≈107. Guest Count at y=157, Total at y=137.
+  // Image bottom-edge at y=108, capped at maxH=30pt → top reaches y=138.
+  // Keeps it tight on the signature line and safely below Total (y=137).
+  if (billing.signature_png) {
     try {
-      const PDFDocument = require('pdfkit');
-      const chunks = [];
-      const doc = new PDFDocument({ size:'LETTER', margins:{top:60,bottom:60,left:72,right:72} });
-      doc.on('data', c => chunks.push(c));
-      doc.on('end',  () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+      const b64 = billing.signature_png.replace(/^data:image\/png;base64,/, '');
+      const pngBytes = Buffer.from(b64, 'base64');
+      const pngImage = await pdfDoc.embedPng(pngBytes);
+      const { width: imgW, height: imgH } = pngImage.scale(1);
+      const maxW = 355, maxH = 28;
+      const scale = Math.min(maxW / imgW, maxH / imgH);
+      const drawW = imgW * scale, drawH = imgH * scale;
+      page.drawImage(pngImage, { x: 172, y: 108, width: drawW, height: drawH, opacity: 0.92 });
+    } catch (sigErr) {
+      console.error('[DirectBill] Could not embed signature PNG:', sigErr.message);
+    }
+  }
 
-      const party = parseInt(reservation.party || 0);
-      const total = (party * 12.75).toFixed(2);
-      const resDate = reservation.reservation_date || '';
-      const resTime = reservation.reservation_time || '';
+  // ── "Signed at reception" stamp ───────────────────────────────────────────
+  const ts = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  draw(`Signed at reception: ${ts}`, 165, 88, { size: 8, color: rgb(0.5, 0.5, 0.5) });
 
-      // ── Logo / Title area ────────────────────────────────────────────────
-      doc.fontSize(9).font('Helvetica').fillColor('#444')
-         .text('USF Dining · Compass USA', { align:'center' });
-      doc.moveDown(0.3);
-      doc.fontSize(26).font('Helvetica-Bold').fillColor('#000')
-         .text('DIRECT BILL FORM', { align:'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica').fillColor('#000')
-         .text('Phone: (813) 974-3573', { align:'center' });
-      doc.moveDown(0.15);
-      doc.fontSize(11).text('Forward by e-mail only to: topofthepalms@usf.edu', { align:'center' });
-      doc.moveDown(0.7);
-
-      // ── Divider ──────────────────────────────────────────────────────────
-      doc.moveTo(72, doc.y).lineTo(540, doc.y).lineWidth(1).strokeColor('#000').stroke();
-      doc.moveDown(0.7);
-
-      // ── Helper: labeled field with underline ─────────────────────────────
-      const lineField = (label, value, x1=72, x2=540, skipMove=false) => {
-        const y = doc.y;
-        doc.font('Helvetica').fontSize(11).fillColor('#000').text(label, x1, y, {continued:false});
-        const lw = doc.widthOfString(label) + 6;
-        if(value) doc.font('Helvetica').fontSize(11).text(value, x1+lw, y, {continued:false});
-        doc.moveTo(x1+lw, y+15).lineTo(x2, y+15).lineWidth(0.5).strokeColor('#000').stroke();
-        if(!skipMove) doc.moveDown(0.9);
-      };
-
-      // ── Two-column row ───────────────────────────────────────────────────
-      const twoField = (l1,v1,l2,v2) => {
-        const y = doc.y;
-        doc.font('Helvetica').fontSize(11).text(l1, 72, y, {continued:false});
-        const lw1 = doc.widthOfString(l1)+6;
-        if(v1) doc.text(v1, 72+lw1, y, {continued:false});
-        doc.moveTo(72+lw1, y+15).lineTo(285, y+15).lineWidth(0.5).stroke();
-
-        doc.font('Helvetica').fontSize(11).text(l2, 305, y, {continued:false});
-        const lw2 = doc.widthOfString(l2)+6;
-        if(v2) doc.text(v2, 305+lw2, y, {continued:false});
-        doc.moveTo(305+lw2, y+15).lineTo(540, y+15).lineWidth(0.5).stroke();
-        doc.moveDown(0.9);
-      };
-
-      // ── Pre-filled fields ────────────────────────────────────────────────
-      twoField('Reservation Date:', resDate, 'Reservation Time:', resTime);
-      lineField('Invoice to the Attention of:  ', reservation.name||'');
-      lineField('Invoice to Department Name:  ', reservation.department||'');
-      twoField('Email:  ', reservation.email||'', 'Phone #:  ', reservation.phone_ext||'');
-      lineField('Dining Guest Name:  ', reservation.name||'');
-
-      doc.moveDown(0.5);
-      doc.moveTo(72, doc.y).lineTo(540, doc.y).lineWidth(1).strokeColor('#000').stroke();
-      doc.moveDown(0.7);
-
-      // ── BILLING section ──────────────────────────────────────────────────
-      doc.fontSize(14).font('Helvetica-Bold').fillColor('#000')
-         .text('BILLING', { align:'center', underline:true });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica-Bold')
-         .text('A Chartfield number, Foundation Fund number, P-card or In-Kind approval is', { align:'center' })
-         .text('required prior to your reservation.', { align:'center' });
-      doc.moveDown(0.6);
-
-      // ── Billing fields (blank for guest to fill) ─────────────────────────
-      const billingField = (label) => {
-        const y = doc.y;
-        const lw = doc.widthOfString(label) + 6;
-        doc.font('Helvetica-Bold').fontSize(11).text(label, 72, y, {continued:false});
-        doc.moveTo(72+lw, y+15).lineTo(480, y+15).lineWidth(0.5).strokeColor('#000').stroke();
-        doc.moveDown(0.9);
-      };
-
-      billingField('Chartfield #');
-      billingField('Foundation #');
-      billingField('In-Kind Account Name (if applicable)');
-
-      doc.moveDown(0.2);
-      doc.fontSize(10).font('Helvetica-Oblique').fillColor('#000')
-         .text('If paying with a P-card, please speak with the Supervisor for more information.');
-      doc.moveDown(0.1);
-      doc.text('If paying with In-Kind, the booking contact must be an authorized user of the In-Kind account.');
-      doc.moveDown(0.7);
-
-      // ── Pre-filled: guest count & total ──────────────────────────────────
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000')
-         .text(`Guest Count: ${party}     @     $12.75 Per Person`, { align:'center' });
-      doc.moveDown(0.2);
-      doc.text(`Total: $${total}`, { align:'center' });
-      doc.moveDown(0.9);
-
-      // ── Signature line ───────────────────────────────────────────────────
-      const sigY = doc.y;
-      doc.font('Helvetica').fontSize(11).text('Signature:  ', 72, sigY, {continued:false});
-      const slw = doc.widthOfString('Signature:  ') + 6;
-      doc.moveTo(72+slw, sigY+15).lineTo(540, sigY+15).lineWidth(0.5).stroke();
-
-      doc.moveDown(2);
-      doc.moveTo(72, doc.y).lineTo(540, doc.y).lineWidth(0.5).strokeColor('#888').stroke();
-      doc.moveDown(0.3);
-      doc.fontSize(8).font('Helvetica').fillColor('#888')
-         .text('Revised Version 10/2025', { align:'center' });
-
-      doc.end();
-    } catch(err) { reject(err); }
-  });
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,4 +281,4 @@ async function notifyDocReceived(reservation) {
   }).catch(console.error);
 }
 
-module.exports = { sendDirectBillForm, notifyDocReceived, buildFormPDF };
+module.exports = { sendDirectBillForm, notifyDocReceived, buildFormPDF, buildSignedFormPDF };
