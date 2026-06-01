@@ -595,6 +595,42 @@ app.get('/api/slots', async (req, res) => {
 
 app.get('/health', (req,res)=>res.json({ status:'ok', version:'v14', env:process.env.NODE_ENV||'production', database:process.env.DATABASE_URL?'postgresql':'json-file', time:new Date().toISOString() }));
 
+// Admin-only diagnostics — shows which env vars are set (never exposes values)
+app.get('/api/diagnostics', auth.requireAdmin, async (req, res) => {
+  const chk = (k) => !!process.env[k];
+  const settings = await db.getAllSettings().catch(()=>({}));
+  res.json({
+    railway_vars: {
+      SENDGRID_API_KEY:    chk('SENDGRID_API_KEY'),
+      FROM_EMAIL:          process.env.FROM_EMAIL || '(not set — default used)',
+      MANAGER_EMAIL:       process.env.MANAGER_EMAIL || '(not set)',
+      DIRECT_BILL_EMAIL:   process.env.DIRECT_BILL_EMAIL || '(not set — falls back to MANAGER_EMAIL)',
+      GROQ_API_KEY:        chk('GROQ_API_KEY'),
+      TWILIO_ACCOUNT_SID:  chk('TWILIO_ACCOUNT_SID'),
+      TWILIO_AUTH_TOKEN:   chk('TWILIO_AUTH_TOKEN'),
+      TWILIO_PHONE:        process.env.TWILIO_PHONE || '(not set)',
+      BASE_URL:            process.env.BASE_URL || '(not set)',
+      DIRECT_BILL_INBOUND: process.env.DIRECT_BILL_INBOUND || 'false',
+      ADMIN_PIN:           chk('ADMIN_PIN'),
+      SESSION_SECRET:      chk('SESSION_SECRET'),
+      DATABASE_URL:        chk('DATABASE_URL'),
+    },
+    service_toggles: {
+      web_form_enabled:    settings.web_form_enabled,
+      email_intake_enabled:settings.email_intake_enabled,
+      sms_intake_enabled:  settings.sms_intake_enabled,
+    },
+    channels: {
+      email_sending:  chk('SENDGRID_API_KEY') ? '✅ ready' : '❌ SENDGRID_API_KEY missing',
+      email_inbound:  chk('SENDGRID_API_KEY') && settings.email_intake_enabled==='true' ? '✅ ready' : `❌ ${!chk('SENDGRID_API_KEY')?'SENDGRID_API_KEY missing':'email_intake_enabled is off'}`,
+      sms:            chk('GROQ_API_KEY') && chk('TWILIO_ACCOUNT_SID') && settings.sms_intake_enabled==='true' ? '✅ ready' : `❌ missing: ${[!chk('GROQ_API_KEY')&&'GROQ_API_KEY',!chk('TWILIO_ACCOUNT_SID')&&'TWILIO_ACCOUNT_SID',settings.sms_intake_enabled!=='true'&&'sms_intake_enabled=off'].filter(Boolean).join(', ')}`,
+      voice:          chk('GROQ_API_KEY') && chk('TWILIO_ACCOUNT_SID') ? '✅ ready' : `❌ missing: ${[!chk('GROQ_API_KEY')&&'GROQ_API_KEY',!chk('TWILIO_ACCOUNT_SID')&&'TWILIO_ACCOUNT_SID'].filter(Boolean).join(', ')}`,
+      direct_bill_pdf:chk('SENDGRID_API_KEY') ? '✅ ready' : '❌ SENDGRID_API_KEY missing',
+      direct_bill_inbound: process.env.DIRECT_BILL_INBOUND==='true' && chk('SENDGRID_API_KEY') ? '✅ ready' : `❌ ${process.env.DIRECT_BILL_INBOUND!=='true'?'DIRECT_BILL_INBOUND not true':'SENDGRID_API_KEY missing'}`,
+    }
+  });
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════════════════════════════
