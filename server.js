@@ -6,6 +6,7 @@ const crypto  = require('crypto');
 
 const { handleIncomingEmail }                       = require('./src/emailInbound');
 const { handleIncomingSMS }                         = require('./src/sms');
+const { handleIncomingCall, handleVoiceCollect, handleCallStatus } = require('./src/voice');
 const { getEmailReply }                             = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./src/email');
@@ -101,6 +102,14 @@ app.post('/sms/incoming', upload.none(), (req, res) => {
   }
   handleIncomingSMS(req, res);
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+//  VOICE INBOUND (Twilio Voice)
+//  Webhook URL to set in Twilio: https://your-app.railway.app/voice/incoming
+// ══════════════════════════════════════════════════════════════════════════
+app.post('/voice/incoming', upload.none(), handleIncomingCall);
+app.post('/voice/collect',  upload.none(), handleVoiceCollect);
+app.post('/voice/status',   upload.none(), handleCallStatus);
 
 // ══════════════════════════════════════════════════════════════════════════
 //  PUBLIC PAGES
