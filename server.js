@@ -182,39 +182,106 @@ app.post('/api/reserve', async (req, res) => {
     if (partySize < 2)  return res.status(400).json({ error:'Minimum party size is 2 guests.' });
     if (partySize > 15) return res.status(400).json({ error:'Maximum party size is 15 guests.' });
 
-    const reservation_date = datetime_iso.slice(0, 10);
+    const startDate = datetime_iso.slice(0, 10);
+    const numDays   = Math.min(7, Math.max(1, parseInt(num_days || '1', 10)));
 
-    // Check weekday (Mon=1 ... Fri=5)
-    const dayOfWeek = new Date(reservation_date+'T12:00:00').getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6)
+    // Check weekday for start date
+    const startDay = new Date(startDate + 'T12:00:00').getDay();
+    if (startDay === 0 || startDay === 6)
       return res.status(400).json({ error:'We are only open Monday–Friday. Please select a weekday.' });
 
     // Check 24-hour advance
-    const resDateTime = new Date(datetime_iso);
-    if (resDateTime < new Date(Date.now() + 24*60*60*1000))
+    if (new Date(datetime_iso) < new Date(Date.now() + 24*60*60*1000))
       return res.status(400).json({ error:'Reservations must be made at least 24 hours in advance. Walk-ups are welcome!' });
 
-    // Check blocked/holiday dates
-    const blocked = await blockedDates.isBlocked(reservation_date);
-    if (blocked)
-      return res.status(400).json({ error:`We are closed on ${reservation_date} (${blocked.reason}). Please choose another date.` });
+    // Build list of valid weekdays starting from startDate (skip weekends + blocked dates)
+    const reservationDates = [];
+    const cursor = new Date(startDate + 'T12:00:00');
+    while (reservationDates.length < numDays) {
+      const iso = cursor.toISOString().split('T')[0];
+      const dow = cursor.getDay();
+      if (dow !== 0 && dow !== 6) {
+        const bl = await blockedDates.isBlocked(iso);
+        if (!bl) reservationDates.push(iso);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+      if (cursor - new Date(startDate + 'T12:00:00') > 30 * 24*60*60*1000) break; // safety: max 30 day scan
+    }
+    if (!reservationDates.length)
+      return res.status(400).json({ error:'No available weekdays found starting from that date.' });
 
-    // People-based daily limit
     const partyN   = partySize;
-    const used     = await db.getDailyPeopleCount(reservation_date);
-    const limit    = parseInt(process.env.DAILY_LIMIT || '60');
-    if (used + partyN > limit) {
-      const left = Math.max(0, limit - used);
-      return res.status(429).json({ error:`Only ${left} covers remaining for that date. Please reduce party size or choose a different date.` });
+    const groupId  = numDays > 1 ? crypto.randomUUID() : null;
+    const timeStr  = datetime_iso.slice(11,16); // HH:MM
+    const displayTime = new Date(datetime_iso).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+
+    const createdReservations = [];
+    const skippedDates = [];
+
+    for (const resDate of reservationDates) {
+      const dateDisplay = new Date(resDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+      const datetimeDisplay = `${dateDisplay} ${displayTime}`;
+      const session = {
+        channel:'form', callerNumber:email, callSid:`form-${Date.now()}-${resDate}`,
+        collected:{
+          name, department:department||'', phone_ext:phone_ext||'',
+          status:guest_type.toLowerCase(), uid:cleanUid, email, party:partyN,
+          num_days:1, // each reservation = 1 day; total days shown in combined email
+          group_id:groupId,
+          datetime:datetimeDisplay, reservation_date:resDate,
+          reservation_time:reservation_time||displayTime||'',
+          seating_preference:'', payment_method:payment_method||'', notes:notes||''
+        }
+      };
+      // Suppress individual guest emails + Direct Bill for all but first day
+      const isFirst = createdReservations.length === 0;
+      const result = await processReservation(session, {
+        suppressGuestEmail: true,           // we send one combined email after
+        suppressDirectBill: !isFirst        // only send Direct Bill form on first day
+      });
+      if (result.success) {
+        createdReservations.push({ date: resDate, display: datetimeDisplay, reservation: result.reservation });
+      } else {
+        skippedDates.push({ date: resDate, reason: result.reason });
+      }
     }
 
-    const display = datetime_display || new Date(datetime_iso).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
-    const session = {
-      channel:'form', callerNumber:email, callSid:`form-${Date.now()}`,
-      collected:{ name, department:department||'', phone_ext:phone_ext||'', status:guest_type.toLowerCase(), uid:cleanUid, email, party:partyN, num_days:Math.min(7,Math.max(1,parseInt(num_days||'1',10))), datetime:display, reservation_date, reservation_time:reservation_time||'', seating_preference:seating_preference||'', payment_method:payment_method||'', notes:notes||'' }
-    };
-    const result = await processReservation(session);
-    res.json({ success:true, status:result.status });
+    if (!createdReservations.length)
+      return res.status(429).json({ error:'No dates could be booked — capacity may be full. Please try different dates.' });
+
+    // Send ONE combined confirmation email to guest
+    if (process.env.SENDGRID_API_KEY && email) {
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+      const dateRows = createdReservations.map(d =>
+        `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">${d.display}</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;color:#006747;font-weight:600">Pending approval</td></tr>`
+      ).join('');
+      const skippedNote = skippedDates.length ? `<p style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px;margin-top:12px">⚠️ ${skippedDates.length} date${skippedDates.length>1?'s were':' was'} unavailable (fully booked) and skipped.</p>` : '';
+      await sgMail.send({
+        to: email, from: { email: FROM_EMAIL, name: 'On Top of the Palms' },
+        subject: `Reservation Request Received — ${createdReservations.length} day${createdReservations.length>1?'s':''} | On Top of the Palms`,
+        html: `<div style="font-family:-apple-system,sans-serif;background:#f3f4f6;padding:24px 16px"><div style="max-width:560px;margin:0 auto">
+          <div style="background:#006747;border-radius:10px 10px 0 0;padding:18px 24px"><h1 style="color:#fff;font-size:17px;font-weight:700;margin:0">On Top of the Palms</h1><p style="color:#a7d9c2;font-size:11px;margin:2px 0 0">USF Dining · Compass USA</p></div>
+          <div style="background:#fff;border-radius:0 0 10px 10px;padding:24px 28px">
+            <h2 style="color:#111827;font-size:17px;margin:0 0 12px">Hi ${name}, your request is submitted!</h2>
+            <p style="color:#374151;font-size:14px;margin:0 0 16px">We received your reservation request for <strong>${createdReservations.length} day${createdReservations.length>1?'s':''}</strong>. A manager will review and confirm each date.</p>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:16px">
+              <thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Date &amp; Time</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Status</th></tr></thead>
+              <tbody>${dateRows}</tbody>
+            </table>
+            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:16px">
+              <div><strong>Party size:</strong> ${partyN} guest${partyN>1?'s':''}</div>
+              <div><strong>Payment:</strong> ${payment_method||'—'}</div>
+            </div>
+            ${skippedNote}
+            ${(payment_method||'').includes('Direct Bill') ? '<p style="font-size:13px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px">📄 A Direct Bill authorization form has been sent to you separately. Please complete and return it.</p>' : ''}
+            <p style="font-size:12px;color:#9ca3af;margin-top:16px">Walk-ups are always welcome based on availability.</p>
+          </div></div></div>`
+      }).catch(console.error);
+    }
+
+    res.json({ success:true, status:'pending', days_booked: createdReservations.length, days_skipped: skippedDates.length });
   } catch(err) { console.error('[Form]',err.message); res.status(500).json({ error:'Submission failed. Please try again.' }); }
 });
 
