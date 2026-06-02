@@ -11,13 +11,20 @@
  *   received     → guest returned signed form, stored in DB
  */
 
-const sgMail = require('@sendgrid/mail');
+const sgMail  = require('@sendgrid/mail');
+const crypto  = require('crypto');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const FROM       = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
 const NAME       = 'On Top of the Palms';
 const PHONE      = process.env.RESTAURANT_PHONE || '(813) 974-3573';
 const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL || 'topofthepalms@usf.edu';
+
+// Generate a secure guest-facing upload token (same logic as server.js)
+function makeUploadToken(reservationId) {
+  const secret = process.env.SESSION_SECRET || 'topp-secret-key-2026';
+  return crypto.createHmac('sha256', secret).update(`directbill:${reservationId}`).digest('hex').slice(0, 40);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // buildFormPDF — fills the official Direct Bill template with reservation data
@@ -173,15 +180,16 @@ async function sendDirectBillForm(reservation) {
     return { success: false, reason: 'no_sendgrid' };
   }
 
-  const ref = reservation.id.slice(0,8).toUpperCase();
-  let pdfBuffer = null;
+  const ref       = reservation.id.slice(0,8).toUpperCase();
+  const baseUrl   = process.env.BASE_URL || 'https://staging.topofthepalmsusf-chartwells.com';
+  const uploadUrl = `${baseUrl}/directbill/upload/${makeUploadToken(reservation.id)}`;
 
+  let pdfBuffer = null;
   try {
     pdfBuffer = await buildFormPDF(reservation);
     console.log(`[DirectBill] PDF generated: ${pdfBuffer.length} bytes`);
   } catch(pdfErr) {
     console.error('[DirectBill] PDF generation failed:', pdfErr.message);
-    // Still send the email even without attachment
   }
 
   const attachments = pdfBuffer ? [{
@@ -195,7 +203,7 @@ async function sendDirectBillForm(reservation) {
     to:       reservation.email,
     from:     { email: FROM, name: NAME },
     replyTo:  FORWARD_TO,
-    subject:  `Direct Bill Authorization Form — Ref ${ref} | On Top of the Palms`,
+    subject:  `Action Required: Direct Bill Form — Ref ${ref} | On Top of the Palms`,
     attachments,
     html: `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;padding:24px 16px">
@@ -208,14 +216,23 @@ async function sendDirectBillForm(reservation) {
     <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">📄 Action Required — Direct Bill</div>
     <h2 style="color:#111827;font-size:18px;margin:0 0 12px">Hi ${reservation.name},</h2>
     <p style="color:#374151;font-size:14px;margin:0 0 14px">Thank you for your reservation at <strong>On Top of the Palms</strong>. You selected <strong>Direct Bill</strong> as your payment method.</p>
-    <p style="color:#374151;font-size:14px;margin:0 0 18px">The <strong>Direct Bill Authorization Form is attached to this email as a PDF.</strong> Please:</p>
+    <p style="color:#374151;font-size:14px;margin:0 0 18px">The <strong>pre-filled Authorization Form is attached</strong> to this email. Please complete, sign, and return it using the button below.</p>
 
     <ol style="color:#374151;font-size:14px;line-height:1.9;padding-left:20px;margin:0 0 20px">
       <li>Print the attached PDF form</li>
       <li>Fill in your Chartfield #, Foundation #, or In-Kind account details</li>
       <li>Sign the form</li>
-      <li>Reply to this email with the completed form attached (scan or photo)</li>
+      <li><strong>Click the button below to upload your completed form</strong></li>
     </ol>
+
+    <!-- Upload button — the main CTA -->
+    <div style="text-align:center;margin:24px 0">
+      <a href="${uploadUrl}"
+         style="display:inline-block;background:#006747;color:#fff;text-decoration:none;padding:15px 36px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:.01em">
+        📤 Upload Signed Form
+      </a>
+      <p style="font-size:11px;color:#9ca3af;margin-top:10px">Secure link · PDF, JPG, or PNG · Max 10 MB</p>
+    </div>
 
     <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:0 0 18px">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -227,19 +244,18 @@ async function sendDirectBillForm(reservation) {
     </div>
 
     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:16px">
-      <p style="font-size:13px;color:#b45309;margin:0">⚠️ Payment must be received within <strong>30 days of dining</strong>. Reply to this email with your completed and signed form.</p>
+      <p style="font-size:13px;color:#b45309;margin:0">⚠️ Payment must be received within <strong>30 days of dining</strong>.</p>
     </div>
 
-    <p style="font-size:13px;color:#374151;margin:0 0 4px"><strong>Forward completed form to:</strong> ${FORWARD_TO}</p>
-    <p style="font-size:13px;color:#374151;margin:0 0 16px"><strong>Phone:</strong> ${PHONE}</p>
-    ${!pdfBuffer ? '<p style="font-size:12px;color:#b91c1c;background:#fef2f2;border-radius:6px;padding:8px 12px">⚠️ PDF attachment failed to generate — please contact us at '+PHONE+' for a copy of the form.</p>' : ''}
+    <p style="font-size:12px;color:#9ca3af;margin:0">Can't use the button? Email your completed form to <strong>${FORWARD_TO}</strong> and include your Ref # <strong>${ref}</strong> in the subject line.<br>Questions? Call us at ${PHONE}.</p>
+    ${!pdfBuffer ? '<p style="font-size:12px;color:#b91c1c;background:#fef2f2;border-radius:6px;padding:8px 12px;margin-top:12px">⚠️ PDF attachment failed to generate — please contact us at '+PHONE+' for a copy of the form.</p>' : ''}
   </div>
   <p style="text-align:center;color:#9ca3af;font-size:11px;margin:12px 0 0">On Top of the Palms · USF Tampa Campus · ${PHONE}</p>
 </div>
 </div>`
   });
 
-  console.log(`[DirectBill] Email ${pdfBuffer?'with PDF':'WITHOUT PDF'} sent to ${reservation.email} (ref: ${ref})`);
+  console.log(`[DirectBill] Email sent to ${reservation.email} (ref: ${ref}) — upload URL: ${uploadUrl}`);
   return { success: true, has_pdf: !!pdfBuffer };
 }
 

@@ -12,6 +12,15 @@ const { processReservation }                        = require('./src/reservation
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./src/email');
 const directBill = require('./src/direct-bill');
 const multerMem = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } }); // 10MB for doc uploads
+
+// ── Direct Bill upload token — HMAC of reservationId, valid forever unless secret changes
+function makeUploadToken(reservationId) {
+  const secret = process.env.SESSION_SECRET || 'topp-secret-key-2026';
+  return crypto.createHmac('sha256', secret).update(`directbill:${reservationId}`).digest('hex').slice(0, 40);
+}
+function verifyUploadToken(token, reservationId) {
+  return token === makeUploadToken(reservationId);
+}
 const blockedDates = require('./src/blocked-dates');
 const auth = require('./src/auth');
 const db   = require('./src/db');
@@ -64,6 +73,15 @@ app.post('/api/logout', (req, res) => { auth.clearSession(res); res.json({ succe
 // multerMem.any() captures attachments (signed Direct Bill PDFs/images) into req.files
 // Guard: only process email intake when enabled via service settings
 app.post('/email/incoming', multerMem.any(), async (req, res, next) => {
+  // Direct Bill returns ALWAYS get processed regardless of email_intake toggle.
+  // The toggle only gates NEW reservation requests via email, not document returns.
+  const subject = (req.body.subject || '').toLowerCase();
+  const isDirectBillReturn = subject.includes('direct bill authorization form') || subject.includes('direct bill form');
+  if (isDirectBillReturn) {
+    console.log('[Email] Direct Bill return — bypassing email_intake toggle');
+    return next();
+  }
+
   const s = await db.getAllSettings().catch(() => ({}));
   if (s.email_intake_enabled !== 'true') {
     console.log('[Email] Email intake is disabled — ignoring inbound email');
@@ -121,8 +139,20 @@ app.get('/demo.html',(req, res) => res.sendFile(path.join(__dirname,'views','dem
 // ══════════════════════════════════════════════════════════════════════════
 //  RESERVATION FORM API
 // ══════════════════════════════════════════════════════════════════════════
+// Public endpoint — lets the reserve page know if the web form is open
+app.get('/api/reserve/status', async (req, res) => {
+  const s = await db.getAllSettings().catch(() => ({}));
+  res.json({ web_form_enabled: s.web_form_enabled === 'true' });
+});
+
 app.post('/api/reserve', async (req, res) => {
   try {
+    // Check if web form intake is enabled
+    const settings = await db.getAllSettings().catch(() => ({}));
+    if (settings.web_form_enabled === 'false') {
+      return res.status(503).json({ error: 'Online reservations are temporarily unavailable. Please call us or visit in person.' });
+    }
+
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
     if (!rateLimit(ip, 'reserve', 5, 60000)) return res.status(429).json({ error:'Too many submissions — please wait a minute.' });
     const { name, department, phone_ext, guest_type, uid, email, party, datetime_iso, datetime_display, reservation_time, seating_preference, payment_method, notes } = req.body;
@@ -351,6 +381,71 @@ app.post('/api/reservations/:id/directbill/sign-reception', auth.requirePos, asy
   } catch(err) {
     console.error('[Sign] Reception sign error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Guest-facing Direct Bill upload page (public, token-protected) ────────────
+// Serve the upload UI
+app.get('/directbill/upload/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'directbill-upload.html'));
+});
+
+// Return reservation info for the upload page (validates token, no auth cookie needed)
+app.get('/api/directbill/upload-info/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    const all   = await db.getAllReservations();
+    const r     = all.find(r => makeUploadToken(r.id) === token);
+    if (!r) return res.status(404).json({ error: 'This link is invalid. Please contact us for a new one.' });
+    if (r.direct_bill_status === 'received') {
+      return res.status(410).json({ error: 'A signed form has already been received for this reservation. If you need to re-submit, please contact us.' });
+    }
+    const PHONE = process.env.RESTAURANT_PHONE || '(813) 974-3573';
+    res.json({
+      ref:        r.id.slice(0, 8).toUpperCase(),
+      name:       r.name,
+      datetime:   r.datetime,
+      party:      r.party,
+      department: r.department,
+      phone:      PHONE
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Accept the uploaded signed form (public, token-protected)
+app.post('/api/directbill/upload/:token', multerMem.single('file'), async (req, res) => {
+  try {
+    const token = req.params.token;
+    const all   = await db.getAllReservations();
+    const r     = all.find(r => makeUploadToken(r.id) === token);
+    if (!r) return res.status(404).json({ error: 'Invalid upload link.' });
+    if (r.direct_bill_status === 'received') {
+      return res.status(410).json({ error: 'A form has already been received for this reservation.' });
+    }
+
+    if (!req.file) return res.status(400).json({ error: 'No file received. Please attach a file and try again.' });
+
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(req.file.mimetype) && !req.file.originalname.match(/\.(pdf|jpg|jpeg|png)$/i)) {
+      return res.status(400).json({ error: 'Only PDF, JPG, and PNG files are accepted.' });
+    }
+
+    const ref      = r.id.slice(0, 8).toUpperCase();
+    const filename = `DirectBill_Signed_${ref}_${(r.name || 'Guest').replace(/\s+/g, '_')}_${Date.now()}${req.file.originalname.slice(req.file.originalname.lastIndexOf('.'))}`;
+    const b64      = req.file.buffer.toString('base64');
+
+    await db.storeDocument(r.id, filename, req.file.mimetype, b64, req.file.size);
+    const updated = await db.updateReservation(r.id, { direct_bill_status: 'received' });
+
+    console.log(`[DirectBill] ✓ Signed form uploaded by guest — ${r.name} (${ref}), ${req.file.size} bytes`);
+
+    // Notify manager + confirm to guest (non-blocking)
+    directBill.notifyDocReceived(updated).catch(e => console.error('[DirectBill] Notify error:', e.message));
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[DirectBill] Upload error:', err.message);
+    res.status(500).json({ error: 'Upload failed. Please try again or contact us.' });
   }
 });
 
@@ -593,7 +688,7 @@ app.get('/api/slots', async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-app.get('/health', (req,res)=>res.json({ status:'ok', version:'v14', env:process.env.NODE_ENV||'production', database:process.env.DATABASE_URL?'postgresql':'json-file', time:new Date().toISOString() }));
+app.get('/health', (req,res)=>res.json({ status:'ok', version:'v15', env:process.env.NODE_ENV||'production', database:process.env.DATABASE_URL?'postgresql':'json-file', time:new Date().toISOString() }));
 
 // Admin-only diagnostics — shows which env vars are set (never exposes values)
 app.get('/api/diagnostics', auth.requireAdmin, async (req, res) => {
@@ -642,7 +737,7 @@ const _rl = new Map();
 function rateLimit(ip, key, max, windowMs=60000){
   const k=`${key}:${ip}`, now=Date.now();
   const hits=(_rl.get(k)||[]).filter(t=>now-t<windowMs);
-  if(hits.length>=max) return false;
+  if(hits.length>max) return false;
   hits.push(now); _rl.set(k,hits); return true;
 }
 
