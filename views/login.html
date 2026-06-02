@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Top of Palms">
+  <meta name="theme-color" content="#006747">
+  <link rel="manifest" href="/manifest.json">
   <title>Sign In — Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -113,18 +118,17 @@
   else if (type === 'admin') setRole('admin');
 
   function addDigit(d) {
-    if (pin.length >= 6) return;
+    if (pin.length >= 4) return;
     pin += d;
     updateDots();
-    if (pin.length >= 4) document.getElementById('signin-btn').disabled = false;
-    // Auto submit when pin reaches max expected length (6 digits)
-    if (pin.length === 6) submit();
+    // Auto-submit as soon as 4 digits entered
+    if (pin.length === 4) submit();
   }
 
   function delDigit() {
     pin = pin.slice(0, -1);
     updateDots();
-    if (pin.length < 4) document.getElementById('signin-btn').disabled = true;
+    document.getElementById('signin-btn').disabled = pin.length < 4;
   }
 
   function clearPin() {
@@ -135,23 +139,19 @@
   }
 
   function updateDots() {
-    // Show up to 6 dots
     const container = document.getElementById('dots');
-    // Adjust dots to show current pin length (up to 6)
-    const maxDots = 6;
     container.innerHTML = '';
-    for (let i = 0; i < maxDots; i++) {
+    for (let i = 0; i < 4; i++) {
       const d = document.createElement('div');
       d.className = 'dot' + (i < pin.length ? ' filled' : '');
       container.appendChild(d);
     }
   }
 
-  // Also support keyboard
+  // Keyboard support
   document.addEventListener('keydown', e => {
     if (e.key >= '0' && e.key <= '9') addDigit(e.key);
     else if (e.key === 'Backspace') delDigit();
-    else if (e.key === 'Enter' && pin.length >= 4) submit();
   });
 
   async function submit() {
@@ -178,6 +178,8 @@
       btn.textContent = 'Sign In';
     }
   }
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
 </html>

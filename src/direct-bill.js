@@ -39,7 +39,8 @@ async function buildFormPDF(reservation) {
   const fs = require('fs');
 
   const party = parseInt(reservation.party || 0);
-  const total = (party * 12.75).toFixed(2);
+  const days  = Math.max(1, parseInt(reservation.num_days || 1));
+  const total = (party * days * 12.75).toFixed(2);
   const resDate = reservation.reservation_date || '';
 
   // Fix old records that have '2026' (year only) stored due to a previous bug.
@@ -80,9 +81,9 @@ async function buildFormPDF(reservation) {
   draw(reservation.phone_ext||'', 393, 449);  // Phone #
   draw(reservation.name || '',    177, 421);  // Dining Guest Name
   //
-  // Bottom billing rows — template already has "Total: $", so we draw the number only:
-  draw(String(party),             252, 157);  // Guest Count: value (blank is after "Count: ")
-  draw(total,                     210, 137);  // Total amount (no '$' — template prints it; x=210 starts after 'Total: $' label)
+  // Bottom billing rows — positions match buildSignedFormPDF (verified against template)
+  draw(String(party),             252, 157);  // Guest Count: blank field after "Count: " label
+  draw(total,                     168, 137);  // Total amount: blank field after "Total: $" label
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
@@ -97,7 +98,8 @@ async function buildSignedFormPDF(reservation, billing) {
   const fs = require('fs');
 
   const party = parseInt(reservation.party || 0);
-  const total = (party * 12.75).toFixed(2);
+  const days  = Math.max(1, parseInt(reservation.num_days || 1));
+  const total = (party * days * 12.75).toFixed(2);
 
   const templateBytes = fs.readFileSync(TEMPLATE_PATH);
   const pdfDoc = await PDFDocument.load(templateBytes);
@@ -239,7 +241,7 @@ async function sendDirectBillForm(reservation) {
         <tr><td style="color:#6b7280;padding:5px 0;border-bottom:1px solid #f3f4f6">Reservation Ref</td><td style="font-weight:700;text-align:right;font-family:monospace;border-bottom:1px solid #f3f4f6">${ref}</td></tr>
         <tr><td style="color:#6b7280;padding:5px 0;border-bottom:1px solid #f3f4f6">Date & Time</td><td style="font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6">${reservation.datetime}</td></tr>
         <tr><td style="color:#6b7280;padding:5px 0;border-bottom:1px solid #f3f4f6">Party Size</td><td style="font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6">${reservation.party} guest${reservation.party===1?'':'s'}</td></tr>
-        <tr><td style="color:#6b7280;padding:5px 0">Amount Due</td><td style="font-weight:700;text-align:right;color:#006747">$${(reservation.party*12.75).toFixed(2)}</td></tr>
+        <tr><td style="color:#6b7280;padding:5px 0">Amount Due</td><td style="font-weight:700;text-align:right;color:#006747">$${(reservation.party * Math.max(1, parseInt(reservation.num_days||1)) * 12.75).toFixed(2)}</td></tr>
       </table>
     </div>
 
@@ -277,7 +279,7 @@ async function notifyDocReceived(reservation) {
         <table style="font-size:13px;border-collapse:collapse;width:100%;margin:12px 0">
           <tr><td style="color:#6b7280;padding:5px 0">Department</td><td>${reservation.department||'—'}</td></tr>
           <tr><td style="color:#6b7280;padding:5px 0">Dining date</td><td>${reservation.datetime}</td></tr>
-          <tr><td style="color:#6b7280;padding:5px 0">Amount</td><td><strong>$${(reservation.party*12.75).toFixed(2)}</strong></td></tr>
+          <tr><td style="color:#6b7280;padding:5px 0">Amount</td><td><strong>$${(reservation.party * Math.max(1, parseInt(reservation.num_days||1)) * 12.75).toFixed(2)}</strong></td></tr>
         </table>
         <p style="font-size:12px;color:#6b7280">Payment due within 30 days of dining.</p>
       </div>`
@@ -291,7 +293,7 @@ async function notifyDocReceived(reservation) {
     html: `<div style="font-family:sans-serif;background:#f3f4f6;padding:24px 16px"><div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
       <div style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✓ Form Received</div>
       <h2 style="color:#111827;font-size:17px;margin:0 0 10px">Thank you, ${reservation.name}!</h2>
-      <p style="color:#374151;font-size:14px">We received your signed Direct Bill authorization. Your account will be billed <strong>$${(reservation.party*12.75).toFixed(2)}</strong> within 30 days.</p>
+      <p style="color:#374151;font-size:14px">We received your signed Direct Bill authorization. Your account will be billed <strong>$${(reservation.party * Math.max(1, parseInt(reservation.num_days||1)) * 12.75).toFixed(2)}</strong> within 30 days.</p>
       <p style="color:#6b7280;font-size:12px;margin-top:12px">Ref: <code>${ref}</code> · Questions? ${PHONE}</p>
     </div></div>`
   }).catch(console.error);

@@ -30,6 +30,7 @@ async function processReservation(session) {
     name:data.name, guest_status:data.status,
     department:data.department||'', phone_ext:data.phone_ext||'',
     uid:data.uid, email:data.email, party:partySize,
+    num_days:Math.max(1, parseInt(data.num_days||1, 10)),
     datetime:data.datetime, reservation_date:resDate,
     reservation_time:data.reservation_time||'',
     seating_preference:data.seating_preference||'',

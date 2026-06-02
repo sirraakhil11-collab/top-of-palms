@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Top of Palms POS">
+  <meta name="theme-color" content="#006747">
+  <link rel="manifest" href="/manifest.json">
   <title>POS Board — On Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -23,6 +29,12 @@
     .clock{text-align:right}
     .cdate{color:#fff;font-size:13px;font-weight:600}
     .ctime{color:#CFC493;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+    .search-bar{padding:8px 24px;background:#1a1d27;border-bottom:1px solid #2d3148}
+    .search-input{width:100%;max-width:380px;padding:8px 14px 8px 36px;background:#252836;border:1px solid #3d4065;border-radius:20px;color:#e8e8e8;font-size:13px;outline:none;font-family:inherit}
+    .search-input::placeholder{color:#4b5563}
+    .search-input:focus{border-color:#4ade80}
+    .search-wrap{position:relative;display:inline-block;width:100%;max-width:380px}
+    .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#4b5563;font-size:14px;pointer-events:none}
     .controls{padding:10px 24px;background:#1a1d27;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2d3148;flex-wrap:wrap}
     .sp{background:#252836;border:1px solid #3d4065;border-radius:18px;padding:5px 14px;font-size:13px;color:#9ca3af;cursor:pointer;transition:background .15s}
     .sp:hover{background:#2d3148}
@@ -122,6 +134,13 @@
   </div>
 </header>
 
+<div class="search-bar">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="search-input" type="text" placeholder="Search by name, department, or ref…" oninput="renderFiltered()">
+  </div>
+</div>
+
 <div class="controls">
   <div class="sp" id="f-all"  onclick="setFilter('all')"><strong id="tot">0</strong>Total</div>
   <div class="sp ci" id="f-ci"  onclick="setFilter('checked_in')"><strong id="ci">0</strong>Checked in</div>
@@ -196,12 +215,11 @@ function render(date){
   if(activeFilter==='checked_in') filtered=allData.filter(r=>r.attendance==='checked_in');
   else if(activeFilter==='no_show') filtered=allData.filter(r=>r.attendance==='no_show');
   else if(activeFilter==='pending') filtered=allData.filter(r=>!r.attendance||r.attendance==='pending');
-  // Sort: waiting first, then no-show, then checked-in at the bottom
-  const order = {'pending':0,'no_show':1,'checked_in':2};
+  // Sort by reservation time (check-in time order)
   filtered = [...filtered].sort((a,b) => {
-    const ao = order[a.attendance||'pending'] ?? 0;
-    const bo = order[b.attendance||'pending'] ?? 0;
-    return ao - bo;
+    const at = a.datetime_iso || a.datetime || '';
+    const bt = b.datetime_iso || b.datetime || '';
+    return at.localeCompare(bt);
   });
 
   if(!filtered.length){
@@ -286,10 +304,7 @@ function render(date){
         <div class="rr"><span class="rk">Party</span><span class="rv big">${r.party}</span></div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
         ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:12px">${x(r.department)}</span></div>`:''}
-        ${r.phone_ext?`<div class="rr"><span class="rk">Phone</span><span class="rv" style="font-size:12px">${x(r.phone_ext)}</span></div>`:''}
-        <div class="rr"><span class="rk">Email</span><span class="rv" style="font-size:11px;word-break:break-all">${x(r.email)}</span></div>
         <div class="rr"><span class="rk">Confirm #</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
-        <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
         ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:11px">${x(r.notes)}</span></div>`:''}
       </div>
       ${seatSection}
@@ -297,6 +312,21 @@ function render(date){
       ${attSection}
     </div>`;
   }).join('');
+}
+
+// ── Search filter ──────────────────────────────────────────────────────────
+function renderFiltered() {
+  const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+  if (!q) { render(document.getElementById('dpick').value || todayISO); return; }
+  const orig = allData;
+  allData = orig.filter(r => {
+    const ref = r.id.slice(0,8).toUpperCase();
+    return (r.name||'').toLowerCase().includes(q) ||
+           (r.department||'').toLowerCase().includes(q) ||
+           ref.toLowerCase().includes(q);
+  });
+  render(document.getElementById('dpick').value || todayISO);
+  allData = orig;
 }
 
 // ── Seating ────────────────────────────────────────────────────────────────
@@ -393,6 +423,8 @@ function tick(){
 }
 tick(); setInterval(tick,1000);
 load(); setInterval(load,30000);
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
 </html>

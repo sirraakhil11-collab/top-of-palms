@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Top of Palms Manager">
+  <meta name="theme-color" content="#006747">
+  <link rel="manifest" href="/manifest.json">
   <title>Manager Dashboard — Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -331,6 +336,28 @@
     </div>
   </div>
 
+  <!-- Operating Hours -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">🕐 Operating Hours
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Controls the time slots shown on the guest reservation form</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Open Time</label>
+          <input type="time" id="oh-open" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;font-family:inherit;min-width:130px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Close Time</label>
+          <input type="time" id="oh-close" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;font-family:inherit;min-width:130px">
+        </div>
+        <button onclick="saveHours()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save Hours</button>
+        <span id="oh-saved" style="font-size:12px;color:#15803d;display:none">✓ Saved</span>
+      </div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:10px">Last booking slot is 15 minutes before close. Mon–Fri only.</p>
+    </div>
+  </div>
+
   <!-- Blocked Dates / Holidays -->
   <div style="margin-top:28px">
     <div class="sec-hd">
@@ -619,7 +646,7 @@ async function loadSavedBatchEmail(){
 async function sendBatch(){
   const email=document.getElementById('batch-email').value.trim();
   if(!email){alert('Enter a recipient email address first.');return;}
-  const ids=[...document.querySelectorAll('.batch-chk:checked')].map(c=>Number(c.dataset.id));
+  const ids=[...document.querySelectorAll('.batch-chk:checked')].map(c=>c.dataset.id);
   if(!ids.length){alert('No documents selected.');return;}
   const btn=document.getElementById('batch-send-btn');
   if(!confirm(`Send ${ids.length} document${ids.length===1?'':'s'} to ${email}?`))return;
@@ -1041,7 +1068,32 @@ function applyRoleUI(){
   renderTable(filtered());
 }
 
-loadAll();loadBlockedDates();loadServiceControls();loadSavedBatchEmail();setInterval(loadAll,30000);
+async function loadHoursUI(){
+  try{
+    const s=await fetch('/api/settings').then(r=>r.json());
+    if(s.open_time)  document.getElementById('oh-open').value=s.open_time;
+    if(s.close_time) document.getElementById('oh-close').value=s.close_time;
+  }catch(e){}
+}
+
+async function saveHours(){
+  const open=document.getElementById('oh-open').value;
+  const close=document.getElementById('oh-close').value;
+  if(!open||!close){alert('Please set both open and close times.');return;}
+  try{
+    await Promise.all([
+      fetch('/api/settings/open_time', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:open})}),
+      fetch('/api/settings/close_time',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:close})})
+    ]);
+    const lbl=document.getElementById('oh-saved');
+    lbl.style.display='inline';
+    setTimeout(()=>lbl.style.display='none',3000);
+    toast('Operating hours saved ✓');
+  }catch(e){alert('Error saving hours: '+e.message);}
+}
+
+loadAll();loadBlockedDates();loadServiceControls();loadSavedBatchEmail();loadHoursUI();setInterval(loadAll,30000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
 </html>

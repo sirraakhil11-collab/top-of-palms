@@ -57,6 +57,7 @@ if (USE_PG) {
       attendance          TEXT DEFAULT 'pending',
       checked_in_at       TEXT,
       channel             TEXT DEFAULT 'form',
+      num_days            INTEGER DEFAULT 1,
       created_at          TEXT NOT NULL DEFAULT '',
       processed_at        TEXT
     );
@@ -75,6 +76,7 @@ if (USE_PG) {
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS table_number       TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS channel            TEXT DEFAULT 'form';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS reservation_date   TEXT DEFAULT '';
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS num_days           INTEGER DEFAULT 1;
 
     -- Fix any rows that have NULL in important fields
     UPDATE reservations SET department        = '' WHERE department IS NULL;
@@ -157,6 +159,7 @@ async function createReservation(data) {
     attendance:         'pending',
     checked_in_at:      null,
     channel:            data.channel           || 'form',
+    num_days:           Math.max(1, parseInt(data.num_days || 1, 10)),
     created_at:         now,
     processed_at:       null
   };
@@ -168,15 +171,16 @@ async function createReservation(data) {
         (id, name, guest_status, department, phone_ext, uid, email, party,
          datetime, reservation_date, reservation_time, seating_preference,
          payment_method, direct_bill_status, notes, table_number, status,
-         attendance, checked_in_at, channel, created_at, processed_at)
+         attendance, checked_in_at, channel, num_days, created_at, processed_at)
       VALUES
-        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
     `, [
       record.id, record.name, record.guest_status, record.department, record.phone_ext,
       record.uid, record.email, record.party, record.datetime, record.reservation_date,
       record.reservation_time, record.seating_preference, record.payment_method,
       record.direct_bill_status, record.notes, record.table_number, record.status,
-      record.attendance, record.checked_in_at, record.channel, record.created_at, record.processed_at
+      record.attendance, record.checked_in_at, record.channel, record.num_days,
+      record.created_at, record.processed_at
     ]);
   } else {
     const rows = readJSON(); rows.unshift(record); writeJSON(rows);
@@ -358,7 +362,7 @@ async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) 
 // ── Service settings (feature flags) ────────────────────────────────────────
 // JSON fallback: persist in a settings.json file in the data directory
 const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
-const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'' };
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'', open_time:'11:00', close_time:'14:00' };
 
 async function getAllSettings() {
   if (USE_PG) {

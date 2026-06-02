@@ -41,6 +41,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'views')));
 
+// ── PWA icons — generated as SVG/PNG without needing static files ──────────
+function makePwaIcon(size) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" rx="${size*0.2}" fill="#006747"/><text x="50%" y="55%" font-size="${size*0.55}" text-anchor="middle" dominant-baseline="middle" font-family="serif">🌴</text></svg>`;
+  return Buffer.from(svg);
+}
+app.get('/icon-192.png', (req, res) => { res.setHeader('Content-Type','image/svg+xml'); res.send(makePwaIcon(192)); });
+app.get('/icon-512.png', (req, res) => { res.setHeader('Content-Type','image/svg+xml'); res.send(makePwaIcon(512)); });
+
 // ══════════════════════════════════════════════════════════════════════════
 //  AUTH
 // ══════════════════════════════════════════════════════════════════════════
@@ -145,6 +153,12 @@ app.get('/api/reserve/status', async (req, res) => {
   res.json({ web_form_enabled: s.web_form_enabled === 'true' });
 });
 
+// Public endpoint — returns operating hours for the guest form time picker
+app.get('/api/reserve/hours', async (req, res) => {
+  const s = await db.getAllSettings().catch(() => ({}));
+  res.json({ open_time: s.open_time || '11:00', close_time: s.close_time || '14:00' });
+});
+
 app.post('/api/reserve', async (req, res) => {
   try {
     // Check if web form intake is enabled
@@ -155,12 +169,14 @@ app.post('/api/reserve', async (req, res) => {
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
     if (!rateLimit(ip, 'reserve', 5, 60000)) return res.status(429).json({ error:'Too many submissions — please wait a minute.' });
-    const { name, department, phone_ext, guest_type, uid, email, party, datetime_iso, datetime_display, reservation_time, seating_preference, payment_method, notes } = req.body;
+    const { name, department, phone_ext, guest_type, uid, email, party, num_days, datetime_iso, datetime_display, reservation_time, seating_preference, payment_method, notes } = req.body;
 
-    if (!name||!guest_type||!uid||!email||!party||!datetime_iso)
+    if (!name||!guest_type||!email||!party||!datetime_iso)
       return res.status(400).json({ error:'All required fields must be filled.' });
-    if (uid.replace(/\D/g,'').length !== 9)
-      return res.status(400).json({ error:'USF UID must be exactly 9 digits.' });
+    // UID is optional — validate only when provided
+    const cleanUid = (uid||'').replace(/\D/g,'');
+    if (cleanUid && cleanUid.length !== 9)
+      return res.status(400).json({ error:'USF UID must be exactly 9 digits (or leave blank).' });
 
     const partySize = parseInt(party, 10);
     if (partySize < 2)  return res.status(400).json({ error:'Minimum party size is 2 guests.' });
@@ -195,7 +211,7 @@ app.post('/api/reserve', async (req, res) => {
     const display = datetime_display || new Date(datetime_iso).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
     const session = {
       channel:'form', callerNumber:email, callSid:`form-${Date.now()}`,
-      collected:{ name, department:department||'', phone_ext:phone_ext||'', status:guest_type.toLowerCase(), uid:uid.replace(/\D/g,''), email, party:partyN, datetime:display, reservation_date, reservation_time:reservation_time||'', seating_preference:seating_preference||'', payment_method:payment_method||'', notes:notes||'' }
+      collected:{ name, department:department||'', phone_ext:phone_ext||'', status:guest_type.toLowerCase(), uid:cleanUid, email, party:partyN, num_days:Math.min(7,Math.max(1,parseInt(num_days||'1',10))), datetime:display, reservation_date, reservation_time:reservation_time||'', seating_preference:seating_preference||'', payment_method:payment_method||'', notes:notes||'' }
     };
     const result = await processReservation(session);
     res.json({ success:true, status:result.status });
@@ -584,15 +600,28 @@ app.get('/api/settings', auth.requireManager, async (req, res) => {
   catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-app.patch('/api/settings/:key', auth.requireAdmin, async (req, res) => {
+app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
   try {
-    const allowed = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
-    if (!allowed.includes(req.params.key)) return res.status(400).json({ error:'Unknown setting key' });
+    const adminOnly = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
+    const managerOk = ['open_time','close_time'];
+    const key = req.params.key;
+    if (!adminOnly.includes(key) && !managerOk.includes(key))
+      return res.status(400).json({ error:'Unknown setting key' });
+    // Boolean flags require admin; hours can be changed by manager
+    if (adminOnly.includes(key)) {
+      const sess = auth.getSession(req);
+      if (!sess || sess.role !== 'admin') return res.status(403).json({ error:'Admin access required' });
+      const { value } = req.body;
+      if (value !== 'true' && value !== 'false') return res.status(400).json({ error:'Value must be "true" or "false"' });
+      await db.updateSetting(key, value);
+      return res.json({ key, value });
+    }
+    // Hours: HH:MM format
     const { value } = req.body;
-    if (value !== 'true' && value !== 'false') return res.status(400).json({ error:'Value must be "true" or "false"' });
-    await db.updateSetting(req.params.key, value);
-    console.log(`[Settings] ${req.params.key} = ${value}`);
-    res.json({ key: req.params.key, value });
+    if (!/^\d{1,2}:\d{2}$/.test(value)) return res.status(400).json({ error:'Value must be HH:MM format' });
+    await db.updateSetting(key, value);
+    console.log(`[Settings] ${key} = ${value}`);
+    res.json({ key, value });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
