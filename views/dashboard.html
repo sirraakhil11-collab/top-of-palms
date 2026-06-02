@@ -574,7 +574,7 @@ async function loadBatchDocs(){
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><strong>${x(d.name||'—')}</strong></td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px">${x(d.department||'—')}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${x(d.reservation_date||'—')}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">$${Number(d.total_amount||0).toFixed(2)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">${d.party?'$'+(d.party*12.75).toFixed(2):'—'}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">📎 ${x(d.filename)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#9ca3af;white-space:nowrap">${new Date(d.uploaded_at).toLocaleDateString()}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;font-size:12px;text-decoration:none">Download</a></td>

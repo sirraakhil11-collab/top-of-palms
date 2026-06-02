@@ -64,6 +64,15 @@ app.post('/api/logout', (req, res) => { auth.clearSession(res); res.json({ succe
 // multerMem.any() captures attachments (signed Direct Bill PDFs/images) into req.files
 // Guard: only process email intake when enabled via service settings
 app.post('/email/incoming', multerMem.any(), async (req, res, next) => {
+  // Direct Bill returns ALWAYS get processed regardless of email_intake toggle.
+  // The toggle only gates NEW reservation requests via email, not document returns.
+  const subject = (req.body.subject || '').toLowerCase();
+  const isDirectBillReturn = subject.includes('direct bill authorization form') || subject.includes('direct bill form');
+  if (isDirectBillReturn) {
+    console.log('[Email] Direct Bill return — bypassing email_intake toggle');
+    return next();
+  }
+
   const s = await db.getAllSettings().catch(() => ({}));
   if (s.email_intake_enabled !== 'true') {
     console.log('[Email] Email intake is disabled — ignoring inbound email');
