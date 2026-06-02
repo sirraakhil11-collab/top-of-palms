@@ -12,6 +12,15 @@ const { processReservation }                        = require('./src/reservation
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./src/email');
 const directBill = require('./src/direct-bill');
 const multerMem = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } }); // 10MB for doc uploads
+
+// ── Direct Bill upload token — HMAC of reservationId, valid forever unless secret changes
+function makeUploadToken(reservationId) {
+  const secret = process.env.SESSION_SECRET || 'topp-secret-key-2026';
+  return crypto.createHmac('sha256', secret).update(`directbill:${reservationId}`).digest('hex').slice(0, 40);
+}
+function verifyUploadToken(token, reservationId) {
+  return token === makeUploadToken(reservationId);
+}
 const blockedDates = require('./src/blocked-dates');
 const auth = require('./src/auth');
 const db   = require('./src/db');
@@ -372,6 +381,71 @@ app.post('/api/reservations/:id/directbill/sign-reception', auth.requirePos, asy
   } catch(err) {
     console.error('[Sign] Reception sign error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Guest-facing Direct Bill upload page (public, token-protected) ────────────
+// Serve the upload UI
+app.get('/directbill/upload/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'directbill-upload.html'));
+});
+
+// Return reservation info for the upload page (validates token, no auth cookie needed)
+app.get('/api/directbill/upload-info/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    const all   = await db.getAllReservations();
+    const r     = all.find(r => makeUploadToken(r.id) === token);
+    if (!r) return res.status(404).json({ error: 'This link is invalid. Please contact us for a new one.' });
+    if (r.direct_bill_status === 'received') {
+      return res.status(410).json({ error: 'A signed form has already been received for this reservation. If you need to re-submit, please contact us.' });
+    }
+    const PHONE = process.env.RESTAURANT_PHONE || '(813) 974-3573';
+    res.json({
+      ref:        r.id.slice(0, 8).toUpperCase(),
+      name:       r.name,
+      datetime:   r.datetime,
+      party:      r.party,
+      department: r.department,
+      phone:      PHONE
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Accept the uploaded signed form (public, token-protected)
+app.post('/api/directbill/upload/:token', multerMem.single('file'), async (req, res) => {
+  try {
+    const token = req.params.token;
+    const all   = await db.getAllReservations();
+    const r     = all.find(r => makeUploadToken(r.id) === token);
+    if (!r) return res.status(404).json({ error: 'Invalid upload link.' });
+    if (r.direct_bill_status === 'received') {
+      return res.status(410).json({ error: 'A form has already been received for this reservation.' });
+    }
+
+    if (!req.file) return res.status(400).json({ error: 'No file received. Please attach a file and try again.' });
+
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowed.includes(req.file.mimetype) && !req.file.originalname.match(/\.(pdf|jpg|jpeg|png)$/i)) {
+      return res.status(400).json({ error: 'Only PDF, JPG, and PNG files are accepted.' });
+    }
+
+    const ref      = r.id.slice(0, 8).toUpperCase();
+    const filename = `DirectBill_Signed_${ref}_${(r.name || 'Guest').replace(/\s+/g, '_')}_${Date.now()}${req.file.originalname.slice(req.file.originalname.lastIndexOf('.'))}`;
+    const b64      = req.file.buffer.toString('base64');
+
+    await db.storeDocument(r.id, filename, req.file.mimetype, b64, req.file.size);
+    const updated = await db.updateReservation(r.id, { direct_bill_status: 'received' });
+
+    console.log(`[DirectBill] ✓ Signed form uploaded by guest — ${r.name} (${ref}), ${req.file.size} bytes`);
+
+    // Notify manager + confirm to guest (non-blocking)
+    directBill.notifyDocReceived(updated).catch(e => console.error('[DirectBill] Notify error:', e.message));
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[DirectBill] Upload error:', err.message);
+    res.status(500).json({ error: 'Upload failed. Please try again or contact us.' });
   }
 });
 
