@@ -130,8 +130,20 @@ app.get('/demo.html',(req, res) => res.sendFile(path.join(__dirname,'views','dem
 // ══════════════════════════════════════════════════════════════════════════
 //  RESERVATION FORM API
 // ══════════════════════════════════════════════════════════════════════════
+// Public endpoint — lets the reserve page know if the web form is open
+app.get('/api/reserve/status', async (req, res) => {
+  const s = await db.getAllSettings().catch(() => ({}));
+  res.json({ web_form_enabled: s.web_form_enabled === 'true' });
+});
+
 app.post('/api/reserve', async (req, res) => {
   try {
+    // Check if web form intake is enabled
+    const settings = await db.getAllSettings().catch(() => ({}));
+    if (settings.web_form_enabled === 'false') {
+      return res.status(503).json({ error: 'Online reservations are temporarily unavailable. Please call us or visit in person.' });
+    }
+
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
     if (!rateLimit(ip, 'reserve', 5, 60000)) return res.status(429).json({ error:'Too many submissions — please wait a minute.' });
     const { name, department, phone_ext, guest_type, uid, email, party, datetime_iso, datetime_display, reservation_time, seating_preference, payment_method, notes } = req.body;
@@ -651,7 +663,7 @@ const _rl = new Map();
 function rateLimit(ip, key, max, windowMs=60000){
   const k=`${key}:${ip}`, now=Date.now();
   const hits=(_rl.get(k)||[]).filter(t=>now-t<windowMs);
-  if(hits.length>=max) return false;
+  if(hits.length>max) return false;
   hits.push(now); _rl.set(k,hits); return true;
 }
 

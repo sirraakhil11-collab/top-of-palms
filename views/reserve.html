@@ -246,6 +246,24 @@
 
   function showErr(msg){const el=document.getElementById('err-msg');if(!el)return;el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});const b=document.getElementById('submit-btn');if(b){b.disabled=false;b.textContent='Submit Reservation Request';}}
 
+  // Check if web form is open — show closed message if disabled by admin
+  (async function checkFormStatus(){
+    try{
+      const s = await fetch('/api/reserve/status').then(r=>r.json());
+      if(!s.web_form_enabled){
+        document.getElementById('form-section').innerHTML=`
+          <div style="text-align:center;padding:40px 20px">
+            <div style="font-size:48px;margin-bottom:16px">🔒</div>
+            <h2 style="color:#111827;font-size:20px;margin-bottom:8px">Online Reservations Unavailable</h2>
+            <p style="color:#6b7280;font-size:15px;margin-bottom:0">
+              Online reservations are temporarily unavailable.<br>
+              Please call us at <strong>${PHONE||'(813) 974-0000'}</strong> or visit us in person.
+            </p>
+          </div>`;
+      }
+    }catch(e){}
+  })();
+
   // Weekday-only date picker (Mon-Fri, min tomorrow, block holidays)
   let blockedSet = new Set();
   async function loadBlocked(){
