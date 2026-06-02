@@ -602,7 +602,7 @@ app.get('/api/slots', async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
-app.get('/health', (req,res)=>res.json({ status:'ok', version:'v14', env:process.env.NODE_ENV||'production', database:process.env.DATABASE_URL?'postgresql':'json-file', time:new Date().toISOString() }));
+app.get('/health', (req,res)=>res.json({ status:'ok', version:'v15', env:process.env.NODE_ENV||'production', database:process.env.DATABASE_URL?'postgresql':'json-file', time:new Date().toISOString() }));
 
 // Admin-only diagnostics — shows which env vars are set (never exposes values)
 app.get('/api/diagnostics', auth.requireAdmin, async (req, res) => {
