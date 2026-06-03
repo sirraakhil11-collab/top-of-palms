@@ -370,7 +370,18 @@ function renderAll(date){
         <div class="rdot ${isFac?'df':'ds'}" style="margin-top:2px"></div>
       </div>
       <div class="rb">
-        <div class="rr"><span class="rk">Party</span><span class="rv big">${r.party}</span></div>
+        <div class="rr">
+          <span class="rk">Party</span>
+          <span class="rv big" id="party-disp-${r.id}" onclick="editParty('${r.id}')" style="cursor:pointer;border-bottom:1px dashed #4b5563" title="Tap to edit">${r.party}</span>
+        </div>
+        <div id="party-edit-${r.id}" style="display:none;margin-bottom:4px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" min="1" max="50" value="${r.party}" id="party-inp-${r.id}"
+              style="width:70px;background:#252836;border:1px solid #4ade80;border-radius:6px;color:#fff;font-size:16px;padding:5px 8px;font-family:inherit;outline:none">
+            <button onclick="saveParty('${r.id}')" style="background:#4ade80;color:#111;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer">✓</button>
+            <button onclick="cancelParty('${r.id}','${r.party}')" style="background:#3d4065;color:#9ca3af;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">✕</button>
+          </div>
+        </div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
         ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:11px">${x(r.department)}</span></div>`:''}
         <div class="rr"><span class="rk">Ref</span><span class="rv" style="font-family:monospace;font-size:11px">${ref}</span></div>
@@ -409,6 +420,32 @@ async function savePay(id){
   delete posPaySel[id];
   const btn=document.getElementById('psave-'+id); if(btn) btn.style.display='none';
   toast('Payment saved ✓');
+}
+
+// Party size editing
+function editParty(id){
+  document.getElementById('party-disp-'+id).style.display='none';
+  document.getElementById('party-edit-'+id).style.display='block';
+  document.getElementById('party-inp-'+id)?.focus();
+}
+function cancelParty(id,orig){
+  document.getElementById('party-edit-'+id).style.display='none';
+  document.getElementById('party-disp-'+id).style.display='';
+}
+async function saveParty(id){
+  const inp=document.getElementById('party-inp-'+id);
+  const val=parseInt(inp?.value);
+  if(isNaN(val)||val<1){toast('Invalid party size');return;}
+  const resp=await fetch(`/api/pos/party/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({party:val})});
+  if(!resp.ok){toast('Save failed');return;}
+  const r=allData.find(r=>r.id===id); if(r) r.party=val;
+  document.getElementById('party-edit-'+id).style.display='none';
+  const disp=document.getElementById('party-disp-'+id);
+  if(disp){disp.textContent=val;disp.style.display='';}
+  toast(`Party updated to ${val} ✓`);
+  // Refresh covers count
+  const cov=allData.filter(r=>r.attendance!=='no_show').reduce((s,r)=>s+r.party,0);
+  document.getElementById('cov').textContent=cov;
 }
 
 // Attendance

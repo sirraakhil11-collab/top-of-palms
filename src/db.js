@@ -25,6 +25,7 @@ if (USE_PG) {
     INSERT INTO settings (key, value, updated_at) VALUES ('web_form_enabled',   'true',  NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
     INSERT INTO settings (key, value, updated_at) VALUES ('email_intake_enabled','false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
     INSERT INTO settings (key, value, updated_at) VALUES ('sms_intake_enabled',  'false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('direct_bill_rate',    '12.75', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
 
     CREATE TABLE IF NOT EXISTS documents (
       id             TEXT PRIMARY KEY,
@@ -80,6 +81,10 @@ if (USE_PG) {
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS num_days           INTEGER DEFAULT 1;
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS group_id           TEXT DEFAULT NULL;
 
+    -- Direct Bill form submission data
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_data             TEXT DEFAULT '';
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_approval_token   TEXT DEFAULT '';
+
     -- Fix any rows that have NULL in important fields
     UPDATE reservations SET department        = '' WHERE department IS NULL;
     UPDATE reservations SET phone_ext         = '' WHERE phone_ext IS NULL;
@@ -124,7 +129,7 @@ function toDateStr(val) {
 // ── JSON migration ─────────────────────────────────────────────────────────
 if (!USE_PG) {
   const rows = readJSON(); let ch = 0;
-  const defs = { reservation_date:'', reservation_time:'', department:'', phone_ext:'', seating_preference:'', payment_method:'', direct_bill_status:'na', attendance:'pending', checked_in_at:null, notes:'', table_number:'', channel:'form' };
+  const defs = { reservation_date:'', reservation_time:'', department:'', phone_ext:'', seating_preference:'', payment_method:'', direct_bill_status:'na', attendance:'pending', checked_in_at:null, notes:'', table_number:'', channel:'form', direct_bill_data:'', direct_bill_approval_token:'' };
   rows.forEach(r => {
     if (!r.reservation_date && r.datetime) { const d=toDateStr(r.datetime); if(d){r.reservation_date=d;ch++;} }
     Object.entries(defs).forEach(([k,v]) => { if(r[k]===undefined){r[k]=v;ch++;} });
@@ -365,7 +370,7 @@ async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) 
 // ── Service settings (feature flags) ────────────────────────────────────────
 // JSON fallback: persist in a settings.json file in the data directory
 const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
-const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'', open_time:'11:00', close_time:'14:00' };
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'', open_time:'11:00', close_time:'14:00', direct_bill_rate:'12.75' };
 
 async function getAllSettings() {
   if (USE_PG) {

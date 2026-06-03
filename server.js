@@ -660,6 +660,200 @@ app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, r
 });
 
 // ══════════════════════════════════════════════════════════════════════════
+//  DIRECT BILL — WEB FORM FLOW (guest fills billing details online)
+// ══════════════════════════════════════════════════════════════════════════
+
+// Serve guest-facing billing form
+app.get('/directbill/form/:token', (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'directbill-form.html'))
+);
+
+// Return pre-fill data for the form page
+app.get('/api/directbill/form-info/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    const all   = await db.getAllReservations();
+    const r     = all.find(r => directBill.makeUploadToken(r.id) === token);
+    if (!r) return res.status(404).json({ error:'This link is invalid. Please contact us.' });
+    if (r.direct_bill_status === 'received') {
+      return res.status(410).json({ error:'This form has already been completed. Contact us if you need help.' });
+    }
+    const rate = await directBill.getRate();
+    res.json({
+      ref:              r.id.slice(0,8).toUpperCase(),
+      name:             r.name,
+      email:            r.email,
+      phone_ext:        r.phone_ext,
+      department:       r.department,
+      datetime:         r.datetime,
+      reservation_date: r.reservation_date,
+      reservation_time: r.reservation_time,
+      party:            r.party,
+      num_days:         r.num_days || 1,
+      rate
+    });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Handle form submission — P-Card completes immediately, In-Kind sends approval email
+app.post('/api/directbill/form/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    const all   = await db.getAllReservations();
+    const r     = all.find(r => directBill.makeUploadToken(r.id) === token);
+    if (!r) return res.status(404).json({ error:'Invalid link.' });
+    if (r.direct_bill_status === 'received') {
+      return res.status(410).json({ error:'This form has already been completed.' });
+    }
+
+    const { billing_type, attn_name, department, email, phone, guest_name, inkind_account, approver_email } = req.body;
+    if (!['pcard','inkind'].includes(billing_type)) return res.status(400).json({ error:'Invalid billing type.' });
+    if (!attn_name || !email || !guest_name) return res.status(400).json({ error:'Required fields missing.' });
+    if (billing_type === 'inkind' && (!inkind_account || !approver_email)) {
+      return res.status(400).json({ error:'In-Kind account and approver email are required.' });
+    }
+
+    const billing = { billing_type, attn_name, department, email, phone, guest_name, inkind_account, approver_email };
+
+    if (billing_type === 'pcard') {
+      // P-Card: generate PDF immediately and mark received
+      const pdfBuf = await directBill.buildCompletedPDF(r, billing);
+      const ref    = r.id.slice(0,8).toUpperCase();
+      const fname  = `DirectBill_PCard_${ref}_${(r.name||'Guest').replace(/\s+/g,'_')}.pdf`;
+      await db.storeDocument(r.id, fname, 'application/pdf', pdfBuf.toString('base64'), pdfBuf.length);
+      await db.updateReservation(r.id, {
+        direct_bill_status: 'received',
+        direct_bill_data:   JSON.stringify(billing)
+      });
+      directBill.notifyDocReceived({ ...r, ...billing }).catch(console.error);
+      return res.json({ success:true, type:'pcard' });
+    }
+
+    // In-Kind: store billing data + send approval email
+    const approvalToken = directBill.makeApprovalToken(r.id);
+    await db.updateReservation(r.id, {
+      direct_bill_status:       'sent',
+      direct_bill_data:          JSON.stringify(billing),
+      direct_bill_approval_token: approvalToken
+    });
+    await directBill.sendInKindApprovalRequest(r, billing, approvalToken);
+    return res.json({ success:true, type:'inkind' });
+  } catch(err){
+    console.error('[DirectBill] Form submit error:', err.message);
+    res.status(500).json({ error:'Submission failed. Please try again.' });
+  }
+});
+
+// Serve approval page for the approver manager
+app.get('/directbill/approve/:token', (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'directbill-approve.html'))
+);
+
+// Return approval info for the approval page
+app.get('/api/directbill/approve-info/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    if (!token) return res.status(400).json({ error:'Missing token.' });
+    const all = await db.getAllReservations();
+    const r   = all.find(r => r.direct_bill_approval_token === token);
+    if (!r) return res.status(404).json({ error:'This approval link is invalid or has expired.' });
+    if (r.direct_bill_status === 'received') {
+      return res.json({ already_approved: true });
+    }
+    const billing  = r.direct_bill_data ? JSON.parse(r.direct_bill_data) : {};
+    const rate     = await directBill.getRate();
+    const amtDue   = '$' + (r.party * Math.max(1, parseInt(r.num_days||1)) * rate).toFixed(2);
+    res.json({
+      name:           r.name,
+      datetime:       r.datetime,
+      party:          r.party,
+      inkind_account: billing.inkind_account || '',
+      amount:         amtDue
+    });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Process approval — generate PDF, store, notify
+app.post('/api/directbill/approve/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    const all   = await db.getAllReservations();
+    const r     = all.find(r => r.direct_bill_approval_token === token);
+    if (!r) return res.status(404).json({ error:'Invalid approval link.' });
+    if (r.direct_bill_status === 'received') {
+      return res.json({ success:true, already_approved:true });
+    }
+    const billing = r.direct_bill_data ? JSON.parse(r.direct_bill_data) : {};
+    const pdfBuf  = await directBill.buildCompletedPDF(r, billing);
+    const ref     = r.id.slice(0,8).toUpperCase();
+    const fname   = `DirectBill_InKind_Approved_${ref}_${(r.name||'Guest').replace(/\s+/g,'_')}.pdf`;
+    await db.storeDocument(r.id, fname, 'application/pdf', pdfBuf.toString('base64'), pdfBuf.length);
+    const updated = await db.updateReservation(r.id, { direct_bill_status:'received' });
+    directBill.notifyDocReceived(updated).catch(console.error);
+    res.json({ success:true });
+  } catch(err){
+    console.error('[DirectBill] Approval error:', err.message);
+    res.status(500).json({ error:'Approval failed. Please try again.' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+//  REVENUE API (manager only)
+// ══════════════════════════════════════════════════════════════════════════
+app.get('/api/revenue', auth.requireManager, async (req, res) => {
+  try {
+    const all  = await db.getAllReservations();
+    const rate = await directBill.getRate();
+    const active = all.filter(r => ['approved','auto_approved','pending_approval'].includes(r.status));
+
+    // Monthly breakdown
+    const monthly = {};
+    for (const r of active) {
+      const mon = (r.reservation_date || r.created_at || '').slice(0,7);
+      if (!mon) continue;
+      if (!monthly[mon]) monthly[mon] = { month:mon, reservations:0, guests:0, revenue:0, direct_bill:0, other:0 };
+      const amt = r.party * Math.max(1, parseInt(r.num_days||1)) * rate;
+      monthly[mon].reservations++;
+      monthly[mon].guests    += r.party;
+      monthly[mon].revenue   += amt;
+      const isDB = (r.payment_method||'').includes('Direct Bill');
+      if (isDB) monthly[mon].direct_bill += amt;
+      else      monthly[mon].other       += amt;
+    }
+    const months = Object.values(monthly).sort((a,b) => b.month.localeCompare(a.month));
+
+    const totalGuests  = active.reduce((s,r) => s + r.party, 0);
+    const totalRevenue = active.reduce((s,r) => s + r.party * Math.max(1, parseInt(r.num_days||1)) * rate, 0);
+    const dbRevenue    = active.filter(r=>(r.payment_method||'').includes('Direct Bill'))
+                               .reduce((s,r) => s + r.party * Math.max(1, parseInt(r.num_days||1)) * rate, 0);
+    const checkedIn    = all.filter(r => r.attendance === 'checked_in');
+    const actualRevenue= checkedIn.reduce((s,r) => s + r.party * Math.max(1, parseInt(r.num_days||1)) * rate, 0);
+
+    res.json({
+      rate,
+      total_reservations: active.length,
+      total_guests:       totalGuests,
+      estimated_revenue:  +totalRevenue.toFixed(2),
+      actual_revenue:     +actualRevenue.toFixed(2),
+      direct_bill_revenue:+dbRevenue.toFixed(2),
+      other_revenue:      +(totalRevenue - dbRevenue).toFixed(2),
+      monthly
+    });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+//  PUBLIC RATE endpoint (no auth — needed by reserve.html)
+// ══════════════════════════════════════════════════════════════════════════
+app.get('/api/public/rate', async (req, res) => {
+  try {
+    const s    = await db.getAllSettings();
+    const rate = parseFloat(s.direct_bill_rate) || 12.75;
+    res.json({ rate });
+  } catch { res.json({ rate: 12.75 }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
 //  SERVICE SETTINGS (feature flags — manager only)
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/api/settings', auth.requireManager, async (req, res) => {
@@ -670,11 +864,10 @@ app.get('/api/settings', auth.requireManager, async (req, res) => {
 app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
   try {
     const adminOnly = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
-    const managerOk = ['open_time','close_time'];
+    const managerOk = ['open_time','close_time','direct_bill_rate'];
     const key = req.params.key;
     if (!adminOnly.includes(key) && !managerOk.includes(key))
       return res.status(400).json({ error:'Unknown setting key' });
-    // Boolean flags require admin; hours can be changed by manager
     if (adminOnly.includes(key)) {
       const sess = auth.getSession(req);
       if (!sess || sess.role !== 'admin') return res.status(403).json({ error:'Admin access required' });
@@ -683,8 +876,14 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
       await db.updateSetting(key, value);
       return res.json({ key, value });
     }
-    // Hours: HH:MM format
     const { value } = req.body;
+    if (key === 'direct_bill_rate') {
+      const n = parseFloat(value);
+      if (isNaN(n) || n <= 0 || n > 999) return res.status(400).json({ error:'Rate must be a positive number.' });
+      await db.updateSetting(key, n.toFixed(2));
+      console.log(`[Settings] direct_bill_rate = ${n.toFixed(2)}`);
+      return res.json({ key, value: n.toFixed(2) });
+    }
     if (!/^\d{1,2}:\d{2}$/.test(value)) return res.status(400).json({ error:'Value must be HH:MM format' });
     await db.updateSetting(key, value);
     console.log(`[Settings] ${key} = ${value}`);
@@ -708,6 +907,16 @@ app.patch('/api/pos/table/:id', auth.requirePos, async (req, res) => {
     const r=await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     res.json(await db.updateReservation(req.params.id,{ table_number:req.body.table_number||'' }));
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+app.patch('/api/pos/party/:id', auth.requirePos, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    const party = parseInt(req.body.party);
+    if (isNaN(party) || party < 1 || party > 50) return res.status(400).json({ error:'Party size must be 1–50.' });
+    res.json(await db.updateReservation(req.params.id, { party }));
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
