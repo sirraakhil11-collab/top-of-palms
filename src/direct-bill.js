@@ -66,7 +66,7 @@ async function createBasePDF() {
   const field = (label, value, x, y, w, opts = {}) => {
     text(label, x, y + 13, { size: 8, color: GRAY });
     if (value) text(value, x + 2, y + 1, { size: opts.valueSize || 10, bold: opts.bold, color: BLACK, maxWidth: w - 4 });
-    page.drawLine({ start:{x, y}, end:{x+w, y}, thickness:0.5, color: value ? GREEN : LGRAY });
+    page.drawLine({ start:{x: x, y: y}, end:{x: x+w, y: y}, thickness:0.5, color: value ? GREEN : LGRAY });
   };
 
   return { pdfDoc, page, GREEN, BLACK, GRAY, LGRAY, WHITE, W, H, ML, MR, CW, text, hline, rect, field, safe };
