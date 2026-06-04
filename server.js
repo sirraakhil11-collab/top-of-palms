@@ -476,24 +476,38 @@ app.post('/api/reservations/:id/directbill/sign-reception', auth.requirePos, asy
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error: 'Not found' });
 
-    const { chartfield, foundation, inkind, pcard, signature_png } = req.body;
-    if (!chartfield && !foundation && !inkind && !pcard)
-      return res.status(400).json({ error: 'At least one billing field is required.' });
+    const { billing_type, attn_name, department, email, phone, guest_name,
+            inkind_account, approver_email, signature_png } = req.body;
+
+    if (!billing_type || !['pcard','inkind'].includes(billing_type))
+      return res.status(400).json({ error: 'Please select P-Card or In-Kind billing.' });
     if (!signature_png)
       return res.status(400).json({ error: 'Signature is required.' });
+    if (billing_type === 'inkind' && (!inkind_account || !approver_email))
+      return res.status(400).json({ error: 'In-Kind account name and approver email are required.' });
 
-    // Generate signed PDF with all fields + signature overlaid on the template
-    const pdfBuffer = await directBill.buildSignedFormPDF(r, { chartfield, foundation, inkind, pcard, signature_png });
+    const billing = { billing_type, attn_name, department, email, phone, guest_name,
+                      inkind_account, approver_email, signature_png };
 
+    // Generate signed PDF
+    const pdfBuffer = await directBill.buildCompletedPDF(r, billing);
     const ref = r.id.slice(0, 8).toUpperCase();
-    const filename = `DirectBill_Signed_${ref}_${(r.name || 'Guest').replace(/\s+/g, '_')}.pdf`;
-    await db.storeDocument(r.id, filename, 'application/pdf', pdfBuffer.toString('base64'), pdfBuffer.length);
+    const fname = `DirectBill_Signed_${ref}_${(r.name||'Guest').replace(/\s+/g,'_')}.pdf`;
+    await db.storeDocument(r.id, fname, 'application/pdf', pdfBuffer.toString('base64'), pdfBuffer.length);
 
-    const updated = await db.updateReservation(r.id, { direct_bill_status: 'received' });
+    const updated = await db.updateReservation(r.id, {
+      direct_bill_status: 'received',
+      direct_bill_data:   JSON.stringify(billing)
+    });
 
-    // Notify manager that form was signed at reception
+    // If In-Kind, also send approval email to manager for records
+    if (billing_type === 'inkind' && approver_email) {
+      const approvalToken = directBill.makeApprovalToken(r.id);
+      await db.updateReservation(r.id, { direct_bill_approval_token: approvalToken });
+      directBill.sendInKindApprovalRequest(r, billing, approvalToken).catch(console.error);
+    }
+
     await directBill.notifyDocReceived(updated).catch(console.error);
-
     res.json({ success: true, reservation: updated });
   } catch(err) {
     console.error('[Sign] Reception sign error:', err.message);

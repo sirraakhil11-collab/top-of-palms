@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <title>Direct Bill Sign — On Top of the Palms</title>
+  <title>Direct Bill — On Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh}
@@ -11,87 +11,86 @@
     .hl h1{color:#fff;font-size:16px;font-weight:700}
     .hl p{color:#a7d9c2;font-size:11px;margin-top:2px}
     .hbtn{padding:7px 14px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,.25);color:#fff;background:rgba(255,255,255,.12);text-decoration:none}
-    .wrap{max-width:720px;margin:20px auto;padding:0 16px 60px}
+    .wrap{max-width:640px;margin:20px auto;padding:0 16px 60px}
 
-    /* Guest info banner */
-    .guest-banner{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:16px 20px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-    .guest-banner .gb-name{font-size:18px;font-weight:700;color:#111827;flex:1;min-width:180px}
-    .gb-chip{background:#f3f4f6;color:#374151;font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;white-space:nowrap}
-    .gb-chip.green{background:#dcfce7;color:#15803d}
-    .gb-chip.blue{background:#dbeafe;color:#1d4ed8}
-    .gb-detail{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+    .card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:22px;margin-bottom:16px}
+    .card-title{font-size:11px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #f3f4f6}
 
-    /* Form card */
-    .card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px}
-    .card-title{font-size:12px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #f3f4f6}
+    /* Info grid (read-only) */
+    .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:4px}
+    .info-item{background:#f9fafb;border-radius:8px;padding:10px 12px}
+    .info-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+    .info-val{font-size:13px;font-weight:600;color:#111827}
+    .info-val.big{font-size:22px;font-weight:800;color:#006747}
+
+    /* Form fields */
     .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
     .field{display:flex;flex-direction:column;gap:5px}
     .field.full{grid-column:1/-1}
     label{font-size:12px;font-weight:600;color:#374151}
     label .req{color:#b91c1c;margin-left:2px}
     label .opt{color:#9ca3af;font-weight:400}
-    input[type="text"],input[type="number"],select{padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
-    input:focus,select:focus{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
-    input[readonly]{background:#f9fafb;color:#6b7280;cursor:default}
-    .hint{font-size:11px;color:#9ca3af}
+    input[type="text"],input[type="email"],input[type="tel"]{padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+    input:focus{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
 
-    /* Read-only info rows */
-    .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px}
-    .info-item{background:#f9fafb;border-radius:8px;padding:10px 12px}
-    .info-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-    .info-val{font-size:13px;font-weight:600;color:#111827}
-    .info-val.big{font-size:20px;font-weight:800;color:#006747}
+    /* Billing type */
+    .billing-note{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:16px;font-weight:500}
+    .billing-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .billing-opt{position:relative}
+    .billing-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+    .billing-opt label{display:flex;align-items:center;gap:10px;padding:13px 16px;border:2px solid #e5e7eb;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:#374151;transition:all .15s}
+    .billing-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
+    .billing-opt label .ico{font-size:20px}
+    .billing-section{display:none}
+    .billing-section.show{display:block}
+    .pcard-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e40af;margin-bottom:4px}
 
-    /* Billing section */
-    .billing-note{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;color:#b45309;margin-bottom:14px;font-weight:600}
-    .pcard-check{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;color:#374151;margin-bottom:12px;user-select:none}
-    .pcard-check input{width:18px;height:18px;accent-color:#006747;cursor:pointer}
-    .pcard-check.checked{border-color:#006747;background:#f0fdf4;color:#006747}
+    /* Total */
+    .total-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+    .total-label{font-size:13px;color:#374151;font-weight:500}
+    .total-label small{display:block;font-size:11px;color:#6b7280;margin-top:2px}
+    .total-amount{font-size:26px;font-weight:800;color:#006747}
 
-    /* Signature area */
+    /* Signature */
     .sig-wrap{position:relative;border:2px dashed #d1d5db;border-radius:10px;background:#fafafa;overflow:hidden;touch-action:none}
     .sig-wrap.has-sig{border-color:#006747;background:#fff}
     #sig-canvas{display:block;width:100%;cursor:crosshair;touch-action:none}
     .sig-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#9ca3af;pointer-events:none;font-size:13px}
     .sig-placeholder.hidden{display:none}
-    .sig-placeholder svg{width:32px;height:32px;opacity:.4}
-    .sig-line{position:absolute;bottom:40px;left:20px;right:20px;height:1px;background:#d1d5db;pointer-events:none}
-    .sig-line-label{position:absolute;bottom:20px;left:20px;font-size:11px;color:#9ca3af;pointer-events:none}
+    .sig-placeholder svg{width:28px;height:28px;opacity:.4}
+    .sig-line{position:absolute;bottom:36px;left:20px;right:20px;height:1px;background:#e5e7eb;pointer-events:none}
+    .sig-line-label{position:absolute;bottom:18px;left:20px;font-size:10px;color:#9ca3af;pointer-events:none}
     .sig-actions{display:flex;justify-content:flex-end;margin-top:8px}
     .clear-btn{padding:6px 14px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;color:#6b7280;cursor:pointer;font-weight:600}
     .clear-btn:hover{background:#e5e7eb}
 
-    /* Submit area */
-    .submit-area{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:16px 20px}
+    /* Submit */
     .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;display:none}
     .err-msg.show{display:block}
     .save-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:10px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s}
-    .save-btn:hover{background:#004d34}
+    .save-btn:hover:not(:disabled){background:#004d34}
     .save-btn:disabled{background:#d1d5db;cursor:default}
 
     /* Success */
-    .success{display:none;text-align:center;padding:30px 20px}
+    .success{display:none;text-align:center;padding:32px 20px}
     .success.show{display:block}
-    .success-icon{font-size:56px;margin-bottom:16px}
+    .success-icon{font-size:56px;margin-bottom:14px}
     .success h2{font-size:20px;font-weight:700;color:#111827;margin-bottom:8px}
-    .success p{font-size:14px;color:#6b7280;margin-bottom:24px}
+    .success p{font-size:14px;color:#6b7280;margin-bottom:24px;line-height:1.7}
     .done-btn{display:inline-block;background:#006747;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;border:none;cursor:pointer}
 
-    /* Loading / error states */
     .loading{text-align:center;padding:60px;color:#9ca3af}
-
     @media(max-width:600px){
       .wrap{padding:0 10px 40px;margin:12px auto}
       .field-row{grid-template-columns:1fr}
-      .guest-banner{padding:12px 14px}
-      .gb-name{font-size:16px}
+      .billing-opts{grid-template-columns:1fr 1fr}
       header{padding:12px 14px}
     }
   </style>
 </head>
 <body>
 <header>
-  <div class="hl"><h1>📝 Direct Bill — Sign at Reception</h1><p>On Top of the Palms · USF Dining</p></div>
+  <div class="hl"><h1>📋 Direct Bill Authorization</h1><p>On Top of the Palms · USF Dining</p></div>
   <a class="hbtn" href="javascript:history.back()">← Back</a>
 </header>
 
@@ -101,96 +100,135 @@
 
 <script>
 const reservationId = new URLSearchParams(location.search).get('id');
-let reservation = null;
-let hasSig = false;
+let reservation = null, billRate = 12.75, hasSig = false;
 
-// ── Load reservation ──────────────────────────────────────────────────────────
 async function loadReservation() {
   if (!reservationId) {
     document.getElementById('main-wrap').innerHTML = '<div class="loading">❌ No reservation ID provided.</div>';
     return;
   }
   try {
-    const r = await fetch(`/api/reservations/${reservationId}`).then(r => r.json());
-    if (r.error) { document.getElementById('main-wrap').innerHTML = `<div class="loading">❌ ${r.error}</div>`; return; }
+    const [resResp, rateResp] = await Promise.all([
+      fetch(`/api/reservations/${reservationId}`),
+      fetch('/api/public/rate')
+    ]);
+    const r = await resResp.json();
+    if (r.error) { document.getElementById('main-wrap').innerHTML = `<div class="loading">❌ ${esc(r.error)}</div>`; return; }
     reservation = r;
-    renderForm();
+    const rd = await rateResp.json().catch(()=>({rate:12.75}));
+    billRate = parseFloat(rd.rate) || 12.75;
+
+    // Pre-fill from existing billing data if already partially filled
+    let existingBilling = {};
+    if (r.direct_bill_data) {
+      try { existingBilling = JSON.parse(r.direct_bill_data); } catch {}
+    }
+    renderForm(existingBilling);
   } catch(e) {
-    document.getElementById('main-wrap').innerHTML = `<div class="loading">❌ Failed to load: ${e.message}</div>`;
+    document.getElementById('main-wrap').innerHTML = `<div class="loading">❌ Failed to load: ${esc(e.message)}</div>`;
   }
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function renderForm() {
+function renderForm(pre) {
   const r = reservation;
-  const ref = r.id.slice(0,8).toUpperCase();
-  const total = (parseInt(r.party||0) * 12.75).toFixed(2);
-  const isFac = r.guest_status === 'faculty';
+  const ref   = r.id.slice(0,8).toUpperCase();
+  const party = parseInt(r.party||0);
+  const days  = Math.max(1, parseInt(r.num_days||1));
+  const total = (party * days * billRate).toFixed(2);
 
   document.getElementById('main-wrap').innerHTML = `
-  <!-- Guest info banner -->
-  <div class="guest-banner">
-    <div class="gb-name">${esc(r.name)}</div>
-    <div class="gb-detail">
-      <span class="gb-chip ${isFac?'blue':'green'}">${isFac?'🎓 Faculty':'📚 Student'}</span>
-      <span class="gb-chip">Ref: ${esc(ref)}</span>
-      <span class="gb-chip">Party: ${esc(String(r.party))}</span>
-      ${r.department?`<span class="gb-chip">${esc(r.department)}</span>`:''}
-    </div>
-  </div>
 
-  <!-- Reservation summary (read-only) -->
+  <!-- Reservation summary -->
   <div class="card">
-    <div class="card-title">Reservation Details (pre-filled)</div>
+    <div class="card-title">📅 Reservation Details</div>
     <div class="info-grid">
       <div class="info-item"><div class="info-label">Date</div><div class="info-val">${esc(r.reservation_date||'')}</div></div>
       <div class="info-item"><div class="info-label">Time</div><div class="info-val">${esc(r.reservation_time||'')}</div></div>
-      <div class="info-item"><div class="info-label">Guest Count</div><div class="info-val">${esc(String(r.party))}</div></div>
-      <div class="info-item"><div class="info-label">Amount Due</div><div class="info-val big">$${esc(total)}</div></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Invoice to (Name)</label><input type="text" id="f-name" value="${esc(r.name)}" readonly></div>
-      <div class="field"><label>Department</label><input type="text" id="f-dept" value="${esc(r.department||'')}" readonly></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Email</label><input type="text" id="f-email" value="${esc(r.email)}" readonly></div>
-      <div class="field"><label>Phone / Ext</label><input type="text" id="f-phone" value="${esc(r.phone_ext||'')}" readonly></div>
+      <div class="info-item"><div class="info-label">Guests</div><div class="info-val">${esc(String(party))}${days>1?' × '+days+' days':''}</div></div>
+      <div class="info-item"><div class="info-label">Ref #</div><div class="info-val" style="font-family:monospace;font-size:12px">${esc(ref)}</div></div>
     </div>
   </div>
 
-  <!-- Billing details — guest fills these in -->
+  <!-- Invoice To -->
   <div class="card">
-    <div class="card-title">💳 Billing Authorization — Guest Completes</div>
-    <div class="billing-note">⚠️ A Chartfield #, Foundation Fund #, P-card, or In-Kind approval is required prior to your reservation.</div>
-
-    <div class="field full" style="margin-bottom:12px">
-      <label>Chartfield # <span class="opt">(if applicable)</span></label>
-      <input type="text" id="b-chartfield" placeholder="e.g. 6-123456-12345-12345-12345-12345" maxlength="100">
+    <div class="card-title">📬 Invoice To</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Attention of <span class="req">*</span></label>
+        <input type="text" id="f-attn" value="${esc(pre.attn_name||r.name||'')}" placeholder="Full name">
+      </div>
+      <div class="field">
+        <label>Department <span class="opt">(optional)</span></label>
+        <input type="text" id="f-dept" value="${esc(pre.department||r.department||'')}" placeholder="Department">
+      </div>
     </div>
-    <div class="field full" style="margin-bottom:12px">
-      <label>Foundation # <span class="opt">(if applicable)</span></label>
-      <input type="text" id="b-foundation" placeholder="Foundation fund number" maxlength="100">
+    <div class="field-row">
+      <div class="field">
+        <label>Email <span class="req">*</span></label>
+        <input type="email" id="f-email" value="${esc(pre.email||r.email||'')}" placeholder="email@usf.edu">
+      </div>
+      <div class="field">
+        <label>Phone <span class="opt">(optional)</span></label>
+        <input type="tel" id="f-phone" value="${esc(pre.phone||r.phone_ext||'')}" placeholder="(813) 555-0000">
+      </div>
     </div>
-    <div class="field full" style="margin-bottom:12px">
-      <label>In-Kind Account Name <span class="opt">(if applicable)</span></label>
-      <input type="text" id="b-inkind" placeholder="In-Kind account name" maxlength="100">
+    <div class="field full">
+      <label>Dining Guest Name <span class="req">*</span></label>
+      <input type="text" id="f-guest" value="${esc(pre.guest_name||r.name||'')}" placeholder="Name of guest dining">
+    </div>
+  </div>
+
+  <!-- Billing -->
+  <div class="card">
+    <div class="card-title">💳 Billing Authorization</div>
+    <div class="billing-note">⚠️ P-card or In-Kind approval is required prior to your reservation.</div>
+
+    <div class="billing-opts">
+      <div class="billing-opt">
+        <input type="radio" name="billing_type" id="b-inkind" value="inkind"
+          ${pre.billing_type==='inkind'?'checked':''} onchange="showBilling('inkind')">
+        <label for="b-inkind"><span class="ico">📁</span><div><div>In-Kind</div><div style="font-size:11px;font-weight:400;color:#6b7280">Account + approval</div></div></label>
+      </div>
+      <div class="billing-opt">
+        <input type="radio" name="billing_type" id="b-pcard" value="pcard"
+          ${pre.billing_type==='pcard'?'checked':''} onchange="showBilling('pcard')">
+        <label for="b-pcard"><span class="ico">💳</span><div><div>P-Card</div><div style="font-size:11px;font-weight:400;color:#6b7280">Procurement card</div></div></label>
+      </div>
     </div>
 
-    <label class="pcard-check" id="pcard-label">
-      <input type="checkbox" id="b-pcard" onchange="document.getElementById('pcard-label').classList.toggle('checked',this.checked)">
-      💳 Paying by P-card — I will speak with the supervisor for more information
-    </label>
+    <div class="billing-section${pre.billing_type==='inkind'?' show':''}" id="sec-inkind">
+      <div class="field full" style="margin-bottom:12px">
+        <label>In-Kind Account Name <span class="req">*</span></label>
+        <input type="text" id="f-inkind-acct" value="${esc(pre.inkind_account||'')}" placeholder="Account name or number">
+      </div>
+      <div class="field full">
+        <label>Approver Manager Email <span class="req">*</span></label>
+        <input type="email" id="f-approver-email" value="${esc(pre.approver_email||'')}" placeholder="manager@usf.edu">
+      </div>
+    </div>
 
-    <p style="font-size:12px;color:#9ca3af;margin-top:4px">If paying with In-Kind, the booking contact must be an authorized user of the account.</p>
+    <div class="billing-section${pre.billing_type==='pcard'?' show':''}" id="sec-pcard">
+      <div class="pcard-note">💳 P-Card selected. Authorization will be recorded upon completion.</div>
+    </div>
+
+    <div class="total-box">
+      <div class="total-label">Total Amount Due
+        <small>${party} guest${party===1?'':'s'}${days>1?' × '+days+' days':''} @ $${billRate.toFixed(2)}/person</small>
+      </div>
+      <div class="total-amount">$${total}</div>
+    </div>
   </div>
 
   <!-- Signature -->
   <div class="card">
     <div class="card-title">✍️ Guest Signature</div>
-    <p style="font-size:13px;color:#6b7280;margin-bottom:12px">Please sign below using your finger, stylus, or mouse. By signing, you authorize billing to the account(s) above for the amount of <strong>$${esc(total)}</strong>.</p>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:12px">
+      By signing below, the guest authorizes billing for <strong>$${total}</strong> to the account selected above.
+    </p>
     <div class="sig-wrap" id="sig-wrap">
-      <canvas id="sig-canvas" height="200"></canvas>
+      <canvas id="sig-canvas" height="180"></canvas>
       <div class="sig-placeholder" id="sig-placeholder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
         Sign here
@@ -199,151 +237,162 @@ function renderForm() {
       <div class="sig-line-label">Authorized signature</div>
     </div>
     <div class="sig-actions">
-      <button class="clear-btn" onclick="clearSig()">✕ Clear signature</button>
+      <button class="clear-btn" onclick="clearSig()">✕ Clear</button>
     </div>
   </div>
 
-  <!-- Error + submit -->
-  <div class="submit-area">
+  <!-- Submit -->
+  <div class="card" style="padding:16px">
     <div class="err-msg" id="err-msg"></div>
-    <button class="save-btn" id="save-btn" onclick="saveAndComplete()">💾 Save & Complete Direct Bill</button>
+    <button class="save-btn" id="save-btn" onclick="saveAndComplete()">💾 Save & Complete Authorization</button>
   </div>
 
   <!-- Success -->
   <div class="success" id="success">
     <div class="success-icon">✅</div>
-    <h2>Direct Bill Signed & Saved</h2>
-    <p>The signed authorization has been stored to the reservation record. The status is now marked as received.</p>
+    <h2>Authorization Saved!</h2>
+    <p>The Direct Bill authorization has been recorded.<br>The reservation is now marked as received.<br><br>A confirmation has been sent to the manager and guest.</p>
     <button class="done-btn" onclick="history.back()">← Back to Board</button>
   </div>
   `;
 
   initCanvas();
+
+  // If billing type already set, show the right section
+  if (pre.billing_type) showBilling(pre.billing_type);
+}
+
+function showBilling(type) {
+  document.getElementById('sec-inkind').classList.toggle('show', type==='inkind');
+  document.getElementById('sec-pcard').classList.toggle('show', type==='pcard');
 }
 
 // ── Signature canvas ──────────────────────────────────────────────────────────
 function initCanvas() {
   const canvas = document.getElementById('sig-canvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const wrap = document.getElementById('sig-wrap');
 
-  // Size canvas to match display size
-  function resizeCanvas() {
+  function resize() {
     const w = canvas.offsetWidth;
-    canvas.width = w * devicePixelRatio;
-    canvas.height = 200 * devicePixelRatio;
-    ctx.scale(devicePixelRatio, devicePixelRatio);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = w * dpr;
+    canvas.height = 180 * dpr;
+    canvas.style.height = '180px';
+    ctx.scale(dpr, dpr);
     ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
   }
-  resizeCanvas();
+  resize();
 
-  let drawing = false, lx = 0, ly = 0;
-
-  function getPos(e, el) {
+  let drawing = false;
+  function pos(e, el) {
     const rect = el.getBoundingClientRect();
-    const src = e.touches ? e.touches[0] : e;
+    const src  = e.touches ? e.touches[0] : e;
     return { x: src.clientX - rect.left, y: src.clientY - rect.top };
   }
-
-  function startDraw(e) {
-    e.preventDefault();
-    drawing = true;
-    const p = getPos(e, canvas);
-    lx = p.x; ly = p.y;
-    ctx.beginPath();
-    ctx.moveTo(lx, ly);
+  function start(e) {
+    e.preventDefault(); drawing = true;
+    const p = pos(e, canvas);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
   }
-
-  function draw(e) {
-    e.preventDefault();
-    if (!drawing) return;
-    const p = getPos(e, canvas);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    lx = p.x; ly = p.y;
+  function move(e) {
+    e.preventDefault(); if (!drawing) return;
+    const p = pos(e, canvas);
+    ctx.lineTo(p.x, p.y); ctx.stroke();
     if (!hasSig) {
       hasSig = true;
       wrap.classList.add('has-sig');
       document.getElementById('sig-placeholder').classList.add('hidden');
     }
   }
+  function end(e) { e.preventDefault(); drawing = false; }
 
-  function endDraw(e) { e.preventDefault(); drawing = false; }
-
-  canvas.addEventListener('mousedown', startDraw);
-  canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', endDraw);
-  canvas.addEventListener('mouseleave', endDraw);
-  canvas.addEventListener('touchstart', startDraw, { passive: false });
-  canvas.addEventListener('touchmove', draw, { passive: false });
-  canvas.addEventListener('touchend', endDraw, { passive: false });
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  move);
+  canvas.addEventListener('mouseup',    end);
+  canvas.addEventListener('mouseleave', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove',  move,  { passive: false });
+  canvas.addEventListener('touchend',   end,   { passive: false });
 }
 
 function clearSig() {
   const canvas = document.getElementById('sig-canvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   hasSig = false;
-  document.getElementById('sig-wrap').classList.remove('has-sig');
-  document.getElementById('sig-placeholder').classList.remove('hidden');
+  document.getElementById('sig-wrap')?.classList.remove('has-sig');
+  document.getElementById('sig-placeholder')?.classList.remove('hidden');
 }
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 async function saveAndComplete() {
-  const chartfield = document.getElementById('b-chartfield')?.value.trim() || '';
-  const foundation = document.getElementById('b-foundation')?.value.trim() || '';
-  const inkind     = document.getElementById('b-inkind')?.value.trim() || '';
-  const pcard      = document.getElementById('b-pcard')?.checked || false;
-  const errEl      = document.getElementById('err-msg');
-
-  // Must have at least one billing method
-  if (!chartfield && !foundation && !inkind && !pcard) {
-    errEl.textContent = 'Please fill in at least one billing field (Chartfield #, Foundation #, In-Kind, or check P-card).';
-    errEl.classList.add('show');
-    errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
-  if (!hasSig) {
-    errEl.textContent = 'Please have the guest sign in the signature area before saving.';
-    errEl.classList.add('show');
-    errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
+  const errEl = document.getElementById('err-msg');
   errEl.classList.remove('show');
 
-  const canvas = document.getElementById('sig-canvas');
-  const signaturePng = canvas.toDataURL('image/png');
+  const billingType = document.querySelector('input[name="billing_type"]:checked')?.value;
+  if (!billingType) { errEl.textContent='Please select P-Card or In-Kind.'; errEl.classList.add('show'); return; }
+
+  const attn  = document.getElementById('f-attn')?.value.trim();
+  const email = document.getElementById('f-email')?.value.trim();
+  const guest = document.getElementById('f-guest')?.value.trim();
+  if (!attn)  { errEl.textContent='Attention name is required.'; errEl.classList.add('show'); return; }
+  if (!email) { errEl.textContent='Email is required.'; errEl.classList.add('show'); return; }
+  if (!guest) { errEl.textContent='Dining guest name is required.'; errEl.classList.add('show'); return; }
+
+  if (billingType === 'inkind') {
+    const acct = document.getElementById('f-inkind-acct')?.value.trim();
+    const appr = document.getElementById('f-approver-email')?.value.trim();
+    if (!acct) { errEl.textContent='In-Kind account name is required.'; errEl.classList.add('show'); return; }
+    if (!appr) { errEl.textContent='Approver manager email is required.'; errEl.classList.add('show'); return; }
+  }
+
+  if (!hasSig) {
+    errEl.textContent='Please have the guest sign before saving.';
+    errEl.classList.add('show');
+    errEl.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
 
   const btn = document.getElementById('save-btn');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const payload = {
+    billing_type:   billingType,
+    attn_name:      attn,
+    department:     document.getElementById('f-dept')?.value.trim() || '',
+    email:          email,
+    phone:          document.getElementById('f-phone')?.value.trim() || '',
+    guest_name:     guest,
+    inkind_account: billingType==='inkind' ? document.getElementById('f-inkind-acct')?.value.trim() : '',
+    approver_email: billingType==='inkind' ? document.getElementById('f-approver-email')?.value.trim() : '',
+    signature_png:  document.getElementById('sig-canvas')?.toDataURL('image/png') || ''
+  };
 
   try {
     const resp = await fetch(`/api/reservations/${reservationId}/directbill/sign-reception`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chartfield, foundation, inkind, pcard, signature_png: signaturePng })
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
     });
     const data = await resp.json();
     if (!resp.ok) {
       errEl.textContent = data.error || 'Save failed — please try again.';
       errEl.classList.add('show');
-      btn.disabled = false;
-      btn.textContent = '💾 Save & Complete Direct Bill';
+      btn.disabled = false; btn.textContent = '💾 Save & Complete Authorization';
       return;
     }
     // Show success
-    document.querySelector('.submit-area').style.display = 'none';
+    document.querySelectorAll('.card').forEach(c => c.style.display='none');
     document.getElementById('success').classList.add('show');
-    document.getElementById('success').scrollIntoView({ behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior:'smooth' });
   } catch(e) {
     errEl.textContent = 'Network error — please try again.';
     errEl.classList.add('show');
-    btn.disabled = false;
-    btn.textContent = '💾 Save & Complete Direct Bill';
+    btn.disabled = false; btn.textContent = '💾 Save & Complete Authorization';
   }
 }
 
