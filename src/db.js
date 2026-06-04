@@ -26,6 +26,7 @@ if (USE_PG) {
     INSERT INTO settings (key, value, updated_at) VALUES ('email_intake_enabled','false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
     INSERT INTO settings (key, value, updated_at) VALUES ('sms_intake_enabled',  'false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
     INSERT INTO settings (key, value, updated_at) VALUES ('direct_bill_rate',    '12.75', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('daily_limit',         '60',    NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
 
     CREATE TABLE IF NOT EXISTS documents (
       id             TEXT PRIMARY KEY,
@@ -241,7 +242,8 @@ async function getDailyPeopleCount(date) {
 
 async function getStats() {
   const today = new Date().toISOString().split('T')[0];
-  const limit = parseInt(process.env.DAILY_LIMIT||'60');
+  const s = await getAllSettings().catch(()=>({}));
+  const limit = parseInt(s.daily_limit || process.env.DAILY_LIMIT || '60');
 
   if (USE_PG) {
     const {rows}=await pool.query(`
@@ -370,7 +372,7 @@ async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) 
 // ── Service settings (feature flags) ────────────────────────────────────────
 // JSON fallback: persist in a settings.json file in the data directory
 const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
-const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'', open_time:'11:00', close_time:'14:00', direct_bill_rate:'12.75' };
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'', open_time:'11:30', close_time:'14:00', direct_bill_rate:'12.75', daily_limit:'60' };
 
 async function getAllSettings() {
   if (USE_PG) {

@@ -233,11 +233,12 @@ app.post('/api/reserve', async (req, res) => {
           seating_preference:'', payment_method:payment_method||'', notes:notes||''
         }
       };
-      // Suppress individual guest emails + Direct Bill for all but first day
+      // Suppress individual guest + manager emails + Direct Bill for all but first day
       const isFirst = createdReservations.length === 0;
       const result = await processReservation(session, {
-        suppressGuestEmail: true,           // we send one combined email after
-        suppressDirectBill: !isFirst        // only send Direct Bill form on first day
+        suppressGuestEmail:   true,     // we send one combined guest email after
+        suppressManagerEmail: true,     // we send one combined manager email after
+        suppressDirectBill:   !isFirst  // only send Direct Bill form on first day
       });
       if (result.success) {
         createdReservations.push({ date: resDate, display: datetimeDisplay, reservation: result.reservation });
@@ -248,6 +249,39 @@ app.post('/api/reserve', async (req, res) => {
 
     if (!createdReservations.length)
       return res.status(429).json({ error:'No dates could be booked — capacity may be full. Please try different dates.' });
+
+    // Send ONE combined manager notification (all days in one email)
+    if (process.env.SENDGRID_API_KEY && process.env.MANAGER_EMAIL && createdReservations.length) {
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+      const firstRes = createdReservations[0].reservation;
+      const firstId  = firstRes.id;
+      const baseUrl  = process.env.BASE_URL || 'https://top-of-palms-staging.up.railway.app';
+      const mgr_dateRows = createdReservations.map(d =>
+        `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">${esc(d.display)}</td>
+         <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">
+           <a href="${baseUrl}/manager/approve/${d.reservation.id}" style="color:#006747;font-weight:600;text-decoration:none">Approve</a> &nbsp;|&nbsp;
+           <a href="${baseUrl}/manager/deny/${d.reservation.id}" style="color:#b91c1c;text-decoration:none">Deny</a>
+         </td></tr>`
+      ).join('');
+      await sgMail.send({
+        to: process.env.MANAGER_EMAIL, from: { email: FROM_EMAIL, name: 'On Top of the Palms' },
+        subject: `New Reservation Request — ${name} · ${createdReservations.length} day${createdReservations.length>1?'s':''} · Party of ${partyN}`,
+        html: `<div style="font-family:sans-serif;padding:20px;max-width:560px">
+          <h2 style="color:#006747">New Reservation Request</h2>
+          <p><strong>${esc(name)}</strong> (${esc(guest_type)}) has requested ${createdReservations.length} day${createdReservations.length>1?'s':''} for a party of ${partyN}.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;margin:12px 0">
+            <thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left">Date &amp; Time</th><th style="padding:8px 12px;text-align:left">Action</th></tr></thead>
+            <tbody>${mgr_dateRows}</tbody>
+          </table>
+          <p style="font-size:13px;color:#374151"><strong>Email:</strong> ${esc(email)}<br>
+          <strong>Department:</strong> ${esc(department||'—')}<br>
+          <strong>Payment:</strong> ${esc(payment_method||'—')}<br>
+          ${notes ? `<strong>Notes:</strong> ${esc(notes)}` : ''}</p>
+        </div>`
+      }).catch(e => console.error('[Manager email]', e.message));
+    }
 
     // Send ONE combined confirmation email to guest
     if (process.env.SENDGRID_API_KEY && email) {
@@ -864,7 +898,7 @@ app.get('/api/settings', auth.requireManager, async (req, res) => {
 app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
   try {
     const adminOnly = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
-    const managerOk = ['open_time','close_time','direct_bill_rate'];
+    const managerOk = ['open_time','close_time','direct_bill_rate','daily_limit'];
     const key = req.params.key;
     if (!adminOnly.includes(key) && !managerOk.includes(key))
       return res.status(400).json({ error:'Unknown setting key' });
@@ -883,6 +917,13 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
       await db.updateSetting(key, n.toFixed(2));
       console.log(`[Settings] direct_bill_rate = ${n.toFixed(2)}`);
       return res.json({ key, value: n.toFixed(2) });
+    }
+    if (key === 'daily_limit') {
+      const n = parseInt(value);
+      if (isNaN(n) || n < 1 || n > 500) return res.status(400).json({ error:'Limit must be 1–500.' });
+      await db.updateSetting(key, String(n));
+      console.log(`[Settings] daily_limit = ${n}`);
+      return res.json({ key, value: String(n) });
     }
     if (!/^\d{1,2}:\d{2}$/.test(value)) return res.status(400).json({ error:'Value must be HH:MM format' });
     await db.updateSetting(key, value);
@@ -908,6 +949,40 @@ app.patch('/api/pos/table/:id', auth.requirePos, async (req, res) => {
     if (!r) return res.status(404).json({ error:'Not found' });
     res.json(await db.updateReservation(req.params.id,{ table_number:req.body.table_number||'' }));
   } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// POS: collect Direct Bill details when switching payment at reception
+app.post('/api/pos/directbill/:id', auth.requirePos, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    const billing = req.body;
+    if (!['pcard','inkind'].includes(billing.billing_type)) return res.status(400).json({ error:'Invalid billing type' });
+    if (billing.billing_type === 'inkind' && (!billing.inkind_account || !billing.approver_email)) {
+      return res.status(400).json({ error:'In-Kind account and approver email required' });
+    }
+    // Generate PDF and store it
+    const pdfBuf = await directBill.buildCompletedPDF(r, billing);
+    const ref    = r.id.slice(0,8).toUpperCase();
+    const fname  = `DirectBill_POS_${billing.billing_type}_${ref}_${(r.name||'Guest').replace(/\s+/g,'_')}.pdf`;
+    await db.storeDocument(r.id, fname, 'application/pdf', pdfBuf.toString('base64'), pdfBuf.length);
+    const updated = await db.updateReservation(r.id, {
+      payment_method:     (r.payment_method ? r.payment_method + ', Direct Bill' : 'Direct Bill').replace(/Direct Bill,\s*Direct Bill/,'Direct Bill'),
+      direct_bill_status: 'received',
+      direct_bill_data:   JSON.stringify(billing)
+    });
+    // If In-Kind, still send approval email to approver (for records)
+    if (billing.billing_type === 'inkind' && billing.approver_email) {
+      const approvalToken = directBill.makeApprovalToken(r.id);
+      await db.updateReservation(r.id, { direct_bill_approval_token: approvalToken });
+      directBill.sendInKindApprovalRequest(r, billing, approvalToken).catch(console.error);
+    }
+    directBill.notifyDocReceived(updated).catch(console.error);
+    res.json({ success:true });
+  } catch(err) {
+    console.error('[POS DirectBill]', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.patch('/api/pos/party/:id', auth.requirePos, async (req, res) => {
@@ -984,7 +1059,8 @@ app.get('/api/stats', auth.requireManager, async (req, res) => {
 app.get('/api/slots', async (req, res) => {
   try {
     const date=req.query.date||new Date().toISOString().split('T')[0];
-    const limit=parseInt(process.env.DAILY_LIMIT||'60');
+    const s=await db.getAllSettings().catch(()=>({}));
+    const limit=parseInt(s.daily_limit||process.env.DAILY_LIMIT||'60');
     const used=await db.getDailyPeopleCount(date);
     const blocked=await blockedDates.isBlocked(date);
     const dayOfWeek=new Date(date+'T12:00:00').getDay();

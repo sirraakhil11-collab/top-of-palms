@@ -43,8 +43,10 @@ async function processReservation(session, options = {}) {
 
   console.log(`[Reservation] Saved → ${reservation.id} (all go to manager for approval)`);
 
-  // Notify manager (always — each day needs approval)
-  await sendManagerApprovalEmail(reservation).catch(console.error);
+  // Notify manager — suppressed for multi-day batches (caller sends one combined email)
+  if (!options.suppressManagerEmail) {
+    await sendManagerApprovalEmail(reservation).catch(console.error);
+  }
 
   // Guest pending email — suppressed for multi-day batches (caller sends one combined email)
   if (!options.suppressGuestEmail) {

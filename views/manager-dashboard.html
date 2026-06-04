@@ -318,6 +318,28 @@
       </div>
     </div>
 
+    <!-- Reserve Form Config -->
+    <div class="settings-panel">
+      <h3>📋 Reserve Form</h3>
+      <p>Control what guests see on the reservation form at <code>/reserve</code>.</p>
+      <div class="settings-row">
+        <div><div class="sr-label">Online reservations</div><div class="sr-sub">Enable the public reservation form</div></div>
+        <label class="toggle"><input type="checkbox" id="tog-web2" onchange="toggleFlag('web_form_enabled',this.checked)"><span class="slider"></span></label>
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <div class="sr-label">Daily guest limit</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="daily-limit-inp" min="1" max="500" step="1" placeholder="60"
+            style="width:90px;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:15px;font-family:inherit;outline:none;color:var(--gray-900)">
+          <button class="save-btn" style="margin-top:0" onclick="saveDailyLimit()">Save</button>
+        </div>
+        <div id="limit-msg" style="font-size:12px;min-height:16px"></div>
+      </div>
+      <div style="margin-top:12px">
+        <a href="/reserve" target="_blank" style="display:inline-block;background:var(--green-pale);color:var(--green);border:1px solid #bbf7d0;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">🔗 Preview Form →</a>
+      </div>
+    </div>
+
     <!-- QR Code -->
     <div class="settings-panel">
       <h3>📱 Reservation QR Code</h3>
@@ -597,8 +619,10 @@ async function loadSettings() {
   try {
     const s = await fetch('/api/settings').then(r=>r.json());
     document.getElementById('rate-inp').value    = parseFloat(s.direct_bill_rate || '12.75').toFixed(2);
-    document.getElementById('open-time').value   = s.open_time  || '11:00';
+    document.getElementById('open-time').value   = s.open_time  || '11:30';
     document.getElementById('close-time').value  = s.close_time || '14:00';
+    const dlInp = document.getElementById('daily-limit-inp');
+    if (dlInp) dlInp.value = s.daily_limit || process.env?.DAILY_LIMIT || '60';
 
     // Show admin panel only for admin role
     if (currentRole === 'admin') {
@@ -606,6 +630,9 @@ async function loadSettings() {
       document.getElementById('tog-web').checked   = s.web_form_enabled   === 'true';
       document.getElementById('tog-email').checked = s.email_intake_enabled === 'true';
       document.getElementById('tog-sms').checked   = s.sms_intake_enabled   === 'true';
+      // Also sync the Reserve Form toggle
+      const wt2 = document.getElementById('tog-web2');
+      if (wt2) wt2.checked = s.web_form_enabled === 'true';
     }
 
     // Build QR code
@@ -653,6 +680,17 @@ async function saveRate() {
     }
   } catch { document.getElementById('rate-msg').textContent = '✕ Save failed'; }
   if (btn) { btn.disabled = false; btn.textContent = 'Save Rate'; }
+}
+
+async function saveDailyLimit() {
+  const val = parseInt(document.getElementById('daily-limit-inp')?.value);
+  if (isNaN(val)||val<1||val>500) { document.getElementById('limit-msg').textContent='✕ Enter 1–500'; return; }
+  try {
+    const r = await fetch('/api/settings/daily_limit',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(val)})});
+    const d = await r.json();
+    if (r.ok) { document.getElementById('limit-msg').style.color='var(--green)'; document.getElementById('limit-msg').textContent=`✓ Limit set to ${val}`; showToast(`Daily limit → ${val}`); }
+    else { document.getElementById('limit-msg').style.color='var(--red)'; document.getElementById('limit-msg').textContent='✕ '+(d.error||'Failed'); }
+  } catch { document.getElementById('limit-msg').textContent='✕ Save failed'; }
 }
 
 async function saveHours() {

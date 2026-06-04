@@ -11,6 +11,18 @@ const NAME       = 'On Top of the Palms';
 const PHONE      = process.env.RESTAURANT_PHONE || '(813) 974-3573';
 const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL || 'topofthepalms@usf.edu';
 
+// Always use Railway URL as fallback — avoids Zscaler-blocked custom domains
+function getBaseUrl() {
+  const url = process.env.BASE_URL || '';
+  // If BASE_URL is empty or is a known blocked custom domain, fall back to Railway URL
+  if (!url || url.includes('chartwells.com') || url.includes('topofthepalms.usf')) {
+    return process.env.RAILWAY_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : (url || 'https://top-of-palms-staging.up.railway.app');
+  }
+  return url;
+}
+
 // Fetch rate from settings, fall back to 12.75
 async function getRate() {
   try {
@@ -349,7 +361,7 @@ async function sendDirectBillForm(reservation) {
 
   const rate    = await getRate();
   const ref     = reservation.id.slice(0,8).toUpperCase();
-  const baseUrl = process.env.BASE_URL || 'https://staging.topofthepalmsusf-chartwells.com';
+  const baseUrl = getBaseUrl();
   const formUrl = `${baseUrl}/directbill/form/${makeUploadToken(reservation.id)}`;
   const amtDue  = (reservation.party * Math.max(1, parseInt(reservation.num_days||1)) * rate).toFixed(2);
 
@@ -406,7 +418,7 @@ async function sendInKindApprovalRequest(reservation, billing, approvalToken) {
 
   const rate    = await getRate();
   const ref     = reservation.id.slice(0,8).toUpperCase();
-  const baseUrl = process.env.BASE_URL || 'https://staging.topofthepalmsusf-chartwells.com';
+  const baseUrl = getBaseUrl();
   const approveUrl = `${baseUrl}/directbill/approve/${approvalToken}`;
   const amtDue  = (reservation.party * Math.max(1, parseInt(reservation.num_days||1)) * rate).toFixed(2);
 

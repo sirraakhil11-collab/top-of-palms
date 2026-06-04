@@ -228,9 +228,21 @@
 </div>
 
 <script>
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // CONFIGURABLE CONSTANTS — easy to adjust
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  let RATE       = 12.75;   // $/person — overridden by server setting
+  let openHour   = 11;      // default open hour (overridden by server)
+  let openMin    = 30;      // default open minute — reservations start 11:30 AM
+  let closeHour  = 14;      // default close hour
+  let closeMin   = 0;       // default close minute
+  const MIN_PARTY = 2;      // minimum guests
+  const MAX_PARTY = 15;     // maximum guests
+  const MAX_DAYS  = 7;      // maximum consecutive days
+  const MIN_ADVANCE_HRS = 24; // hours advance booking required
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
   let selectedPayments = [];
-  let openHour = 11, openMin = 0, closeHour = 14, closeMin = 0;
-  let RATE = 12.75;
 
   // Load configurable rate from server
   (async function loadRate(){
@@ -482,24 +494,38 @@
     style.textContent = `
       #cb-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:#006747;color:#fff;border:none;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(0,103,71,.4);z-index:200;display:flex;align-items:center;justify-content:center;transition:transform .15s}
       #cb-fab:hover{transform:scale(1.08)}
-      #cb-panel{position:fixed;bottom:92px;right:24px;width:340px;max-width:calc(100vw - 32px);background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:199;display:none;flex-direction:column;overflow:hidden;max-height:520px}
+      #cb-panel{position:fixed;bottom:92px;right:24px;width:340px;max-width:calc(100vw - 32px);background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:199;display:none;flex-direction:column;overflow:hidden;max-height:560px}
       #cb-panel.open{display:flex}
-      #cb-hdr{background:#006747;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+      #cb-hdr{background:#006747;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
       #cb-hdr span{color:#fff;font-weight:700;font-size:15px}
       #cb-close{background:none;border:none;color:rgba(255,255,255,.75);font-size:20px;cursor:pointer;line-height:1}
       #cb-msgs{flex:1;overflow-y:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:8px;min-height:200px}
-      .cb-bot,.cb-user{max-width:85%;padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
+      .cb-bot,.cb-user{max-width:88%;padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
       .cb-bot{background:#f0fdf4;color:#111827;align-self:flex-start;border-bottom-left-radius:4px}
       .cb-user{background:#006747;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
-      .cb-opts{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;align-self:flex-start}
+      .cb-opts{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;flex-shrink:0}
       .cb-opt{padding:7px 13px;border-radius:20px;border:1.5px solid #006747;color:#006747;background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
       .cb-opt:hover{background:#f0fdf4}
-      #cb-input-row{border-top:1px solid #f3f4f6;padding:10px 12px;display:flex;gap:8px}
+      #cb-input-row{border-top:1px solid #f3f4f6;padding:10px 12px;display:flex;gap:8px;flex-shrink:0}
       #cb-inp{flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;font-family:inherit;outline:none;color:#111827}
       #cb-inp:focus{border-color:#006747}
       #cb-send{background:#006747;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer}
       #cb-send:disabled{background:#9ca3af;cursor:default}
       .cb-typing{align-self:flex-start;padding:8px 14px;background:#f0fdf4;border-radius:14px;border-bottom-left-radius:4px;font-size:20px;letter-spacing:2px;color:#006747}
+      /* Calendar widget */
+      .cb-cal{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px;width:100%;font-size:12px;user-select:none;align-self:flex-start;max-width:290px}
+      .cb-cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+      .cb-cal-hdr span{font-weight:700;color:#111827;font-size:13px}
+      .cb-cal-nav{background:none;border:none;cursor:pointer;color:#006747;font-size:16px;padding:2px 6px;border-radius:4px}
+      .cb-cal-nav:hover{background:#f0fdf4}
+      .cb-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+      .cb-cal-dow{font-size:10px;font-weight:600;color:#9ca3af;padding:3px 0}
+      .cb-cal-day{padding:5px 2px;border-radius:6px;cursor:pointer;color:#374151;transition:background .1s}
+      .cb-cal-day:hover:not(.disabled):not(.empty){background:#dcfce7;color:#006747}
+      .cb-cal-day.disabled{color:#d1d5db;cursor:default;pointer-events:none}
+      .cb-cal-day.empty{pointer-events:none}
+      .cb-cal-day.today{font-weight:700;color:#006747}
+      .cb-cal-day.selected{background:#006747;color:#fff;font-weight:700}
     `;
     document.head.appendChild(style);
 
@@ -527,41 +553,111 @@
     document.body.appendChild(panel);
 
     let botStarted = false;
-    const ans = {}; // collected answers
+    const ans = {};
     let step = 0;
     let blockedDatesBot = new Set();
+    let calMonth = null, calYear = null; // current calendar view
 
-    const steps = [
-      { key:'name',    q:"Hi! I'm your reservation assistant. 👋\n\nWhat's your **full name**?", validate: v => v.length >= 2 ? null : 'Please enter your full name (at least 2 characters).' },
-      { key:'dept',    q:"What **department** are you with?", validate: v => v.length >= 2 ? null : 'Please enter your department.' },
-      { key:'uid',     q:"What's your **USF UID**? (9 digits)\nType *skip* if you prefer not to provide it.", validate: v => { if(v.toLowerCase()==='skip'||v==='') return null; if(/^\d{9}$/.test(v)) return null; return 'UID must be exactly 9 digits, or type "skip".'; } },
-      { key:'email',   q:"What's your **email address**?", validate: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? null : 'Please enter a valid email address.' },
-      { key:'type',    q:"Are you **Faculty** or **Student**?", opts:['Faculty','Student'], validate: v => ['faculty','student'].includes(v.toLowerCase()) ? null : 'Please choose Faculty or Student.' },
-      { key:'date',    q:"What **date** would you like to dine?\nFormat: YYYY-MM-DD (weekdays only, at least 1 day ahead)", validate: validateBotDate },
-      { key:'time',    q:"What **time** would you prefer?\nWe're open 11:00 AM – 1:45 PM. Enter like: 11:30", validate: validateBotTime },
-      { key:'party',   q:"How many **guests** in your party?\n(Minimum 2, maximum 15)", validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=2&&n<=15)?null:'Please enter a number between 2 and 15.'; } },
-      { key:'days',    q:"How many **days** will you be dining?\n(1–7 days)", opts:['1','2','3','4','5','6','7'], validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=1&&n<=7)?null:'Please enter a number between 1 and 7.'; } },
-      { key:'payment', q:"How will you be **paying**?", opts:['Credit Card','USF Card','Direct Bill'], validate: v => ['credit card','usf card','direct bill'].includes(v.toLowerCase()) ? null : 'Please choose a payment method.' },
-      { key:'notes',   q:"Any **special requests**? (dietary, accessibility, occasion…)\nType *none* to skip.", validate: () => null },
-    ];
+    // Build steps dynamically so time message uses live openHour/openMin
+    function buildSteps() {
+      const closeLabel = formatHM(closeHour - (closeMin===0?1:0), closeMin===0?45:closeMin-15);
+      const openLabel  = formatHM(openHour, openMin);
+      return [
+        { key:'name',    q:"Hi! I'm your reservation assistant. 👋\n\nWhat's your **full name**?",
+          validate: v => v.length>=2?null:'Please enter your full name.' },
+        { key:'dept',    q:"What **department** are you with?",
+          validate: v => v.length>=2?null:'Please enter your department.' },
+        { key:'uid',     q:"What's your **USF UID**? (9 digits)\nType *skip* to skip.",
+          validate: v => { if(v.toLowerCase()==='skip'||v==='')return null; if(/^\d{9}$/.test(v))return null; return 'UID must be 9 digits, or type "skip".'; } },
+        { key:'email',   q:"What's your **email address**?",
+          validate: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?null:'Please enter a valid email address.' },
+        { key:'type',    q:"Are you **Faculty** or **Student**?", opts:['Faculty','Student'],
+          validate: v => ['faculty','student'].includes(v.toLowerCase())?null:'Please choose Faculty or Student.' },
+        { key:'date',    q:"What **date** would you like to dine?\nChoose from the calendar below or type YYYY-MM-DD.",
+          validate: validateBotDate, showCal: true },
+        { key:'time',    q:`What **time** would you prefer?\nWe're open **${openLabel} – ${closeLabel}**.\nType like: ${openHour}:${String(openMin).padStart(2,'0')}`,
+          validate: validateBotTime },
+        { key:'party',   q:`How many **guests** in your party?\n(Min ${MIN_PARTY}, max ${MAX_PARTY})`,
+          opts:['2','3','4','5','6','7','8','10','12','15'],
+          validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=MIN_PARTY&&n<=MAX_PARTY)?null:`Please enter ${MIN_PARTY}–${MAX_PARTY}.`; } },
+        { key:'days',    q:`How many **days** will you be dining? (1–${MAX_DAYS})`,
+          opts:['1','2','3','4','5','6','7'],
+          validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=1&&n<=MAX_DAYS)?null:`Please enter 1–${MAX_DAYS}.`; } },
+        { key:'payment', q:"How will you be **paying**?", opts:['Credit Card','USF Card','Direct Bill'],
+          validate: v => ['credit card','usf card','direct bill'].includes(v.toLowerCase())?null:'Please choose a payment method.' },
+        { key:'notes',   q:"Any **special requests**? (dietary, accessibility, occasion…)\nType *none* to skip.",
+          validate: () => null },
+      ];
+    }
 
     function validateBotDate(v) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Please use YYYY-MM-DD format (e.g. 2026-06-15).';
-      const d = new Date(v+'T12:00:00'); if (isNaN(d)) return 'Invalid date.';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Please use YYYY-MM-DD (e.g. 2026-06-15) or tap a date above.';
+      const d = new Date(v+'T12:00:00'); if(isNaN(d)) return 'Invalid date.';
       const day = d.getDay();
-      if (day===0||day===6) return 'We\'re only open Monday–Friday. Please pick a weekday.';
-      if (blockedDatesBot.has(v)) return 'Sorry, that date is unavailable (holiday/closure). Please pick another.';
-      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(0,0,0,0);
-      if (d < tomorrow) return 'Please book at least 1 day in advance.';
+      if (day===0||day===6) return 'We\'re open Mon–Fri only. Please pick a weekday.';
+      if (blockedDatesBot.has(v)) return 'That date is unavailable. Please choose another.';
+      const minDate = new Date(); minDate.setDate(minDate.getDate()+1); minDate.setHours(0,0,0,0);
+      if (d < minDate) return `Please book at least 1 day in advance.`;
       return null;
     }
 
     function validateBotTime(v) {
       const m = v.match(/^(\d{1,2}):(\d{2})$/);
-      if (!m) return 'Please use HH:MM format (e.g. 11:30).';
-      const h=parseInt(m[1]),min=parseInt(m[2]);
-      if (h<openHour||(h===openHour&&min<openMin)||h>13||(h===13&&min>45)) return `Please choose a time between ${formatHM(openHour,openMin)} and 1:45 PM.`;
+      if (!m) return `Please use HH:MM format (e.g. ${openHour}:${String(openMin).padStart(2,'0')}).`;
+      const h=parseInt(m[1]), mn=parseInt(m[2]);
+      const afterOpen  = h>openHour || (h===openHour && mn>=openMin);
+      const lastSlotH  = closeMin===0 ? closeHour-1 : closeHour;
+      const lastSlotM  = closeMin===0 ? 45 : closeMin-15;
+      const beforeClose = h<lastSlotH || (h===lastSlotH && mn<=lastSlotM);
+      if (!afterOpen || !beforeClose) return `Please choose a time between ${formatHM(openHour,openMin)} and ${formatHM(lastSlotH,lastSlotM)}.`;
       return null;
+    }
+
+    // ── Calendar widget ──────────────────────────────────────────────────────
+    function renderCal(year, month) {
+      calYear=year; calMonth=month;
+      const msgs = document.getElementById('cb-msgs');
+      // Remove old calendar if any
+      document.getElementById('cb-calendar')?.remove();
+      const cal = document.createElement('div');
+      cal.className='cb-cal'; cal.id='cb-calendar';
+      const now = new Date();
+      const minDate = new Date(); minDate.setDate(minDate.getDate()+1); minDate.setHours(0,0,0,0);
+      const monthLabel = new Date(year,month,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      const firstDay = new Date(year,month,1).getDay();
+      const daysInMonth = new Date(year,month+1,0).getDate();
+      let html = `<div class="cb-cal-hdr">
+        <button class="cb-cal-nav" onclick="calPrev()">‹</button>
+        <span>${monthLabel}</span>
+        <button class="cb-cal-nav" onclick="calNext()">›</button>
+      </div>
+      <div class="cb-cal-grid">
+        ${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cb-cal-dow">${d}</div>`).join('')}
+        ${Array(firstDay).fill('<div class="cb-cal-day empty"></div>').join('')}`;
+      for(let d=1; d<=daysInMonth; d++){
+        const dt = new Date(year,month,d);
+        const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dow = dt.getDay();
+        const isWeekend = dow===0||dow===6;
+        const isBlocked = blockedDatesBot.has(iso);
+        const isPast    = dt < minDate;
+        const isToday   = dt.toDateString()===now.toDateString();
+        const disabled  = isWeekend||isBlocked||isPast;
+        const sel       = ans.date===iso;
+        html += `<div class="cb-cal-day${disabled?' disabled':''}${isToday?' today':''}${sel?' selected':''}" onclick="calPickDate('${iso}')">${d}</div>`;
+      }
+      html += '</div>';
+      cal.innerHTML = html;
+      msgs.appendChild(cal);
+      msgs.scrollTop=msgs.scrollHeight;
+    }
+    function calPrev(){ renderCal(calMonth===0?calYear-1:calYear, calMonth===0?11:calMonth-1); }
+    function calNext(){ renderCal(calMonth===11?calYear+1:calYear, calMonth===11?0:calMonth+1); }
+    function calPickDate(iso){
+      const err = validateBotDate(iso);
+      if(err){ addMsg('⚠️ '+err,'bot'); return; }
+      document.getElementById('cb-inp').value = iso;
+      cbSend();
     }
 
     function addMsg(text, who) {
@@ -596,12 +692,19 @@
     function clearTyping() { document.getElementById('cb-typing')?.remove(); }
 
     function askStep(i) {
+      const steps = buildSteps();
       if (i >= steps.length) { doConfirm(); return; }
       const s = steps[i];
       setTimeout(() => {
         clearTyping();
         addMsg(s.q, 'bot');
         if (s.opts) showOpts(s.opts); else clearOpts();
+        if (s.showCal) {
+          const now = new Date();
+          renderCal(now.getFullYear(), now.getMonth());
+        } else {
+          document.getElementById('cb-calendar')?.remove();
+        }
         document.getElementById('cb-inp').focus();
       }, 400);
     }
@@ -622,6 +725,7 @@
       clearOpts();
       addMsg(raw, 'user');
 
+      const steps = buildSteps();
       if (step >= steps.length) return;
       const s = steps[step];
       const err = s.validate(raw);
