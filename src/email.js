@@ -128,7 +128,7 @@ async function sendDirectBillEmail(reservation) {
           ${row('Email', reservation.email, true)}
         </table></div>
         <p style="color:#374151;font-size:13px">Authorization form has been emailed to the guest. Mark as <strong>Document Received</strong> in the dashboard once they return the signed form.</p>
-        <p style="margin-top:12px"><a href="${process.env.BASE_URL||'http://localhost:3000'}/manager/dashboard" style="background:#006747;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">Open Dashboard →</a></p>`)
+        <p style="margin-top:12px"><a href="${getSafeBase()}/manager/dashboard" style="background:#006747;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">Open Dashboard →</a></p>`)
     });
   }
 
@@ -136,8 +136,17 @@ async function sendDirectBillEmail(reservation) {
 }
 
 
+function getSafeBase() {
+  // Use SAFE_URL first (set in Railway to .up.railway.app URL)
+  if (process.env.SAFE_URL) return process.env.SAFE_URL.trim().replace(/\/$/,'');
+  const base = (process.env.BASE_URL||'').trim().replace(/\/$/,'');
+  if (base && base.includes('railway.app')) return base;
+  return base || 'http://localhost:3000';
+}
+
 async function sendManagerApprovalEmail(reservation) {
-  const base       = process.env.BASE_URL || 'http://localhost:3000';
+  const base       = getSafeBase();
+  // Use confirm flow — requires manager to be logged in before action is taken
   const approveUrl = `${base}/manager/confirm/approve/${reservation.id}`;
   const denyUrl    = `${base}/manager/confirm/deny/${reservation.id}`;
   const dashUrl    = `${base}/manager/dashboard`;

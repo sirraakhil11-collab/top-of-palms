@@ -261,8 +261,8 @@ app.post('/api/reserve', async (req, res) => {
       const mgr_dateRows = createdReservations.map(d =>
         `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">${esc(d.display)}</td>
          <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">
-           <a href="${baseUrl}/manager/approve/${d.reservation.id}" style="color:#006747;font-weight:600;text-decoration:none">Approve</a> &nbsp;|&nbsp;
-           <a href="${baseUrl}/manager/deny/${d.reservation.id}" style="color:#b91c1c;text-decoration:none">Deny</a>
+           <a href="${baseUrl}/manager/confirm/approve/${d.reservation.id}" style="color:#006747;font-weight:600;text-decoration:none">✓ Approve</a> &nbsp;|&nbsp;
+           <a href="${baseUrl}/manager/confirm/deny/${d.reservation.id}" style="color:#b91c1c;text-decoration:none">✕ Deny</a>
          </td></tr>`
       ).join('');
       await sgMail.send({
@@ -344,23 +344,24 @@ app.post('/api/demo/chat', async (req, res) => {
 app.get('/manager/dashboard', auth.requireManager, (req,res)=>res.sendFile(path.join(__dirname,'views','dashboard.html')));
 app.get('/manager/confirm/:action/:id', (req,res)=>res.sendFile(path.join(__dirname,'views','confirm-action.html')));
 
-app.get('/manager/approve/:id', async (req, res) => {
+// These routes require manager login — never fire silently from email previews
+app.get('/manager/approve/:id', auth.requireManager, async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).send(statusPage('Not found','Reservation not found.','error'));
-    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`Already ${r.status}.`,'info'));
+    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`This reservation is already <strong>${r.status}</strong>.`,'info'));
     await db.updateReservation(r.id,{ status:'approved', processed_at:new Date().toISOString() });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'confirmed').catch(console.error);
-    res.send(statusPage('✓ Approved',`<strong>${esc(r.name)}</strong> (${esc(String(r.party))} guests) on ${esc(r.datetime)}<br>Confirmation sent to ${esc(r.email)}.`,'success'));
+    res.send(statusPage('✓ Approved',`<strong>${esc(r.name)}</strong> (${esc(String(r.party))} guests) — ${esc(r.datetime)}<br>Confirmation sent to ${esc(r.email)}.`,'success'));
   } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
 });
 
-app.get('/manager/deny/:id', async (req, res) => {
+app.get('/manager/deny/:id', auth.requireManager, async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).send(statusPage('Not found','Reservation not found.','error'));
-    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`Already ${r.status}.`,'info'));
+    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`This reservation is already <strong>${r.status}</strong>.`,'info'));
     await db.updateReservation(r.id,{ status:'denied', processed_at:new Date().toISOString() });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'denied').catch(console.error);
