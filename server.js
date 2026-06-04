@@ -344,29 +344,49 @@ app.post('/api/demo/chat', async (req, res) => {
 app.get('/manager/dashboard', auth.requireManager, (req,res)=>res.sendFile(path.join(__dirname,'views','dashboard.html')));
 app.get('/manager/confirm/:action/:id', (req,res)=>res.sendFile(path.join(__dirname,'views','confirm-action.html')));
 
-// These routes require manager login — never fire silently from email previews
-app.get('/manager/approve/:id', auth.requireManager, async (req, res) => {
+// GET — safe: only shows current status, never changes anything
+app.get('/manager/approve/:id', async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).send(statusPage('Not found','Reservation not found.','error'));
-    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`This reservation is already <strong>${r.status}</strong>.`,'info'));
-    await db.updateReservation(r.id,{ status:'approved', processed_at:new Date().toISOString() });
-    const updated = await db.getReservation(r.id);
-    await sendEmail(updated,'confirmed').catch(console.error);
-    res.send(statusPage('✓ Approved',`<strong>${esc(r.name)}</strong> (${esc(String(r.party))} guests) — ${esc(r.datetime)}<br>Confirmation sent to ${esc(r.email)}.`,'success'));
+    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`This reservation is already <strong>${r.status}</strong>. No action needed.`,'info'));
+    // GET never approves — redirect to confirmation page
+    res.redirect(`/manager/confirm/approve/${req.params.id}`);
   } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
 });
 
-app.get('/manager/deny/:id', auth.requireManager, async (req, res) => {
+app.get('/manager/deny/:id', async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).send(statusPage('Not found','Reservation not found.','error'));
-    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`This reservation is already <strong>${r.status}</strong>.`,'info'));
+    if (r.status !== 'pending_approval') return res.send(statusPage('Already processed',`This reservation is already <strong>${r.status}</strong>. No action needed.`,'info'));
+    res.redirect(`/manager/confirm/deny/${req.params.id}`);
+  } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
+});
+
+// POST — the actual approve/deny action, called by confirm-action.html via fetch
+app.post('/manager/approve/:id', async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    if (r.status !== 'pending_approval') return res.json({ success:true, already:true, status:r.status });
+    await db.updateReservation(r.id,{ status:'approved', processed_at:new Date().toISOString() });
+    const updated = await db.getReservation(r.id);
+    await sendEmail(updated,'confirmed').catch(console.error);
+    res.json({ success:true, name:r.name, datetime:r.datetime, email:r.email });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+app.post('/manager/deny/:id', async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    if (r.status !== 'pending_approval') return res.json({ success:true, already:true, status:r.status });
     await db.updateReservation(r.id,{ status:'denied', processed_at:new Date().toISOString() });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'denied').catch(console.error);
-    res.send(statusPage('Denied',`<strong>${esc(r.name)}</strong> notified at ${esc(r.email)}.`,'info'));
-  } catch(err){ res.status(500).send(statusPage('Error',err.message,'error')); }
+    res.json({ success:true, name:r.name, datetime:r.datetime, email:r.email });
+  } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
 app.put('/api/reservations/:id', auth.requireManager, async (req, res) => {

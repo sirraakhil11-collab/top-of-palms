@@ -83,7 +83,32 @@
   async function confirm_action() {
     document.getElementById('btns').style.display = 'none';
     document.getElementById('loading').style.display = 'block';
-    window.location.href = `/manager/${action}/${id}`;
+    try {
+      // POST — never fires from an email preview (GET only), confirms the action
+      const resp = await fetch(`/manager/${action}/${id}`, { method: 'POST' });
+      const data = await resp.json();
+      if (!resp.ok) { showError(data.error || 'Action failed. Please try again.'); return; }
+      if (data.already) {
+        document.getElementById('icon').textContent  = '✅';
+        document.getElementById('title').textContent = 'Already processed';
+        document.getElementById('sub').textContent   = `This reservation is already ${data.status}. No further action needed.`;
+        document.getElementById('details').style.display = 'none';
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('btns').innerHTML = `<a href="/manager/dashboard" style="flex:1;display:block;background:#006747;color:#fff;text-decoration:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;text-align:center">← Back to dashboard</a>`;
+        document.getElementById('btns').style.display = 'flex';
+        return;
+      }
+      // Success
+      document.getElementById('icon').textContent  = action === 'approve' ? '✅' : '✕';
+      document.getElementById('title').textContent = action === 'approve' ? '✓ Reservation Approved!' : 'Reservation Denied';
+      document.getElementById('sub').textContent   = action === 'approve'
+        ? `${data.name} has been confirmed for ${data.datetime}. A confirmation email was sent to ${data.email}.`
+        : `${data.name} has been notified at ${data.email}.`;
+      document.getElementById('details').style.display = 'none';
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('btns').innerHTML = `<a href="/manager/dashboard" style="flex:1;display:block;background:#006747;color:#fff;text-decoration:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;text-align:center">← Back to dashboard</a>`;
+      document.getElementById('btns').style.display = 'flex';
+    } catch(e) { showError('Network error — please try again.'); }
   }
 
   function showError(msg) {
