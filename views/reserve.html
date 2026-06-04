@@ -651,14 +651,15 @@
       msgs.appendChild(cal);
       msgs.scrollTop=msgs.scrollHeight;
     }
-    function calPrev(){ renderCal(calMonth===0?calYear-1:calYear, calMonth===0?11:calMonth-1); }
-    function calNext(){ renderCal(calMonth===11?calYear+1:calYear, calMonth===11?0:calMonth+1); }
-    function calPickDate(iso){
+    // Exposed globally so inline onclick in rendered calendar HTML can call them
+    window.calPrev     = function(){ renderCal(calMonth===0?calYear-1:calYear, calMonth===0?11:calMonth-1); };
+    window.calNext     = function(){ renderCal(calMonth===11?calYear+1:calYear, calMonth===11?0:calMonth+1); };
+    window.calPickDate = function(iso){
       const err = validateBotDate(iso);
       if(err){ addMsg('⚠️ '+err,'bot'); return; }
       document.getElementById('cb-inp').value = iso;
       cbSend();
-    }
+    };
 
     function addMsg(text, who) {
       const msgs = document.getElementById('cb-msgs');
