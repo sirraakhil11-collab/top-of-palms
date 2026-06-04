@@ -601,6 +601,21 @@ app.post('/api/directbill/upload/:token', multerMem.single('file'), async (req, 
   }
 });
 
+// Resend In-Kind approval email to approver manager
+app.post('/api/reservations/:id/directbill/resend-approval', auth.requireManager, async (req, res) => {
+  try {
+    const r = await db.getReservation(req.params.id);
+    if (!r) return res.status(404).json({ error:'Not found' });
+    if (!r.direct_bill_data) return res.status(400).json({ error:'No billing data on record' });
+    const billing = JSON.parse(r.direct_bill_data);
+    if (!billing.approver_email) return res.status(400).json({ error:'No approver email on record' });
+    const approvalToken = directBill.makeApprovalToken(r.id);
+    await db.updateReservation(r.id, { direct_bill_approval_token: approvalToken, direct_bill_status: 'pending_inkind_approval' });
+    await directBill.sendInKindApprovalRequest(r, billing, approvalToken);
+    res.json({ success:true });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
 // Mark as received without file (manual override)
 app.post('/api/reservations/:id/directbill/received', auth.requireManager, async (req, res) => {
   try {
@@ -616,6 +631,17 @@ app.post('/api/reservations/:id/directbill/received', auth.requireManager, async
 app.get('/api/reservations/:id/documents', auth.requireManager, async (req, res) => {
   try { res.json(await db.getDocuments(req.params.id)); }
   catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Preview a specific document (inline in browser)
+app.get('/api/documents/:docId/preview', auth.requireManager, async (req, res) => {
+  try {
+    const doc = await db.getDocumentById(req.params.docId);
+    if (!doc) return res.status(404).json({ error:'Document not found' });
+    const buf = Buffer.from(doc.data_base64, 'base64');
+    res.set({ 'Content-Type':doc.mimetype||'application/pdf', 'Content-Disposition':`inline; filename="${doc.filename}"`, 'Content-Length':buf.length });
+    res.send(buf);
+  } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
 // Download a specific document
@@ -684,7 +710,7 @@ app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => 
         <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.name||'—'}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.department||'—'}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.reservation_date||'—'}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">$${((d.party||0)*12.75).toFixed(2)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">$${((d.party||0)*(d.rate||12.75)).toFixed(2)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${d.filename}</td>
       </tr>`).join('');
 
@@ -720,7 +746,7 @@ app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => 
 app.patch('/api/reservations/:id/directbill', auth.requireManager, async (req, res) => {
   try {
     const { direct_bill_status } = req.body;
-    if (!['na','pending_send','sent','received'].includes(direct_bill_status))
+    if (!['na','pending_send','sent','pending_inkind_approval','received'].includes(direct_bill_status))
       return res.status(400).json({ error:'Invalid status' });
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
@@ -827,7 +853,10 @@ app.get('/api/directbill/approve-info/:token', async (req, res) => {
     const r   = all.find(r => r.direct_bill_approval_token === token);
     if (!r) return res.status(404).json({ error:'This approval link is invalid or has expired.' });
     if (r.direct_bill_status === 'received') {
-      return res.json({ already_approved: true });
+      return res.json({ already_approved: true, message: 'This billing has already been approved.' });
+    }
+    if (r.direct_bill_status !== 'pending_inkind_approval' && r.direct_bill_status !== 'sent') {
+      return res.status(410).json({ error: 'This approval link is no longer valid.' });
     }
     const billing  = r.direct_bill_data ? JSON.parse(r.direct_bill_data) : {};
     const rate     = await directBill.getRate();
@@ -850,7 +879,7 @@ app.post('/api/directbill/approve/:token', async (req, res) => {
     const r     = all.find(r => r.direct_bill_approval_token === token);
     if (!r) return res.status(404).json({ error:'Invalid approval link.' });
     if (r.direct_bill_status === 'received') {
-      return res.json({ success:true, already_approved:true });
+      return res.json({ success:true, already_approved:true, message:'Already approved.' });
     }
     const billing = r.direct_bill_data ? JSON.parse(r.direct_bill_data) : {};
     const pdfBuf  = await directBill.buildCompletedPDF(r, billing);
@@ -951,7 +980,9 @@ app.get('/api/settings', auth.requireManager, async (req, res) => {
 app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
   try {
     const adminOnly = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
-    const managerOk = ['open_time','close_time','direct_bill_rate','daily_limit'];
+    const managerOk = ['open_time','close_time','direct_bill_rate','daily_limit',
+                       'batch_recipient_email','batch_schedule','batch_schedule_time',
+                       'batch_schedule_weekday','batch_last_run'];
     const key = req.params.key;
     if (!adminOnly.includes(key) && !managerOk.includes(key))
       return res.status(400).json({ error:'Unknown setting key' });
@@ -1019,18 +1050,26 @@ app.post('/api/pos/directbill/:id', auth.requirePos, async (req, res) => {
     const ref    = r.id.slice(0,8).toUpperCase();
     const fname  = `DirectBill_POS_${billing.billing_type}_${ref}_${(r.name||'Guest').replace(/\s+/g,'_')}.pdf`;
     await db.storeDocument(r.id, fname, 'application/pdf', pdfBuf.toString('base64'), pdfBuf.length);
-    const updated = await db.updateReservation(r.id, {
-      payment_method:     (r.payment_method ? r.payment_method + ', Direct Bill' : 'Direct Bill').replace(/Direct Bill,\s*Direct Bill/,'Direct Bill'),
-      direct_bill_status: 'received',
-      direct_bill_data:   JSON.stringify(billing)
-    });
-    // If In-Kind, still send approval email to approver (for records)
+
     if (billing.billing_type === 'inkind' && billing.approver_email) {
+      // In-Kind: must wait for manager approval — set pending_inkind_approval, NOT received
       const approvalToken = directBill.makeApprovalToken(r.id);
-      await db.updateReservation(r.id, { direct_bill_approval_token: approvalToken });
+      await db.updateReservation(r.id, {
+        payment_method:              (r.payment_method ? r.payment_method + ', Direct Bill' : 'Direct Bill').replace(/Direct Bill,\s*Direct Bill/,'Direct Bill'),
+        direct_bill_status:          'pending_inkind_approval',
+        direct_bill_data:            JSON.stringify(billing),
+        direct_bill_approval_token:  approvalToken
+      });
       directBill.sendInKindApprovalRequest(r, billing, approvalToken).catch(console.error);
+    } else {
+      // P-Card: complete immediately
+      const updated = await db.updateReservation(r.id, {
+        payment_method:     (r.payment_method ? r.payment_method + ', Direct Bill' : 'Direct Bill').replace(/Direct Bill,\s*Direct Bill/,'Direct Bill'),
+        direct_bill_status: 'received',
+        direct_bill_data:   JSON.stringify(billing)
+      });
+      directBill.notifyDocReceived(updated).catch(console.error);
     }
-    directBill.notifyDocReceived(updated).catch(console.error);
     res.json({ success:true });
   } catch(err) {
     console.error('[POS DirectBill]', err.message);
@@ -1186,6 +1225,74 @@ a{display:inline-block;background:${c.btn};color:#fff;text-decoration:none;paddi
 </head><body><div class="card"><div class="badge">${type==='success'?'✓ Success':type==='error'?'✕ Error':'ℹ Info'}</div>
 <h1>${esc(title)}</h1><p>${message}</p><a href="/manager/dashboard">← Back to dashboard</a></div></body></html>`;
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+//  SCHEDULER — send processed direct bills on daily/weekly schedule
+// ══════════════════════════════════════════════════════════════════════════
+let _lastScheduledRun = '';
+
+async function runScheduledBatch() {
+  try {
+    const settings = await db.getAllSettings();
+    const schedule = settings.batch_schedule || 'off';
+    if (schedule === 'off') return;
+
+    const now = new Date();
+    const todayISO = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+    const scheduleTime = settings.batch_schedule_time || '08:00';
+    const scheduleWeekday = parseInt(settings.batch_schedule_weekday || '1', 10); // 1=Monday
+
+    if (currentTime !== scheduleTime) return;
+
+    const runKey = `${todayISO}-${scheduleTime}`;
+    if (_lastScheduledRun === runKey) return; // already ran this minute
+    _lastScheduledRun = runKey;
+
+    // Weekly: only run on the configured weekday
+    if (schedule === 'weekly' && now.getDay() !== scheduleWeekday) return;
+
+    const toEmail = (settings.batch_recipient_email || '').trim() || process.env.MANAGER_EMAIL;
+    if (!toEmail || !process.env.SENDGRID_API_KEY) {
+      console.log('[Scheduler] Skipped — no recipient email or SendGrid key');
+      return;
+    }
+
+    // Send all "received" direct bill documents from the last period
+    let fromDate, toDate;
+    toDate = todayISO;
+    if (schedule === 'daily') {
+      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+      fromDate = yesterday.toISOString().split('T')[0];
+    } else {
+      const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+      fromDate = weekAgo.toISOString().split('T')[0];
+    }
+
+    const docs = await db.getDocumentsByDateRange(fromDate, toDate, true);
+    if (!docs.length) { console.log(`[Scheduler] No docs to send for ${fromDate} – ${toDate}`); return; }
+
+    const sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+    const rate = await directBill.getRate();
+    const attachments = docs.map(d => ({ content: d.data_base64, filename: d.filename, type: d.mimetype||'application/pdf', disposition:'attachment' }));
+    const rows = docs.map(d => `<tr><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.name||'—'}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.department||'—'}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.reservation_date||'—'}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">$${((d.party||0)*rate).toFixed(2)}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${d.filename}</td></tr>`).join('');
+    await sgMail.send({
+      to: toEmail, from: { email: FROM_EMAIL, name: 'On Top of the Palms' },
+      subject: `Scheduled Direct Bill Batch — ${schedule} — ${fromDate} to ${toDate} (${docs.length} doc${docs.length===1?'':'s'})`,
+      attachments,
+      html: `<div style="font-family:sans-serif;padding:24px;max-width:640px"><h2 style="color:#006747">📋 Scheduled Direct Bill Batch</h2><p style="font-size:14px;color:#374151">Schedule: <strong>${schedule}</strong> · Date range: <strong>${fromDate}</strong> to <strong>${toDate}</strong></p><p style="font-size:14px;color:#374151;margin-bottom:20px">Total: <strong>${docs.length} document${docs.length===1?'':'s'}</strong></p><table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb"><thead><tr style="background:#f9fafb"><th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Guest</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Dept</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Date</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Amount</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">File</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    });
+    console.log(`[Scheduler] ✓ Sent ${docs.length} docs to ${toEmail} (${schedule}, ${fromDate}–${toDate})`);
+    await db.updateSetting('batch_last_run', new Date().toISOString()).catch(()=>{});
+  } catch(e) {
+    console.error('[Scheduler] Error:', e.message);
+  }
+}
+
+// Check every minute
+setInterval(runScheduledBatch, 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

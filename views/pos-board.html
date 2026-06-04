@@ -308,8 +308,11 @@
 const todayISO = new Date().toISOString().split('T')[0];
 document.getElementById('dpick').value = todayISO;
 
-let allData = [], activeFilter = 'all', searchQ = '';
+let allData = [], activeFilter = 'all', searchQ = '', posRate = 12.75;
 const posPaySel = {};
+
+// Load rate once at startup
+fetch('/api/public/rate').then(r=>r.json()).then(d=>{ if(d.rate) posRate=parseFloat(d.rate)||12.75; }).catch(()=>{});
 
 function goToday(){ document.getElementById('dpick').value=todayISO; load(); }
 
@@ -423,6 +426,7 @@ function renderAll(date){
       </div>
       <button class="save-sm" id="psave-${r.id}" style="display:none" onclick="savePay('${r.id}')">Save Payment</button>
       ${dbStatus==='pending_send'||dbStatus==='sent'?`<div class="db-badge">📄 Direct Bill — ${dbStatus==='sent'?'form sent, awaiting return':'form not yet sent'}</div><a href="/directbill/sign?id=${r.id}" class="db-sign">✍️ Sign at Reception</a>`:''}
+      ${dbStatus==='pending_inkind_approval'?`<div class="db-badge" style="color:#fbbf24">⏳ In-Kind — awaiting manager approval</div>`:''}
       ${dbStatus==='received'?`<div class="db-ok">✓ Direct Bill received</div>`:''}
       ${(r.payment_method||'').includes('Direct Bill')&&(!dbStatus||dbStatus==='na')?`<a href="/directbill/sign?id=${r.id}" class="db-sign">✍️ Sign Direct Bill</a>`:''}
     </div>`;
@@ -461,6 +465,7 @@ function renderAll(date){
           </div>
         </div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
+        <div class="rr"><span class="rk">Amount Due</span><span class="rv" style="font-weight:700;color:#4ade80;font-size:13px">$${(r.party*posRate).toFixed(2)}</span></div>
         ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:11px">${x(r.department)}</span></div>`:''}
         <div class="rr"><span class="rk">Ref</span><span class="rv" style="font-family:monospace;font-size:11px">${ref}</span></div>
         ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:10px;max-width:55%">${x(r.notes)}</span></div>`:''}
