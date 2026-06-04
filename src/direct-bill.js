@@ -11,22 +11,20 @@ const NAME       = 'On Top of the Palms';
 const PHONE      = process.env.RESTAURANT_PHONE || '(813) 974-3573';
 const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL || 'topofthepalms@usf.edu';
 
-// Always resolve to a working URL — avoids Zscaler-blocked custom domains
+// Resolve the base URL for email links — must never return a Zscaler-blocked domain
 function getBaseUrl() {
-  // 1. Railway auto-injects RAILWAY_PUBLIC_DOMAIN — most reliable
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  // Priority 1: SAFE_URL env var — set this in Railway to the .up.railway.app URL
+  if (process.env.SAFE_URL) {
+    return process.env.SAFE_URL.trim().replace(/\/$/, '');
   }
-  // 2. Use BASE_URL only if it's a railway.app URL (safe)
+  // Priority 2: BASE_URL only if it's a .railway.app URL (never the custom domain)
   const base = (process.env.BASE_URL || '').trim().replace(/\/$/, '');
   if (base && base.includes('railway.app')) {
     return base;
   }
-  // 3. Use BASE_URL if it doesn't look like the blocked Compass domain
-  if (base && !base.includes('chartwells.com') && !base.includes('topofthepalms.usf.edu')) {
-    return base;
-  }
-  // 4. Hard fallback — always works
+  // NOTE: We intentionally SKIP RAILWAY_PUBLIC_DOMAIN — Railway sets it to the
+  // custom domain (e.g. staging.topofthepalmsusf-chartwells.com) which is Zscaler-blocked
+  // Hard fallback
   return 'https://top-of-palms-staging.up.railway.app';
 }
 

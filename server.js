@@ -881,13 +881,19 @@ app.get('/api/revenue', auth.requireManager, async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 // Debug: shows what base URL the server will use in emails (manager only)
 app.get('/api/debug/baseurl', auth.requireManager, (req, res) => {
-  const db_direct = require('./src/direct-bill');
+  const safeUrl  = process.env.SAFE_URL || null;
+  const base     = (process.env.BASE_URL || '').trim().replace(/\/$/,'');
+  const resolved = safeUrl
+    ? safeUrl
+    : base && base.includes('railway.app')
+      ? base
+      : 'https://top-of-palms-staging.up.railway.app';
   res.json({
+    SAFE_URL:              safeUrl,
     RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || null,
     BASE_URL:              process.env.BASE_URL || null,
-    resolved_url:          process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : (process.env.BASE_URL || 'https://top-of-palms-staging.up.railway.app')
+    resolved_url:          resolved,
+    is_safe:               resolved.includes('railway.app') || (safeUrl && !safeUrl.includes('chartwells.com'))
   });
 });
 
