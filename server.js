@@ -879,6 +879,18 @@ app.get('/api/revenue', auth.requireManager, async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 //  PUBLIC RATE endpoint (no auth — needed by reserve.html)
 // ══════════════════════════════════════════════════════════════════════════
+// Debug: shows what base URL the server will use in emails (manager only)
+app.get('/api/debug/baseurl', auth.requireManager, (req, res) => {
+  const db_direct = require('./src/direct-bill');
+  res.json({
+    RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || null,
+    BASE_URL:              process.env.BASE_URL || null,
+    resolved_url:          process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : (process.env.BASE_URL || 'https://top-of-palms-staging.up.railway.app')
+  });
+});
+
 app.get('/api/public/rate', async (req, res) => {
   try {
     const s    = await db.getAllSettings();

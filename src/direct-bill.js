@@ -11,16 +11,23 @@ const NAME       = 'On Top of the Palms';
 const PHONE      = process.env.RESTAURANT_PHONE || '(813) 974-3573';
 const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL || 'topofthepalms@usf.edu';
 
-// Always use Railway URL as fallback — avoids Zscaler-blocked custom domains
+// Always resolve to a working URL — avoids Zscaler-blocked custom domains
 function getBaseUrl() {
-  const url = process.env.BASE_URL || '';
-  // If BASE_URL is empty or is a known blocked custom domain, fall back to Railway URL
-  if (!url || url.includes('chartwells.com') || url.includes('topofthepalms.usf')) {
-    return process.env.RAILWAY_URL || process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : (url || 'https://top-of-palms-staging.up.railway.app');
+  // 1. Railway auto-injects RAILWAY_PUBLIC_DOMAIN — most reliable
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
   }
-  return url;
+  // 2. Use BASE_URL only if it's a railway.app URL (safe)
+  const base = (process.env.BASE_URL || '').trim().replace(/\/$/, '');
+  if (base && base.includes('railway.app')) {
+    return base;
+  }
+  // 3. Use BASE_URL if it doesn't look like the blocked Compass domain
+  if (base && !base.includes('chartwells.com') && !base.includes('topofthepalms.usf.edu')) {
+    return base;
+  }
+  // 4. Hard fallback — always works
+  return 'https://top-of-palms-staging.up.railway.app';
 }
 
 // Fetch rate from settings, fall back to 12.75
