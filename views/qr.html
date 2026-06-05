@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Top of the Palms – QR Code</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -40,7 +40,7 @@
   <h1>Top of the Palms</h1>
   <p class="sub">Scan to make a reservation</p>
 
-  <div id="qr-wrap"><canvas id="qr-canvas"></canvas></div>
+  <div id="qr-wrap"></div>
   <div class="url-box" id="qr-url-display"></div>
 
   <div class="btns">
@@ -92,14 +92,20 @@
   document.getElementById('snippet-link').textContent =
     `<a href="${reserveUrl}" target="_blank">\n  Make a Reservation at Top of the Palms\n</a>`;
 
-  // Generate QR
-  QRCode.toCanvas(document.getElementById('qr-canvas'), reserveUrl, {
-    width: 240, margin: 1,
-    color: { dark: '#006747', light: '#ffffff' }
-  }, err => { if (err) console.error(err); });
+  // Generate QR using qrcodejs (new QRCode API)
+  const qr = new QRCode(document.getElementById('qr-wrap'), {
+    text: reserveUrl,
+    width: 240, height: 240,
+    colorDark: '#006747', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  function getQRCanvas() {
+    return document.getElementById('qr-wrap').querySelector('canvas');
+  }
 
   function downloadQR() {
-    const canvas = document.getElementById('qr-canvas');
+    const canvas = getQRCanvas();
     const link = document.createElement('a');
     link.download = 'top-of-palms-qr.png';
     link.href = canvas.toDataURL('image/png');
@@ -107,7 +113,7 @@
   }
 
   function printQR() {
-    const canvas = document.getElementById('qr-canvas');
+    const canvas = getQRCanvas();
     const img = canvas.toDataURL('image/png');
     const w = window.open('','_blank');
     w.document.write(`<!DOCTYPE html><html><head><title>Top of the Palms QR</title><style>body{text-align:center;font-family:sans-serif;padding:40px}img{width:280px;height:280px}h2{color:#006747;margin-bottom:8px}p{color:#374151;font-size:14px}</style></head><body><h2>🌴 Top of the Palms</h2><p>Scan to make a reservation</p><br><img src="${img}"><br><br><p style="font-size:12px;color:#9ca3af">${reserveUrl}</p></body></html>`);
