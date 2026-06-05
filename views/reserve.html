@@ -873,26 +873,30 @@
         const submittedName = ans.name;
         addMsg('✅ **Reservation submitted!** You\'ll receive a confirmation email shortly. Thank you, ' + submittedName + '! 🌴', 'bot');
         clearOpts();
-        // Reset state
+        // Reset state fully
         step = 0; botStarted = false;
         Object.keys(ans).forEach(k => delete ans[k]);
-        window.cbSend = originalCbSend;
-        // Ask if they want to make another reservation
+        // Ask if they want another reservation — keep cbSend locked until they answer
+        window.cbSend = function() { /* block input while waiting */ };
         setTimeout(() => {
           typing();
           setTimeout(() => {
             clearTyping();
             addMsg('Would you like to make **another reservation**?', 'bot');
             showOpts(['Yes, new reservation', 'No, thanks']);
+            // Now wire up the answer handler
             window.cbSend = function() {
               const inp = document.getElementById('cb-inp');
               const raw = (inp.value||'').trim().toLowerCase();
+              if (!raw) return;
               inp.value = ''; clearOpts();
-              addMsg(raw.includes('yes') ? 'Yes, new reservation' : 'No, thanks', 'user');
-              window.cbSend = originalCbSend;
+              addMsg(raw.includes('yes') || raw.includes('new') || raw.includes('reserv') ? 'Yes, new reservation' : 'No, thanks', 'user');
               if (raw.includes('yes') || raw.includes('new') || raw.includes('reserv')) {
+                // Fully restart — startBot resets step and botStarted
+                window.cbSend = originalCbSend;
                 typing(); startBot();
               } else {
+                window.cbSend = originalCbSend;
                 addMsg('No problem! Feel free to chat again anytime. 😊', 'bot');
               }
             };
