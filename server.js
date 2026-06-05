@@ -254,76 +254,10 @@ app.post('/api/reserve', async (req, res) => {
         seating_preference:'', payment_method:payment_method||'', notes:notes||''
       }
     };
-    const result = await processReservation(session, {
-      suppressGuestEmail:  true,
-      suppressManagerEmail:true,
-      suppressDirectBill:  false
-    });
+    // Let processReservation send both manager + guest emails via the existing working functions
+    const result = await processReservation(session, { suppressDirectBill: false });
     if (!result.success)
       return res.status(429).json({ error: result.reason || 'Could not create reservation. Please try different dates.' });
-
-    const created = result.reservation;
-    const baseUrl = process.env.BASE_URL || 'https://top-of-palms-staging.up.railway.app';
-
-    // Manager notification — ONE record, ONE approve/deny link
-    if (process.env.SENDGRID_API_KEY && process.env.MANAGER_EMAIL) {
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
-      const datesHtml = allBookingDates.map((d,i) => {
-        const label = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-        return `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">Day ${i+1}: ${label} at ${displayTime}</td></tr>`;
-      }).join('');
-      await sgMail.send({
-        to: process.env.MANAGER_EMAIL, from: { email: FROM_EMAIL, name: 'On Top of the Palms' },
-        subject: `New Reservation Request — ${esc(name)} · ${numDays} day${numDays>1?'s':''} · Party of ${partyN}`,
-        html: `<div style="font-family:sans-serif;padding:20px;max-width:560px">
-          <h2 style="color:#006747">New Reservation Request</h2>
-          <p><strong>${esc(name)}</strong> (${esc(guest_type)}) has requested <strong>${numDays} day${numDays>1?'s':''}</strong> for a party of ${partyN}.</p>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;margin:12px 0">
-            <thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left">Dining Dates</th></tr></thead>
-            <tbody>${datesHtml}</tbody>
-          </table>
-          <p style="font-size:13px;color:#374151">
-            <strong>Email:</strong> ${esc(email)}<br>
-            <strong>Department:</strong> ${esc(department||'—')}<br>
-            <strong>Payment:</strong> ${esc(payment_method||'—')}<br>
-            ${notes ? `<strong>Notes:</strong> ${esc(notes)}<br>` : ''}
-          </p>
-          <p style="margin-top:16px">
-            <a href="${baseUrl}/manager/confirm/approve/${created.id}" style="background:#006747;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;margin-right:12px">✓ Approve All ${numDays} Day${numDays>1?'s':''}</a>
-            <a href="${baseUrl}/manager/confirm/deny/${created.id}" style="background:#b91c1c;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700">✕ Deny</a>
-          </p>
-        </div>`
-      }).catch(e => console.error('[Manager email]', e.message));
-    }
-
-    // Guest confirmation email
-    if (process.env.SENDGRID_API_KEY && email) {
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
-      await sgMail.send({
-        to: email, from: { email: FROM_EMAIL, name: 'On Top of the Palms' },
-        subject: `Reservation Request Received — ${numDays} day${numDays>1?'s':''} | On Top of the Palms`,
-        html: `<div style="font-family:-apple-system,sans-serif;background:#f3f4f6;padding:24px 16px"><div style="max-width:560px;margin:0 auto">
-          <div style="background:#006747;border-radius:10px 10px 0 0;padding:18px 24px"><h1 style="color:#fff;font-size:17px;font-weight:700;margin:0">On Top of the Palms</h1><p style="color:#a7d9c2;font-size:11px;margin:2px 0 0">USF Dining · Compass USA</p></div>
-          <div style="background:#fff;border-radius:0 0 10px 10px;padding:24px 28px">
-            <h2 style="color:#111827;font-size:17px;margin:0 0 12px">Hi ${esc(name)}, your request is submitted!</h2>
-            <p style="color:#374151;font-size:14px;margin:0 0 16px">We received your reservation request for <strong>${numDays} day${numDays>1?'s':''}</strong>. A manager will review and confirm your booking.</p>
-            <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:16px">
-              <thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Date &amp; Time</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Status</th></tr></thead>
-              <tbody>${dateRowsGuest}</tbody>
-            </table>
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:16px">
-              <div><strong>Party size:</strong> ${partyN} guest${partyN>1?'s':''}</div>
-              <div><strong>Payment:</strong> ${payment_method||'—'}</div>
-            </div>
-            ${(payment_method||'').includes('Direct Bill') ? '<p style="font-size:13px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px">📄 A Direct Bill authorization form has been sent to you separately. Please complete and return it.</p>' : ''}
-            <p style="font-size:12px;color:#9ca3af;margin-top:16px">Walk-ups are always welcome based on availability.</p>
-          </div></div></div>`
-      }).catch(console.error);
-    }
 
     res.json({ success:true, status:'pending', days_booked: numDays });
   } catch(err) { console.error('[Form]',err.message); res.status(500).json({ error:'Submission failed. Please try again.' }); }

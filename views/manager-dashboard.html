@@ -419,10 +419,9 @@ function renderPendingCards(pending) {
   grid.innerHTML = pending.map(r => {
     const days = parseInt(r.num_days || 1);
     // Build date rows for multi-day bookings
-    let datesHtml = `<div class="card-row"><span class="card-key">Start date</span><span class="card-val">${esc(r.datetime)}</span></div>`;
-    if (days > 1) {
-      datesHtml = `<div class="card-row"><span class="card-key">Booking</span><span class="card-val"><strong>${days}-day</strong> starting ${esc(r.datetime)}</span></div>`;
-    }
+    const datesHtml = `
+      <div class="card-row"><span class="card-key">${days > 1 ? 'Start date' : 'Date & time'}</span><span class="card-val">${esc(r.datetime)}</span></div>
+      ${days > 1 ? `<div class="card-row"><span class="card-key">Days</span><span class="card-val"><strong>${days} consecutive weekdays</strong></span></div>` : ''}`;
     return `
     <div class="res-card" id="card-${r.id}">
       <div class="card-hdr">
@@ -435,6 +434,7 @@ function renderPendingCards(pending) {
       <div class="card-body">
         ${datesHtml}
         <div class="card-row"><span class="card-key">Party size</span><span class="card-val">${r.party} guest${r.party===1?'':'s'}</span></div>
+        <div class="card-row"><span class="card-key">Days</span><span class="card-val">${parseInt(r.num_days||1)} day${parseInt(r.num_days||1)===1?'':'s'}</span></div>
         <div class="card-row"><span class="card-key">USF UID</span><span class="card-val mono">${esc(r.uid||'—')}</span></div>
         <div class="card-row"><span class="card-key">Email</span><span class="card-val">${esc(r.email)}</span></div>
         <div class="card-row"><span class="card-key">Payment</span><span class="card-val">${esc(r.payment_method||'—')}</span></div>

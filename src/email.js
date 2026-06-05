@@ -162,7 +162,7 @@ async function sendManagerApprovalEmail(reservation) {
   await sgMail.send({
     to:   process.env.MANAGER_EMAIL,
     from: { email: FROM, name: NAME },
-    subject: `Action needed — Reservation: ${reservation.name} (${party}, ${reservation.datetime})`,
+    subject: `Action needed — ${reservation.name} · ${parseInt(reservation.num_days||1)>1?reservation.num_days+' days · ':''}${party} · ${reservation.datetime}`,
     html: layout(`
       <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Action required</div>
       <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">New reservation request</h2>
@@ -173,7 +173,8 @@ async function sendManagerApprovalEmail(reservation) {
           ${row('USF UID', `<span style="font-family:monospace">${reservation.uid||'—'}</span>`)}
           ${row('Department', reservation.department||'—')}
           ${row('Email', reservation.email)}
-          ${row('Requested time', reservation.datetime)}
+          ${row('Start date', reservation.datetime)}
+          ${parseInt(reservation.num_days||1)>1 ? row('Days', `<strong>${reservation.num_days} consecutive weekdays</strong>`) : ''}
           ${row('Party size', party)}
           ${row('Payment', reservation.payment_method||'—')}
           ${reservation.notes ? row('Notes', reservation.notes) : ''}
