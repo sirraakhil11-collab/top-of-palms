@@ -218,128 +218,114 @@ app.post('/api/reserve', async (req, res) => {
     if (new Date(datetime_iso) < new Date(Date.now() + 24*60*60*1000))
       return res.status(400).json({ error:'Reservations must be made at least 24 hours in advance. Walk-ups are welcome!' });
 
-    // Build list of valid weekdays starting from startDate (skip weekends + blocked dates)
-    const reservationDates = [];
-    const cursor = new Date(startDate + 'T12:00:00');
-    while (reservationDates.length < numDays) {
-      const iso = cursor.toISOString().split('T')[0];
-      const dow = cursor.getDay();
-      if (dow !== 0 && dow !== 6) {
-        const bl = await blockedDates.isBlocked(iso);
-        if (!bl) reservationDates.push(iso);
-      }
-      cursor.setDate(cursor.getDate() + 1);
-      if (cursor - new Date(startDate + 'T12:00:00') > 30 * 24*60*60*1000) break; // safety: max 30 day scan
-    }
-    if (!reservationDates.length)
-      return res.status(400).json({ error:'No available weekdays found starting from that date.' });
+    // ── Single record per booking ──────────────────────────────────────────
+    // Compute all weekday dates for the booking (for display + capacity checks)
+    const allBookingDates = getBookingDates(startDate, numDays);
+    if (!allBookingDates.length)
+      return res.status(400).json({ error:'No valid weekdays found starting from that date.' });
 
-    const partyN   = partySize;
-    const groupId  = numDays > 1 ? crypto.randomUUID() : null;
-    const timeStr  = datetime_iso.slice(11,16); // HH:MM
-    const displayTime = new Date(datetime_iso).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
-
-    const createdReservations = [];
-    const skippedDates = [];
-
-    for (const resDate of reservationDates) {
-      const dateDisplay = new Date(resDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-      const datetimeDisplay = `${dateDisplay} ${displayTime}`;
-      const session = {
-        channel:'form', callerNumber:email, callSid:`form-${Date.now()}-${resDate}`,
-        collected:{
-          name, department:department||'', phone_ext:phone_ext||'',
-          status:guest_type.toLowerCase(), uid:cleanUid, email, party:partyN,
-          num_days:1, // each reservation = 1 day; total days shown in combined email
-          group_id:groupId,
-          datetime:datetimeDisplay, reservation_date:resDate,
-          reservation_time:reservation_time||displayTime||'',
-          seating_preference:'', payment_method:payment_method||'', notes:notes||''
-        }
-      };
-      // Suppress individual guest + manager emails + Direct Bill for all but first day
-      const isFirst = createdReservations.length === 0;
-      const result = await processReservation(session, {
-        suppressGuestEmail:   true,     // we send one combined guest email after
-        suppressManagerEmail: true,     // we send one combined manager email after
-        suppressDirectBill:   !isFirst  // only send Direct Bill form on first day
-      });
-      if (result.success) {
-        createdReservations.push({ date: resDate, display: datetimeDisplay, reservation: result.reservation });
-      } else {
-        skippedDates.push({ date: resDate, reason: result.reason });
-      }
+    // Check capacity for each day
+    for (const d of allBookingDates) {
+      const bl = await blockedDates.isBlocked(d);
+      if (bl) return res.status(400).json({ error:`${d} is a blocked/closed date. Please choose different dates.` });
     }
 
-    if (!createdReservations.length)
-      return res.status(429).json({ error:'No dates could be booked — capacity may be full. Please try different dates.' });
+    const partyN      = partySize;
+    const timeStr     = datetime_iso.slice(11,16);
+    const displayTime = new Date(datetime_iso + ':00').toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const startDisplay= new Date(startDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+    const datetimeDisplay = `${startDisplay} ${displayTime}`;
 
-    // Send ONE combined manager notification (all days in one email)
-    if (process.env.SENDGRID_API_KEY && process.env.MANAGER_EMAIL && createdReservations.length) {
+    // Build date rows for emails
+    const dateRowsGuest = allBookingDates.map((d,i) => {
+      const label = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+      return `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">Day ${i+1}: ${label} ${displayTime}</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;color:#006747;font-weight:600">Pending approval</td></tr>`;
+    }).join('');
+
+    // Create ONE reservation record
+    const session = {
+      channel:'form', callerNumber:email, callSid:`form-${Date.now()}`,
+      collected:{
+        name, department:department||'', phone_ext:phone_ext||'',
+        status:guest_type.toLowerCase(), uid:cleanUid, email, party:partyN,
+        num_days:numDays,
+        datetime:datetimeDisplay, reservation_date:startDate,
+        reservation_time:reservation_time||displayTime||'',
+        seating_preference:'', payment_method:payment_method||'', notes:notes||''
+      }
+    };
+    const result = await processReservation(session, {
+      suppressGuestEmail:  true,
+      suppressManagerEmail:true,
+      suppressDirectBill:  false
+    });
+    if (!result.success)
+      return res.status(429).json({ error: result.reason || 'Could not create reservation. Please try different dates.' });
+
+    const created = result.reservation;
+    const baseUrl = process.env.BASE_URL || 'https://top-of-palms-staging.up.railway.app';
+
+    // Manager notification — ONE record, ONE approve/deny link
+    if (process.env.SENDGRID_API_KEY && process.env.MANAGER_EMAIL) {
       const sgMail = require('@sendgrid/mail');
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
       const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
-      const firstRes = createdReservations[0].reservation;
-      const firstId  = firstRes.id;
-      const baseUrl  = process.env.BASE_URL || 'https://top-of-palms-staging.up.railway.app';
-      const mgr_dateRows = createdReservations.map(d =>
-        `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">${esc(d.display)}</td>
-         <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">
-           <a href="${baseUrl}/manager/confirm/approve/${d.reservation.id}" style="color:#006747;font-weight:600;text-decoration:none">✓ Approve</a> &nbsp;|&nbsp;
-           <a href="${baseUrl}/manager/confirm/deny/${d.reservation.id}" style="color:#b91c1c;text-decoration:none">✕ Deny</a>
-         </td></tr>`
-      ).join('');
+      const datesHtml = allBookingDates.map((d,i) => {
+        const label = new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+        return `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">Day ${i+1}: ${label} at ${displayTime}</td></tr>`;
+      }).join('');
       await sgMail.send({
         to: process.env.MANAGER_EMAIL, from: { email: FROM_EMAIL, name: 'On Top of the Palms' },
-        subject: `New Reservation Request — ${name} · ${createdReservations.length} day${createdReservations.length>1?'s':''} · Party of ${partyN}`,
+        subject: `New Reservation Request — ${esc(name)} · ${numDays} day${numDays>1?'s':''} · Party of ${partyN}`,
         html: `<div style="font-family:sans-serif;padding:20px;max-width:560px">
           <h2 style="color:#006747">New Reservation Request</h2>
-          <p><strong>${esc(name)}</strong> (${esc(guest_type)}) has requested ${createdReservations.length} day${createdReservations.length>1?'s':''} for a party of ${partyN}.</p>
+          <p><strong>${esc(name)}</strong> (${esc(guest_type)}) has requested <strong>${numDays} day${numDays>1?'s':''}</strong> for a party of ${partyN}.</p>
           <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;margin:12px 0">
-            <thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left">Date &amp; Time</th><th style="padding:8px 12px;text-align:left">Action</th></tr></thead>
-            <tbody>${mgr_dateRows}</tbody>
+            <thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left">Dining Dates</th></tr></thead>
+            <tbody>${datesHtml}</tbody>
           </table>
-          <p style="font-size:13px;color:#374151"><strong>Email:</strong> ${esc(email)}<br>
-          <strong>Department:</strong> ${esc(department||'—')}<br>
-          <strong>Payment:</strong> ${esc(payment_method||'—')}<br>
-          ${notes ? `<strong>Notes:</strong> ${esc(notes)}` : ''}</p>
+          <p style="font-size:13px;color:#374151">
+            <strong>Email:</strong> ${esc(email)}<br>
+            <strong>Department:</strong> ${esc(department||'—')}<br>
+            <strong>Payment:</strong> ${esc(payment_method||'—')}<br>
+            ${notes ? `<strong>Notes:</strong> ${esc(notes)}<br>` : ''}
+          </p>
+          <p style="margin-top:16px">
+            <a href="${baseUrl}/manager/confirm/approve/${created.id}" style="background:#006747;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;margin-right:12px">✓ Approve All ${numDays} Day${numDays>1?'s':''}</a>
+            <a href="${baseUrl}/manager/confirm/deny/${created.id}" style="background:#b91c1c;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700">✕ Deny</a>
+          </p>
         </div>`
       }).catch(e => console.error('[Manager email]', e.message));
     }
 
-    // Send ONE combined confirmation email to guest
+    // Guest confirmation email
     if (process.env.SENDGRID_API_KEY && email) {
       const sgMail = require('@sendgrid/mail');
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
       const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
-      const dateRows = createdReservations.map(d =>
-        `<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6">${d.display}</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;color:#006747;font-weight:600">Pending approval</td></tr>`
-      ).join('');
-      const skippedNote = skippedDates.length ? `<p style="font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px;margin-top:12px">⚠️ ${skippedDates.length} date${skippedDates.length>1?'s were':' was'} unavailable (fully booked) and skipped.</p>` : '';
       await sgMail.send({
         to: email, from: { email: FROM_EMAIL, name: 'On Top of the Palms' },
-        subject: `Reservation Request Received — ${createdReservations.length} day${createdReservations.length>1?'s':''} | On Top of the Palms`,
+        subject: `Reservation Request Received — ${numDays} day${numDays>1?'s':''} | On Top of the Palms`,
         html: `<div style="font-family:-apple-system,sans-serif;background:#f3f4f6;padding:24px 16px"><div style="max-width:560px;margin:0 auto">
           <div style="background:#006747;border-radius:10px 10px 0 0;padding:18px 24px"><h1 style="color:#fff;font-size:17px;font-weight:700;margin:0">On Top of the Palms</h1><p style="color:#a7d9c2;font-size:11px;margin:2px 0 0">USF Dining · Compass USA</p></div>
           <div style="background:#fff;border-radius:0 0 10px 10px;padding:24px 28px">
-            <h2 style="color:#111827;font-size:17px;margin:0 0 12px">Hi ${name}, your request is submitted!</h2>
-            <p style="color:#374151;font-size:14px;margin:0 0 16px">We received your reservation request for <strong>${createdReservations.length} day${createdReservations.length>1?'s':''}</strong>. A manager will review and confirm each date.</p>
+            <h2 style="color:#111827;font-size:17px;margin:0 0 12px">Hi ${esc(name)}, your request is submitted!</h2>
+            <p style="color:#374151;font-size:14px;margin:0 0 16px">We received your reservation request for <strong>${numDays} day${numDays>1?'s':''}</strong>. A manager will review and confirm your booking.</p>
             <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:16px">
               <thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Date &amp; Time</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Status</th></tr></thead>
-              <tbody>${dateRows}</tbody>
+              <tbody>${dateRowsGuest}</tbody>
             </table>
             <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:16px">
               <div><strong>Party size:</strong> ${partyN} guest${partyN>1?'s':''}</div>
               <div><strong>Payment:</strong> ${payment_method||'—'}</div>
             </div>
-            ${skippedNote}
             ${(payment_method||'').includes('Direct Bill') ? '<p style="font-size:13px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px">📄 A Direct Bill authorization form has been sent to you separately. Please complete and return it.</p>' : ''}
             <p style="font-size:12px;color:#9ca3af;margin-top:16px">Walk-ups are always welcome based on availability.</p>
           </div></div></div>`
       }).catch(console.error);
     }
 
-    res.json({ success:true, status:'pending', days_booked: createdReservations.length, days_skipped: skippedDates.length });
+    res.json({ success:true, status:'pending', days_booked: numDays });
   } catch(err) { console.error('[Form]',err.message); res.status(500).json({ error:'Submission failed. Please try again.' }); }
 });
 
@@ -1076,9 +1062,16 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
 app.get('/pos', auth.requirePos, (req,res)=>res.sendFile(path.join(__dirname,'views','pos-board.html')));
 app.get('/api/pos', auth.requirePos, async (req, res) => {
   try {
-    const date=req.query.date||new Date().toISOString().split('T')[0];
-    const all=await db.getAllReservations();
-    res.json({ date, reservations:all.filter(r=>(r.status==='approved'||r.status==='auto_approved')&&r.reservation_date===date) });
+    const date = req.query.date || new Date().toISOString().split('T')[0];
+    const all  = await db.getAllReservations();
+    const approved = all.filter(r => r.status === 'approved' || r.status === 'auto_approved');
+    // Include single-day reservations on their date, and multi-day reservations on each of their dates
+    const reservations = approved.filter(r => {
+      const n = parseInt(r.num_days || 1);
+      if (n <= 1) return r.reservation_date === date;
+      return getBookingDates(r.reservation_date, n).includes(date);
+    });
+    res.json({ date, reservations });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 app.patch('/api/pos/table/:id', auth.requirePos, async (req, res) => {
@@ -1258,6 +1251,18 @@ app.get('/api/diagnostics', auth.requireAdmin, async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 // Escape user data before embedding in HTML — prevents XSS
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Returns all weekday ISO dates for a multi-day booking starting at startIso for numDays consecutive weekdays
+function getBookingDates(startIso, numDays) {
+  const dates = [];
+  const cur = new Date(startIso + 'T12:00:00');
+  let safety = 0;
+  while (dates.length < numDays && safety++ < 30) {
+    if (cur.getDay() !== 0 && cur.getDay() !== 6) dates.push(cur.toISOString().split('T')[0]);
+    if (dates.length < numDays) cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
 
 // Simple in-memory rate limiter — no extra packages needed
 const _rl = new Map();

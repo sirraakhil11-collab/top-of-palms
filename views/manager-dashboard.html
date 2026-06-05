@@ -409,70 +409,44 @@ function renderStats(s) {
 function renderPendingCards(pending) {
   const grid  = document.getElementById('pending-grid');
   const badge = document.getElementById('pending-count');
+  badge.textContent = pending.length;
+  badge.className   = 'cnt-badge' + (pending.length ? '' : ' zero');
 
   if (!pending.length) {
-    badge.textContent = 0; badge.className = 'cnt-badge zero';
     grid.innerHTML = `<div class="empty"><div class="empty-icon">✓</div><p>No pending approvals!</p></div>`;
     return;
   }
-
-  // Group by group_id; records without a group_id stay as individual cards
-  const groups = new Map();
-  for (const r of pending) {
-    const key = r.group_id || r.id;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r);
-  }
-  badge.textContent = groups.size;
-  badge.className   = 'cnt-badge' + (groups.size ? '' : ' zero');
-
-  grid.innerHTML = [...groups.values()].map(group => {
-    const r = group[0]; // representative record for name, email, party, etc.
-    const isGroup = group.length > 1;
-    const cardId = isGroup ? `grp-${r.group_id}` : `card-${r.id}`;
-    const datesHtml = isGroup
-      ? group.map((g,i) => `<div class="card-row"><span class="card-key">Day ${i+1}</span><span class="card-val">${esc(g.datetime)}</span></div>`).join('')
-      : `<div class="card-row"><span class="card-key">Date & time</span><span class="card-val">${esc(r.datetime)}</span></div>`;
-    const actHtml = isGroup
-      ? `<button class="btn-ok" onclick="approveGroup('${r.group_id}','${cardId}')">✓ Approve All ${group.length} Days</button>
-         <button class="btn-no" onclick="denyGroup('${r.group_id}','${cardId}')">✕ Deny All</button>`
-      : `<a class="btn-ok" href="/manager/approve/${r.id}">✓ Approve</a>
-         <a class="btn-no" href="/manager/deny/${r.id}">✕ Deny</a>`;
+  grid.innerHTML = pending.map(r => {
+    const days = parseInt(r.num_days || 1);
+    // Build date rows for multi-day bookings
+    let datesHtml = `<div class="card-row"><span class="card-key">Start date</span><span class="card-val">${esc(r.datetime)}</span></div>`;
+    if (days > 1) {
+      datesHtml = `<div class="card-row"><span class="card-key">Booking</span><span class="card-val"><strong>${days}-day</strong> starting ${esc(r.datetime)}</span></div>`;
+    }
     return `
-    <div class="res-card" id="${cardId}">
+    <div class="res-card" id="card-${r.id}">
       <div class="card-hdr">
-        <div><div class="card-name">${esc(r.name)}${isGroup?` <span style="font-size:11px;font-weight:400;color:#6b7280">(${group.length}-day booking)</span>`:''}</div><div class="card-time">Requested ${timeAgo(r.created_at)}</div></div>
+        <div>
+          <div class="card-name">${esc(r.name)}</div>
+          <div class="card-time">Requested ${timeAgo(r.created_at)}</div>
+        </div>
         <span class="spill sp-pending">Pending</span>
       </div>
       <div class="card-body">
         ${datesHtml}
         <div class="card-row"><span class="card-key">Party size</span><span class="card-val">${r.party} guest${r.party===1?'':'s'}</span></div>
-        <div class="card-row"><span class="card-key">USF UID</span><span class="card-val mono">${esc(r.uid)}</span></div>
+        <div class="card-row"><span class="card-key">USF UID</span><span class="card-val mono">${esc(r.uid||'—')}</span></div>
         <div class="card-row"><span class="card-key">Email</span><span class="card-val">${esc(r.email)}</span></div>
         <div class="card-row"><span class="card-key">Payment</span><span class="card-val">${esc(r.payment_method||'—')}</span></div>
         ${r.department?`<div class="card-row"><span class="card-key">Dept</span><span class="card-val">${esc(r.department)}</span></div>`:''}
         ${r.notes?`<div class="card-row"><span class="card-key">Notes</span><span class="card-val">${esc(r.notes)}</span></div>`:''}
       </div>
-      <div class="card-acts">${actHtml}</div>
+      <div class="card-acts">
+        <a class="btn-ok" href="/manager/approve/${r.id}">✓ Approve${days>1?' All '+days+' Days':''}</a>
+        <a class="btn-no" href="/manager/deny/${r.id}">✕ Deny</a>
+      </div>
     </div>`;
   }).join('');
-}
-
-async function approveGroup(groupId, cardId) {
-  if (!confirm('Approve all days in this booking?')) return;
-  const r = await fetch(`/manager/approve-group/${groupId}`, {method:'POST'});
-  const d = await r.json();
-  if (d.success) document.getElementById(cardId)?.remove();
-  else alert(d.error||'Error');
-  loadData();
-}
-async function denyGroup(groupId, cardId) {
-  if (!confirm('Deny all days in this booking?')) return;
-  const r = await fetch(`/manager/deny-group/${groupId}`, {method:'POST'});
-  const d = await r.json();
-  if (d.success) document.getElementById(cardId)?.remove();
-  else alert(d.error||'Error');
-  loadData();
 }
 
 // ── Reservations table ────────────────────────────────────────────────────────
