@@ -161,7 +161,8 @@
   <div class="brand">🌴 Manager Dashboard <small>Top of the Palms · USF Dining</small></div>
   <div class="hnav">
     <a href="/reserve">Guest Form</a>
-    <a href="/pos">POS Board →</a>
+    <a href="/pos">POS Board</a>
+    <a href="/manager/revenue">💰 Revenue</a>
     <span class="upd" id="upd">Loading…</span>
     <button class="rbtn" onclick="loadAll()">↻ Refresh</button>
     <button class="rbtn" onclick="logout()" style="background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4)">Sign out</button>
@@ -648,7 +649,15 @@ async function loadBatchDocs(){
       list.innerHTML='<p style="font-size:13px;color:#9ca3af">No received Direct Bill documents found for this date range.</p>';
       return;
     }
-    list.innerHTML=`<div style="font-size:12px;color:#6b7280;margin-bottom:8px">${docs.length} document${docs.length===1?'':'s'} found</div>
+    // Auto-select only the LAST (most recently uploaded) document per reservation
+    const latestPerRes = {};
+    docs.forEach(d => {
+      const rid = d.reservation_id || d.id;
+      if (!latestPerRes[rid] || d.uploaded_at > latestPerRes[rid]) latestPerRes[rid] = d.uploaded_at;
+    });
+    const isLatest = d => (latestPerRes[d.reservation_id||d.id] === d.uploaded_at);
+
+    list.innerHTML=`<div style="font-size:12px;color:#6b7280;margin-bottom:8px">${docs.length} document${docs.length===1?'':'s'} found — only the latest processed file per reservation is pre-selected for sending</div>
     <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
       <thead><tr style="background:#f9fafb">
         <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:#9ca3af"><input type="checkbox" onchange="selectAllBatch(this.checked)" title="Select all"></th>
@@ -660,16 +669,18 @@ async function loadBatchDocs(){
         <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Received</th>
         <th style="padding:8px 12px;background:#f9fafb"></th>
       </tr></thead>
-      <tbody>${docs.map(d=>`<tr>
-        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;text-align:center"><input type="checkbox" class="batch-chk" data-id="${d.id}" onchange="updateBatchCount()" checked></td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><strong>${x(d.name||'—')}</strong></td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px">${x(d.department||'—')}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${x(d.reservation_date||'—')}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">${d.party?'$'+(d.party*12.75).toFixed(2):'—'}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">📎 ${x(d.filename)}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#9ca3af;white-space:nowrap">${new Date(d.uploaded_at).toLocaleDateString()}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;display:flex;gap:8px"><a href="/api/documents/${d.id}/preview" target="_blank" style="color:#2563eb;font-weight:600;font-size:12px;text-decoration:none">Preview</a><a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;font-size:12px;text-decoration:none">Download</a></td>
-      </tr>`).join('')}</tbody>
+      <tbody>${docs.map(d=>{
+        const latest = isLatest(d);
+        return `<tr style="${latest?'':'opacity:.55;background:#fafafa'}">
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;text-align:center"><input type="checkbox" class="batch-chk" data-id="${d.id}" onchange="updateBatchCount()" ${latest?'checked':''}></td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><strong>${x(d.name||'—')}</strong></td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px">${x(d.department||'—')}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${x(d.reservation_date||'—')}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">${d.party?'$'+(d.party*(d.rate||12.75)).toFixed(2):'—'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">📎 ${x(d.filename)}${latest?'<span style="margin-left:6px;background:#dcfce7;color:#15803d;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px">Latest</span>':'<span style="margin-left:6px;font-size:10px;color:#9ca3af">(tracked)</span>'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#9ca3af;white-space:nowrap">${new Date(d.uploaded_at).toLocaleDateString()}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;display:flex;gap:8px"><a href="/api/documents/${d.id}/preview" target="_blank" style="color:#2563eb;font-weight:600;font-size:12px;text-decoration:none">Preview</a><a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;font-size:12px;text-decoration:none">Download</a></td>
+        </tr>`;}).join('')}</tbody>
     </table>`;
     row.style.display='flex';
     updateBatchCount();

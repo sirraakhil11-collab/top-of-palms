@@ -870,12 +870,34 @@
         });
         const data = await resp.json();
         if (!resp.ok) { addMsg('❌ ' + (data.error||'Submission failed. Please try the form above.'), 'bot'); return; }
-        addMsg('✅ **Reservation submitted!** You\'ll receive a confirmation email shortly. Thank you, ' + ans.name + '! 🌴', 'bot');
+        const submittedName = ans.name;
+        addMsg('✅ **Reservation submitted!** You\'ll receive a confirmation email shortly. Thank you, ' + submittedName + '! 🌴', 'bot');
         clearOpts();
-        // Reset for next time
+        // Reset state
         step = 0; botStarted = false;
         Object.keys(ans).forEach(k => delete ans[k]);
         window.cbSend = originalCbSend;
+        // Ask if they want to make another reservation
+        setTimeout(() => {
+          typing();
+          setTimeout(() => {
+            clearTyping();
+            addMsg('Would you like to make **another reservation**?', 'bot');
+            showOpts(['Yes, new reservation', 'No, thanks']);
+            window.cbSend = function() {
+              const inp = document.getElementById('cb-inp');
+              const raw = (inp.value||'').trim().toLowerCase();
+              inp.value = ''; clearOpts();
+              addMsg(raw.includes('yes') ? 'Yes, new reservation' : 'No, thanks', 'user');
+              window.cbSend = originalCbSend;
+              if (raw.includes('yes') || raw.includes('new') || raw.includes('reserv')) {
+                typing(); startBot();
+              } else {
+                addMsg('No problem! Feel free to chat again anytime. 😊', 'bot');
+              }
+            };
+          }, 400);
+        }, 1500);
       } catch(e) { addMsg('❌ Could not reach the server. Please use the form above.', 'bot'); }
     }
   })();

@@ -286,6 +286,7 @@ app.post('/api/demo/chat', async (req, res) => {
 //  MANAGER PAGES
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/manager/dashboard', auth.requireManager, (req,res)=>res.sendFile(path.join(__dirname,'views','dashboard.html')));
+app.get('/manager/revenue',  auth.requireManager, (req,res)=>res.sendFile(path.join(__dirname,'views','revenue.html')));
 app.get('/manager/confirm/:action/:id', (req,res)=>res.sendFile(path.join(__dirname,'views','confirm-action.html')));
 
 // GET — safe: only shows current status, never changes anything
@@ -876,40 +877,70 @@ app.get('/api/revenue', auth.requireManager, async (req, res) => {
   try {
     const all  = await db.getAllReservations();
     const rate = await directBill.getRate();
-    const active = all.filter(r => ['approved','auto_approved','pending_approval'].includes(r.status));
+    const todayISO = new Date().toISOString().split('T')[0];
+    const active = all.filter(r => ['approved','auto_approved'].includes(r.status));
+
+    const amt = r => r.party * Math.max(1, parseInt(r.num_days||1)) * rate;
+    const pm  = r => (r.payment_method||'').toLowerCase();
+
+    // Today's revenue
+    const todayRecs = active.filter(r => {
+      const n = parseInt(r.num_days||1);
+      if (n <= 1) return r.reservation_date === todayISO;
+      return getBookingDates(r.reservation_date, n).includes(todayISO);
+    });
+    const todayRevenue = todayRecs.reduce((s,r) => s + r.party * rate, 0); // per-day rate for today
+
+    // By payment method
+    const byMethod = { 'Credit Card':0, 'USF Card':0, 'Direct Bill':0, 'Other':0 };
+    for (const r of active) {
+      const a = amt(r), p = pm(r);
+      if (p.includes('credit'))       byMethod['Credit Card']  += a;
+      else if (p.includes('usf'))     byMethod['USF Card']     += a;
+      else if (p.includes('direct'))  byMethod['Direct Bill']  += a;
+      else                            byMethod['Other']         += a;
+    }
+
+    // By department
+    const byDept = {};
+    for (const r of active) {
+      const d = (r.department||'Unknown').trim();
+      if (!byDept[d]) byDept[d] = { dept:d, reservations:0, guests:0, revenue:0 };
+      byDept[d].reservations++;
+      byDept[d].guests  += r.party;
+      byDept[d].revenue += amt(r);
+    }
 
     // Monthly breakdown
     const monthly = {};
     for (const r of active) {
-      const mon = (r.reservation_date || r.created_at || '').slice(0,7);
+      const mon = (r.reservation_date || '').slice(0,7);
       if (!mon) continue;
-      if (!monthly[mon]) monthly[mon] = { month:mon, reservations:0, guests:0, revenue:0, direct_bill:0, other:0 };
-      const amt = r.party * Math.max(1, parseInt(r.num_days||1)) * rate;
+      if (!monthly[mon]) monthly[mon] = { month:mon, reservations:0, guests:0, revenue:0, credit_card:0, usf_card:0, direct_bill:0 };
+      const a = amt(r), p = pm(r);
       monthly[mon].reservations++;
-      monthly[mon].guests    += r.party;
-      monthly[mon].revenue   += amt;
-      const isDB = (r.payment_method||'').includes('Direct Bill');
-      if (isDB) monthly[mon].direct_bill += amt;
-      else      monthly[mon].other       += amt;
+      monthly[mon].guests   += r.party;
+      monthly[mon].revenue  += a;
+      if (p.includes('credit'))      monthly[mon].credit_card += a;
+      else if (p.includes('usf'))    monthly[mon].usf_card    += a;
+      else if (p.includes('direct')) monthly[mon].direct_bill += a;
     }
-    const months = Object.values(monthly).sort((a,b) => b.month.localeCompare(a.month));
 
-    const totalGuests  = active.reduce((s,r) => s + r.party, 0);
-    const totalRevenue = active.reduce((s,r) => s + r.party * Math.max(1, parseInt(r.num_days||1)) * rate, 0);
-    const dbRevenue    = active.filter(r=>(r.payment_method||'').includes('Direct Bill'))
-                               .reduce((s,r) => s + r.party * Math.max(1, parseInt(r.num_days||1)) * rate, 0);
     const checkedIn    = all.filter(r => r.attendance === 'checked_in');
-    const actualRevenue= checkedIn.reduce((s,r) => s + r.party * Math.max(1, parseInt(r.num_days||1)) * rate, 0);
+    const actualRevenue= checkedIn.reduce((s,r) => s + amt(r), 0);
 
     res.json({
       rate,
+      today_iso:          todayISO,
+      today_revenue:      +todayRevenue.toFixed(2),
+      today_guests:       todayRecs.reduce((s,r)=>s+r.party,0),
       total_reservations: active.length,
-      total_guests:       totalGuests,
-      estimated_revenue:  +totalRevenue.toFixed(2),
+      total_guests:       active.reduce((s,r)=>s+r.party,0),
+      estimated_revenue:  +active.reduce((s,r)=>s+amt(r),0).toFixed(2),
       actual_revenue:     +actualRevenue.toFixed(2),
-      direct_bill_revenue:+dbRevenue.toFixed(2),
-      other_revenue:      +(totalRevenue - dbRevenue).toFixed(2),
-      monthly
+      by_method:          byMethod,
+      by_dept:            Object.values(byDept).sort((a,b)=>b.revenue-a.revenue),
+      monthly:            Object.values(monthly).sort((a,b)=>b.month.localeCompare(a.month))
     });
   } catch(err){ res.status(500).json({ error:err.message }); }
 });

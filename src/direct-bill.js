@@ -130,9 +130,21 @@ async function buildFormPDF(reservation) {
   text('RESERVATION DETAILS', ML+6, y+7, { size:8, bold:true, color:GREEN });
   y -= 6; hline(y, { color:GREEN, thick:0.8 }); y -= 20;
 
-  field('Reservation Date', reservation.reservation_date || '—', ML,      y, 200);
-  field('Reservation Time', resTime || '—',                      ML+220,  y, 140);
-  field('Ref #',            ref,                                  ML+380,  y, 128);
+  // Build date string — for multi-day, list all weekday dates
+  const _days = Math.max(1, parseInt(reservation.num_days||1));
+  let dateDisplay = reservation.reservation_date || '—';
+  if (_days > 1 && reservation.reservation_date) {
+    const dates = [];
+    const cur = new Date(reservation.reservation_date + 'T12:00:00');
+    for (let i = 0; i < _days && dates.length < _days; ) {
+      if (cur.getDay() !== 0 && cur.getDay() !== 6) { dates.push(cur.toISOString().split('T')[0]); i++; }
+      if (dates.length < _days) cur.setDate(cur.getDate()+1);
+    }
+    dateDisplay = dates.join(', ');
+  }
+  field('Reservation Date', dateDisplay, ML, y, _days > 1 ? CW - 140 : 200);
+  field('Reservation Time', resTime || '—', ML + (_days>1 ? CW-130 : 220), y, 140);
+  field('Ref #',            ref,             ML + 380, y, 128);
   y -= 32;
 
   // Invoice to
@@ -251,9 +263,21 @@ async function buildSignedFormPDF(reservation, billing) {
   text('RESERVATION DETAILS', ML+6, y+7, { size:8, bold:true, color:GREEN });
   y -= 6; hline(y, { color:GREEN, thick:0.8 }); y -= 20;
 
-  field('Reservation Date', reservation.reservation_date || '—', ML,      y, 200);
-  field('Reservation Time', resTime || '—',                       ML+220,  y, 140);
-  field('Ref #',            ref,                                   ML+380,  y, 128);
+  // Build date string — for multi-day, list all weekday dates
+  const _days2 = Math.max(1, parseInt(reservation.num_days||1));
+  let dateDisplay2 = reservation.reservation_date || '—';
+  if (_days2 > 1 && reservation.reservation_date) {
+    const dates2 = [];
+    const cur2 = new Date(reservation.reservation_date + 'T12:00:00');
+    for (let i = 0; i < _days2 && dates2.length < _days2; ) {
+      if (cur2.getDay() !== 0 && cur2.getDay() !== 6) { dates2.push(cur2.toISOString().split('T')[0]); i++; }
+      if (dates2.length < _days2) cur2.setDate(cur2.getDate()+1);
+    }
+    dateDisplay2 = dates2.join(', ');
+  }
+  field('Reservation Date', dateDisplay2, ML, y, _days2 > 1 ? CW - 140 : 200);
+  field('Reservation Time', resTime || '—', ML + (_days2>1 ? CW-130 : 220), y, 140);
+  field('Ref #',            ref,             ML + 380, y, 128);
   y -= 32;
 
   // Invoice to (filled)
