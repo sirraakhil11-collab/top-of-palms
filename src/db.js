@@ -212,6 +212,11 @@ async function getReservationsByStatus(status) {
   return readJSON().filter(r=>r.status===status);
 }
 
+async function getReservationsByGroup(groupId) {
+  if (USE_PG) { const {rows}=await pool.query('SELECT * FROM reservations WHERE group_id=$1 ORDER BY reservation_date ASC',[groupId]); return rows; }
+  return readJSON().filter(r=>r.group_id===groupId).sort((a,b)=>a.reservation_date.localeCompare(b.reservation_date));
+}
+
 async function updateReservation(id, updates) {
   if (updates.datetime) updates.reservation_date = toDateStr(updates.datetime);
   if (USE_PG) {
@@ -398,4 +403,4 @@ async function updateSetting(key, value) {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
 }
 
-module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange,getAllSettings,updateSetting};
+module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,getReservationsByGroup,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange,getAllSettings,updateSetting};

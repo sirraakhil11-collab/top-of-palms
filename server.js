@@ -389,6 +389,36 @@ app.post('/manager/deny/:id', async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 
+// Group approve/deny — approves or denies all pending records sharing a group_id
+app.post('/manager/approve-group/:groupId', async (req, res) => {
+  try {
+    const records = await db.getReservationsByGroup(req.params.groupId);
+    const pending = records.filter(r => r.status === 'pending_approval');
+    if (!pending.length) return res.json({ success:true, already:true });
+    for (const r of pending) {
+      await db.updateReservation(r.id, { status:'approved', processed_at:new Date().toISOString() });
+    }
+    // Send one combined confirmation email using first record as base
+    const first = await db.getReservation(pending[0].id);
+    await sendEmail(first, 'confirmed').catch(console.error);
+    res.json({ success:true, name:pending[0].name, count:pending.length });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+app.post('/manager/deny-group/:groupId', async (req, res) => {
+  try {
+    const records = await db.getReservationsByGroup(req.params.groupId);
+    const pending = records.filter(r => r.status === 'pending_approval');
+    if (!pending.length) return res.json({ success:true, already:true });
+    for (const r of pending) {
+      await db.updateReservation(r.id, { status:'denied', processed_at:new Date().toISOString() });
+    }
+    const first = await db.getReservation(pending[0].id);
+    await sendEmail(first, 'denied').catch(console.error);
+    res.json({ success:true, name:pending[0].name, count:pending.length });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
 app.put('/api/reservations/:id', auth.requireManager, async (req, res) => {
   try {
     const r = await db.getReservation(req.params.id);

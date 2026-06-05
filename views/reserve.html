@@ -494,6 +494,9 @@
     style.textContent = `
       #cb-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:#006747;color:#fff;border:none;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(0,103,71,.4);z-index:200;display:flex;align-items:center;justify-content:center;transition:transform .15s}
       #cb-fab:hover{transform:scale(1.08)}
+      #cb-greeting{position:fixed;bottom:90px;right:24px;background:#fff;border:1.5px solid #e5e7eb;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:13px;color:#111827;box-shadow:0 4px 16px rgba(0,0,0,.10);z-index:198;max-width:220px;line-height:1.4;cursor:pointer;transition:opacity .2s}
+      #cb-greeting strong{color:#006747}
+      #cb-greeting:hover{border-color:#006747}
       #cb-panel{position:fixed;bottom:92px;right:24px;width:340px;max-width:calc(100vw - 32px);background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:199;display:none;flex-direction:column;overflow:hidden;max-height:560px}
       #cb-panel.open{display:flex}
       #cb-hdr{background:#006747;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -538,6 +541,20 @@
       if (p.classList.contains('open') && !botStarted) startBot();
     };
     document.body.appendChild(fab);
+
+    const greeting = document.createElement('div');
+    greeting.id = 'cb-greeting';
+    greeting.innerHTML = '👋 <strong>Hi there!</strong> Looking to make a reservation?';
+    greeting.onclick = () => {
+      greeting.style.display = 'none';
+      const p = document.getElementById('cb-panel');
+      p.classList.add('open');
+      if (!botStarted) startBot();
+    };
+    document.body.appendChild(greeting);
+
+    // Hide greeting once chat is opened
+    fab.addEventListener('click', () => { greeting.style.display = 'none'; });
 
     const panel = document.createElement('div');
     panel.id = 'cb-panel';
