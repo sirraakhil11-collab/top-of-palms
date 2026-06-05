@@ -595,13 +595,31 @@
         { key:'party',   q:`How many **guests** in your party?\n(Min ${MIN_PARTY}, max ${MAX_PARTY})`,
           opts:['2','3','4','5','6','7','8','10','12','15'],
           validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=MIN_PARTY&&n<=MAX_PARTY)?null:`Please enter ${MIN_PARTY}–${MAX_PARTY}.`; } },
-        { key:'days',    q:`How many **days** will you be dining? (1–${MAX_DAYS})`,
-          opts:['1','2','3','4','5','6','7'],
-          validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=1&&n<=MAX_DAYS)?null:`Please enter 1–${MAX_DAYS}.`; } },
+        { key:'days',
+          q: (() => {
+            if (!ans.date) return `Will you be dining **just this one day**, or across **multiple consecutive weekdays**?`;
+            const d = new Date(ans.date+'T12:00:00');
+            const label = d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+            return `Will you be dining **just on ${label}**, or across **multiple consecutive weekdays** starting then?`;
+          })(),
+          buildOpts: () => {
+            const slots = ['1 day (just this date)'];
+            if (!ans.date) { for(let i=2;i<=MAX_DAYS;i++) slots.push(`${i} days`); return slots; }
+            let cur = new Date(ans.date+'T12:00:00');
+            for (let i = 2; i <= MAX_DAYS; i++) {
+              cur.setDate(cur.getDate()+1);
+              while (cur.getDay()===0||cur.getDay()===6) cur.setDate(cur.getDate()+1);
+              const lbl = cur.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+              slots.push(`${i} days (through ${lbl})`);
+            }
+            return slots;
+          },
+          validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=1&&n<=MAX_DAYS)?null:`Please enter 1–${MAX_DAYS}.`; },
+          normalize: v => String(parseInt(v)) },
         { key:'payment', q:"How will you be **paying**?", opts:['Credit Card','USF Card','Direct Bill'],
           validate: v => ['credit card','usf card','direct bill'].includes(v.toLowerCase())?null:'Please choose a payment method.' },
-        { key:'notes',   q:"Any **special requests**? (dietary, accessibility, occasion…)\nType *none* to skip.",
-          validate: () => null },
+        { key:'notes',   q:"Any **special requests**? (dietary, accessibility, occasion…)",
+          opts:['Skip'], validate: () => null },
       ];
     }
 
@@ -714,7 +732,8 @@
       setTimeout(() => {
         clearTyping();
         addMsg(s.q, 'bot');
-        if (s.opts) showOpts(s.opts); else clearOpts();
+        const opts = s.buildOpts ? s.buildOpts() : s.opts;
+        if (opts) showOpts(opts); else clearOpts();
         if (s.showCal) {
           const now = new Date();
           renderCal(now.getFullYear(), now.getMonth());
@@ -736,24 +755,35 @@
     window.cbSend = function() {
       const inp = document.getElementById('cb-inp');
       const raw = inp.value.trim();
+      const steps = buildSteps();
+      if (step >= steps.length) return;
+      const s = steps[step];
+      // Notes step: allow empty submit or "Skip" button to bypass
+      if (s.key === 'notes' && (!raw || raw.toLowerCase() === 'skip')) {
+        inp.value = ''; clearOpts();
+        if (raw) addMsg(raw, 'user');
+        ans.notes = '';
+        step++; typing(); askStep(step);
+        return;
+      }
       if (!raw) return;
       inp.value = '';
       clearOpts();
       addMsg(raw, 'user');
 
-      const steps = buildSteps();
-      if (step >= steps.length) return;
-      const s = steps[step];
       const err = s.validate(raw);
       if (err) {
         typing();
-        setTimeout(() => { clearTyping(); addMsg('⚠️ ' + err, 'bot'); if(s.opts) showOpts(s.opts); }, 300);
+        setTimeout(() => {
+          clearTyping(); addMsg('⚠️ ' + err, 'bot');
+          const opts = s.buildOpts ? s.buildOpts() : s.opts;
+          if (opts) showOpts(opts);
+        }, 300);
         return;
       }
       // Normalize
-      let val = raw;
+      let val = s.normalize ? s.normalize(raw) : raw;
       if (s.key==='uid' && raw.toLowerCase()==='skip') val = '';
-      if (s.key==='notes' && raw.toLowerCase()==='none') val = '';
       if (s.key==='type') val = raw.charAt(0).toUpperCase()+raw.slice(1).toLowerCase();
       ans[s.key] = val;
       step++;
@@ -761,11 +791,28 @@
       askStep(step);
     };
 
+    function buildDiningDates(startIso, numDays) {
+      const dates = [];
+      let cur = new Date(startIso+'T12:00:00');
+      for (let i = 0; i < numDays; i++) {
+        if (i > 0) {
+          cur.setDate(cur.getDate()+1);
+          while (cur.getDay()===0||cur.getDay()===6) cur.setDate(cur.getDate()+1);
+        }
+        dates.push(cur.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}));
+      }
+      return dates;
+    }
+
     function doConfirm() {
       const party = parseInt(ans.party);
       const days  = parseInt(ans.days||'1');
       const total = (party * days * RATE).toFixed(2);
-      const summary = `Here's your reservation summary:\n\n**Name:** ${ans.name}\n**Dept:** ${ans.dept}\n**Email:** ${ans.email}\n**Date:** ${ans.date} at ${ans.time}\n**Party:** ${ans.party} guest${party===1?'':'s'}${days>1?' × '+days+' days':''}\n**Payment:** ${ans.payment}\n**Total:** $${total}${ans.notes?'\n**Notes:** '+ans.notes:''}\n\nShall I submit this?`;
+      const diningDates = buildDiningDates(ans.date, days);
+      const datesLine = days === 1
+        ? `**Date:** ${diningDates[0]} at ${ans.time}`
+        : `**Dates:** ${diningDates.map((d,i) => `\n  Day ${i+1}: ${d}`).join('')} at ${ans.time}`;
+      const summary = `Here's your reservation summary:\n\n**Name:** ${ans.name}\n**Dept:** ${ans.dept}\n**Email:** ${ans.email}\n${datesLine}\n**Party:** ${ans.party} guest${party===1?'':'s'}${days>1?' × '+days+' days':''}\n**Payment:** ${ans.payment}\n**Total:** $${total}${ans.notes?'\n**Notes:** '+ans.notes:''}\n\nShall I submit this?`;
       addMsg(summary, 'bot');
       showOpts(['Yes, submit!','No, start over']);
       step = 99; // hold
