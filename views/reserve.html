@@ -558,6 +558,21 @@
     let blockedDatesBot = new Set();
     let calMonth = null, calYear = null; // current calendar view
 
+    // Generate 15-min time slot options as HH:MM strings within open hours
+    function buildTimeOpts() {
+      const lastSlotH = closeMin===0 ? closeHour-1 : closeHour;
+      const lastSlotM = closeMin===0 ? 45 : closeMin-15;
+      const slots = [];
+      for (let h = openHour; h <= lastSlotH; h++) {
+        const startM = (h === openHour) ? openMin : 0;
+        const endM   = (h === lastSlotH) ? lastSlotM : 45;
+        for (let m = startM; m <= endM; m += 15) {
+          slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+        }
+      }
+      return slots;
+    }
+
     // Build steps dynamically so time message uses live openHour/openMin
     function buildSteps() {
       const closeLabel = formatHM(closeHour - (closeMin===0?1:0), closeMin===0?45:closeMin-15);
@@ -575,8 +590,8 @@
           validate: v => ['faculty','student'].includes(v.toLowerCase())?null:'Please choose Faculty or Student.' },
         { key:'date',    q:"What **date** would you like to dine?\nChoose from the calendar below or type YYYY-MM-DD.",
           validate: validateBotDate, showCal: true },
-        { key:'time',    q:`What **time** would you prefer?\nWe're open **${openLabel} – ${closeLabel}**.\nType like: ${openHour}:${String(openMin).padStart(2,'0')}`,
-          validate: validateBotTime },
+        { key:'time',    q:`What **time** would you prefer?\nWe're open **${openLabel} – ${closeLabel}**.`,
+          opts: buildTimeOpts(), validate: validateBotTime },
         { key:'party',   q:`How many **guests** in your party?\n(Min ${MIN_PARTY}, max ${MAX_PARTY})`,
           opts:['2','3','4','5','6','7','8','10','12','15'],
           validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=MIN_PARTY&&n<=MAX_PARTY)?null:`Please enter ${MIN_PARTY}–${MAX_PARTY}.`; } },
