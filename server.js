@@ -144,6 +144,30 @@ app.get('/',         (req, res) => res.redirect('/reserve'));
 app.get('/reserve',  (req, res) => res.sendFile(path.join(__dirname,'views','reserve.html')));
 app.get('/demo.html',(req, res) => res.sendFile(path.join(__dirname,'views','demo.html')));
 
+// ── Embeddable widget & QR code ──────────────────────────────────────────────
+// Allow cross-origin iframe embedding (USF website)
+app.get('/widget', (req, res) => {
+  res.setHeader('X-Frame-Options', 'ALLOWALL');
+  res.setHeader('Content-Security-Policy', "frame-ancestors *");
+  res.sendFile(path.join(__dirname,'views','widget.html'));
+});
+// QR code + embed instructions page (manager-accessible)
+app.get('/qr', auth.requireManager, (req, res) => res.sendFile(path.join(__dirname,'views','qr.html')));
+// Serve the embed JS snippet with permissive CORS so any site can load it
+app.get('/embed/chatbot.js', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname,'public','embed','chatbot.js'));
+});
+// Allow CORS on public API endpoints used by the embedded widget
+app.use(['/api/reserve','/api/public/rate','/api/reserve/hours','/api/blocked-dates'], (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 // ══════════════════════════════════════════════════════════════════════════
 //  RESERVATION FORM API
 // ══════════════════════════════════════════════════════════════════════════
