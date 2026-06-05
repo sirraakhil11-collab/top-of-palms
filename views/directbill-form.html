@@ -101,6 +101,7 @@ async function init() {
     const rateData = await rateRes.json().catch(()=>({rate:12.75}));
     billRate = parseFloat(rateData.rate) || 12.75;
     renderForm();
+    setTimeout(initSigPad, 50); // init sig pad after innerHTML is set
   } catch(e) {
     card.innerHTML = `<div class="expired"><div class="expired-icon">⚠️</div><h2>Something went wrong</h2><p>Please try again or contact us directly.</p></div>`;
   }
@@ -339,13 +340,6 @@ function sigHasContent() { return _sigPoints.length > 5; }
 function getSigDataUrl() {
   const c = document.getElementById('sig-canvas');
   return c && sigHasContent() ? c.toDataURL('image/png') : '';
-}
-
-// Re-init sig pad after form renders
-const _origRenderForm = renderForm;
-function renderForm() {
-  _origRenderForm();
-  setTimeout(initSigPad, 50);
 }
 
 init();

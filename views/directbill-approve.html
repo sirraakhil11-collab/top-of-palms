@@ -63,6 +63,7 @@ async function init() {
       return;
     }
     renderApprovalCard(d);
+    setTimeout(initSigPad, 50);
   } catch(e) {
     card.innerHTML = renderState('⚠️','Error','Please try again or contact On Top of the Palms.');
   }
@@ -160,9 +161,6 @@ function sigHasContent(){return _sp.length>5;}
 function getSigDataUrl(){const c=document.getElementById('sig-canvas');return c&&sigHasContent()?c.toDataURL('image/png'):'';}
 
 // Init sig pad after approval card renders
-const _origRenderApprovalCard=renderApprovalCard;
-function renderApprovalCard(d){_origRenderApprovalCard(d);setTimeout(initSigPad,50);}
-
 init();
 </script>
 </body>
