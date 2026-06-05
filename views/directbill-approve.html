@@ -90,12 +90,17 @@ function renderApprovalCard(d) {
     </div>
     <p style="font-size:13px;color:#374151">Please sign below and click Approve to authorize On Top of the Palms to charge the above In-Kind account.</p>
     <div class="sig-wrap">
-      <div class="sig-label">Your Signature <span style="color:#b91c1c">*</span></div>
+      <div class="sig-label">Your Signature <span style="color:#b91c1c">*</span> <span style="font-size:11px;font-weight:400;color:#9ca3af">(draw OR type)</span></div>
       <canvas id="sig-canvas" width="440" height="110"></canvas>
       <div class="sig-actions">
-        <span class="sig-hint">Sign using mouse, finger, or stylus</span>
-        <span class="sig-clear" onclick="clearSig()">Clear</span>
+        <span class="sig-hint">Draw using mouse, finger, or stylus</span>
+        <span class="sig-clear" onclick="clearSig()">Clear drawing</span>
       </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;color:#9ca3af;white-space:nowrap">— or type —</span>
+        <input type="text" id="f-typed-sig" placeholder="Type your full name as signature" style="flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:15px;font-style:italic;color:#006747;font-family:Georgia,serif" oninput="onTypedSig()">
+      </div>
+      <p style="font-size:11px;color:#9ca3af;margin-top:4px;text-align:left">A typed name counts as your electronic signature</p>
     </div>
     <button class="approve-btn" id="approve-btn" onclick="doApprove()">✓ Approve In-Kind Billing</button>
     <div class="error-msg" id="error-msg"></div>
@@ -103,9 +108,10 @@ function renderApprovalCard(d) {
 }
 
 async function doApprove() {
-  if (!sigHasContent()) {
+  const typedSig = (document.getElementById('f-typed-sig')?.value||'').trim();
+  if (!sigHasContent() && !typedSig) {
     const el = document.getElementById('error-msg');
-    el.textContent = 'Please provide your signature before approving.';
+    el.textContent = 'Please draw your signature or type your name before approving.';
     el.classList.add('show');
     return;
   }
@@ -117,7 +123,10 @@ async function doApprove() {
     const res = await fetch(`/api/directbill/approve/${token}`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ approver_signature_png: getSigDataUrl() })
+      body: JSON.stringify({
+        approver_signature_png: getSigDataUrl(),
+        approver_typed_name: (document.getElementById('f-typed-sig')?.value||'').trim()
+      })
     });
     if (res.ok) {
       document.getElementById('main-card').innerHTML = `
@@ -158,6 +167,7 @@ function initSigPad(){
 }
 function clearSig(){const c=document.getElementById('sig-canvas');if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.classList.remove('signed');_sp=[];}
 function sigHasContent(){return _sp.length>5;}
+function onTypedSig(){if((document.getElementById('f-typed-sig')?.value||'').trim())clearSig();}
 function getSigDataUrl(){const c=document.getElementById('sig-canvas');return c&&sigHasContent()?c.toDataURL('image/png'):'';}
 
 // Init sig pad after approval card renders

@@ -142,9 +142,16 @@ async function buildFormPDF(reservation) {
     }
     dateDisplay = dates.join(', ');
   }
-  field('Reservation Date', dateDisplay, ML, y, _days > 1 ? CW - 140 : 200);
-  field('Reservation Time', resTime || '—', ML + (_days>1 ? CW-130 : 220), y, 140);
-  field('Ref #',            ref,             ML + 380, y, 128);
+  if (_days > 1) {
+    field('Dining Dates', dateDisplay, ML, y, CW);
+    y -= 32;
+    field('Reservation Time', resTime || '—', ML, y, 200);
+    field('Ref #', ref, ML+220, y, 128);
+  } else {
+    field('Reservation Date', dateDisplay, ML, y, 200);
+    field('Reservation Time', resTime || '—', ML+220, y, 140);
+    field('Ref #',            ref,             ML+380, y, 128);
+  }
   y -= 32;
 
   // Invoice to
@@ -275,9 +282,17 @@ async function buildSignedFormPDF(reservation, billing) {
     }
     dateDisplay2 = dates2.join(', ');
   }
-  field('Reservation Date', dateDisplay2, ML, y, _days2 > 1 ? CW - 140 : 200);
-  field('Reservation Time', resTime || '—', ML + (_days2>1 ? CW-130 : 220), y, 140);
-  field('Ref #',            ref,             ML + 380, y, 128);
+  if (_days2 > 1) {
+    // Multi-day: dates on own full row, time + ref on next row
+    field('Dining Dates', dateDisplay2, ML, y, CW);
+    y -= 32;
+    field('Reservation Time', resTime || '—', ML, y, 200);
+    field('Ref #', ref, ML+220, y, 128);
+  } else {
+    field('Reservation Date', dateDisplay2, ML, y, 200);
+    field('Reservation Time', resTime || '—', ML+220, y, 140);
+    field('Ref #',            ref,             ML+380, y, 128);
+  }
   y -= 32;
 
   // Invoice to (filled)
@@ -335,7 +350,7 @@ async function buildSignedFormPDF(reservation, billing) {
   text(`$${total}`,        MR-60,  y+7, { size:11, bold:true, color:GREEN });
   y -= 36;
 
-  // Signature section
+  // ── Guest Authorization / Signature section ──────────────────────────────
   rect(ML, y-6, CW, 20, rgb(0.94,0.99,0.96));
   text('AUTHORIZATION', ML+6, y+7, { size:8, bold:true, color:GREEN });
   y -= 6; hline(y, { color:GREEN, thick:0.8 }); y -= 14;
@@ -345,42 +360,58 @@ async function buildSignedFormPDF(reservation, billing) {
   const signDate = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
   field('Authorized Signature', '', ML, y, 280);
   field('Date Signed', signDate, ML+300, y, 208);
-  y -= 32;
-  field('Printed Name', reservation.name || '', ML, y, 280);
-  field('Title / Position', '', ML+300, y, 208);
 
-  // Guest signature (submitted via web form)
+  // Draw guest signature image (if drawn on canvas)
   if (billing.signature_png) {
     try {
       const b64 = billing.signature_png.replace(/^data:image\/png;base64,/, '');
-      const pngImage = await pdfDoc.embedPng(Buffer.from(b64, 'base64'));
-      const { width:iw, height:ih } = pngImage.scale(1);
-      const maxW = 270, maxH = 28, scale = Math.min(maxW/iw, maxH/ih);
-      page.drawImage(pngImage, { x:ML+2, y:y+2, width:iw*scale, height:ih*scale, opacity:0.92 });
+      const img = await pdfDoc.embedPng(Buffer.from(b64, 'base64'));
+      const { width:iw, height:ih } = img.scale(1);
+      const maxW=270, maxH=28, sc=Math.min(maxW/iw, maxH/ih);
+      page.drawImage(img, { x:ML+2, y:y+2, width:iw*sc, height:ih*sc, opacity:0.92 });
     } catch(e) { console.error('[DirectBill] Guest sig embed failed:', e.message); }
+  } else if (billing.typed_name) {
+    // Typed name as electronic signature
+    const { HelveticaOblique } = require('pdf-lib').StandardFonts;
+    const sigFont = await pdfDoc.embedFont(HelveticaOblique);
+    page.drawText(billing.typed_name, { x:ML+4, y:y+6, size:16, font:sigFont, color:GREEN, opacity:0.9 });
   }
+
+  y -= 32;
+  field('Printed Name', billing.typed_name || billing.guest_name || billing.attn_name || reservation.name || '', ML, y, 280);
+  field('Title / Position', '', ML+300, y, 208);
 
   y -= 24;
   const ts = new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  text(`Authorized: ${ts}`, ML, y, { size:8, color:rgb(0.4,0.4,0.4) });
+  text(`Electronically authorized: ${ts}`, ML, y, { size:8, color:rgb(0.4,0.4,0.4) });
 
-  // Approver (In-Kind manager) signature block
+  // ── In-Kind Manager Approval block ───────────────────────────────────────
   if (billing.billing_type !== 'pcard') {
     y -= 28;
     rect(ML, y-6, CW, 20, rgb(0.94,0.99,0.96));
     text('IN-KIND MANAGER APPROVAL', ML+6, y+7, { size:8, bold:true, color:GREEN });
     y -= 6; hline(y, { color:GREEN, thick:0.8 }); y -= 28;
+
     field('Approver Signature', '', ML, y, 280);
     field('Date Approved', new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ML+300, y, 208);
+
     if (billing.approver_signature_png) {
       try {
         const b64 = billing.approver_signature_png.replace(/^data:image\/png;base64,/, '');
-        const pngImage = await pdfDoc.embedPng(Buffer.from(b64, 'base64'));
-        const { width:iw, height:ih } = pngImage.scale(1);
-        const maxW = 270, maxH = 28, scale = Math.min(maxW/iw, maxH/ih);
-        page.drawImage(pngImage, { x:ML+2, y:y+2, width:iw*scale, height:ih*scale, opacity:0.92 });
+        const img = await pdfDoc.embedPng(Buffer.from(b64, 'base64'));
+        const { width:iw, height:ih } = img.scale(1);
+        const maxW=270, maxH=28, sc=Math.min(maxW/iw, maxH/ih);
+        page.drawImage(img, { x:ML+2, y:y+2, width:iw*sc, height:ih*sc, opacity:0.92 });
       } catch(e) { console.error('[DirectBill] Approver sig embed failed:', e.message); }
+    } else if (billing.approver_typed_name) {
+      const { HelveticaOblique } = require('pdf-lib').StandardFonts;
+      const sigFont = await pdfDoc.embedFont(HelveticaOblique);
+      page.drawText(billing.approver_typed_name, { x:ML+4, y:y+6, size:16, font:sigFont, color:GREEN, opacity:0.9 });
     }
+
+    y -= 32;
+    field('Approver Printed Name', billing.approver_typed_name || billing.approver_name || '', ML, y, 280);
+    field('In-Kind Account', billing.inkind_account || '', ML+300, y, 208);
     y -= 8;
     text('IN-KIND BILLING: APPROVED', ML, y, { size:9, bold:true, color:GREEN });
   }

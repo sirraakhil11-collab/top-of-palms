@@ -776,14 +776,15 @@ app.post('/api/directbill/form/:token', async (req, res) => {
       return res.status(410).json({ error:'This form has already been completed.' });
     }
 
-    const { billing_type, attn_name, department, email, phone, guest_name, inkind_account, approver_email } = req.body;
+    const { billing_type, attn_name, department, email, phone, guest_name, inkind_account, approver_email, signature_png, typed_name } = req.body;
     if (!['pcard','inkind'].includes(billing_type)) return res.status(400).json({ error:'Invalid billing type.' });
     if (!attn_name || !email || !guest_name) return res.status(400).json({ error:'Required fields missing.' });
     if (billing_type === 'inkind' && (!inkind_account || !approver_email)) {
       return res.status(400).json({ error:'In-Kind account and approver email are required.' });
     }
+    if (!signature_png && !typed_name) return res.status(400).json({ error:'Signature or typed name is required.' });
 
-    const billing = { billing_type, attn_name, department, email, phone, guest_name, inkind_account, approver_email };
+    const billing = { billing_type, attn_name, department, email, phone, guest_name, inkind_account, approver_email, signature_png: signature_png||'', typed_name: typed_name||'' };
 
     if (billing_type === 'pcard') {
       // P-Card: generate PDF immediately and mark received
@@ -858,9 +859,9 @@ app.post('/api/directbill/approve/:token', async (req, res) => {
     }
     const billing = r.direct_bill_data ? JSON.parse(r.direct_bill_data) : {};
     // Merge the approver's signature from the POST body into billing
-    if (req.body && req.body.approver_signature_png) {
-      billing.approver_signature_png = req.body.approver_signature_png;
-      // Save the updated billing data (including approver signature) back to DB
+    if (req.body) {
+      if (req.body.approver_signature_png) billing.approver_signature_png = req.body.approver_signature_png;
+      if (req.body.approver_typed_name)   billing.approver_typed_name   = req.body.approver_typed_name;
       await db.updateReservation(r.id, { direct_bill_data: JSON.stringify(billing) });
     }
     const pdfBuf  = await directBill.buildCompletedPDF(r, billing);
