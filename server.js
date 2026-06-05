@@ -857,6 +857,12 @@ app.post('/api/directbill/approve/:token', async (req, res) => {
       return res.json({ success:true, already_approved:true, message:'Already approved.' });
     }
     const billing = r.direct_bill_data ? JSON.parse(r.direct_bill_data) : {};
+    // Merge the approver's signature from the POST body into billing
+    if (req.body && req.body.approver_signature_png) {
+      billing.approver_signature_png = req.body.approver_signature_png;
+      // Save the updated billing data (including approver signature) back to DB
+      await db.updateReservation(r.id, { direct_bill_data: JSON.stringify(billing) });
+    }
     const pdfBuf  = await directBill.buildCompletedPDF(r, billing);
     const ref     = r.id.slice(0,8).toUpperCase();
     const fname   = `DirectBill_InKind_Approved_${ref}_${(r.name||'Guest').replace(/\s+/g,'_')}.pdf`;

@@ -26,6 +26,13 @@
     .approve-btn:disabled{background:#9ca3af;cursor:default}
     .error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;color:#b91c1c;font-size:13px;margin-top:12px;display:none}
     .error-msg.show{display:block}
+    .sig-wrap{margin:20px 0 4px;text-align:left}
+    .sig-label{font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
+    #sig-canvas{width:100%;height:110px;border:1.5px solid #d1d5db;border-radius:10px;cursor:crosshair;touch-action:none;background:#fafafa;display:block}
+    #sig-canvas.signed{border-color:#006747}
+    .sig-actions{display:flex;justify-content:space-between;margin-top:4px;margin-bottom:12px}
+    .sig-hint{font-size:11px;color:#9ca3af}
+    .sig-clear{font-size:12px;color:#9ca3af;cursor:pointer;text-decoration:underline}
   </style>
 </head>
 <body>
@@ -80,19 +87,37 @@ function renderApprovalCard(d) {
         <tr><td>Total Amount</td><td style="color:#006747;font-weight:700">${esc(d.amount)}</td></tr>
       </table>
     </div>
-    <p style="font-size:13px;color:#374151">By clicking Approve, you authorize On Top of the Palms to charge the above In-Kind account for the dining reservation.</p>
+    <p style="font-size:13px;color:#374151">Please sign below and click Approve to authorize On Top of the Palms to charge the above In-Kind account.</p>
+    <div class="sig-wrap">
+      <div class="sig-label">Your Signature <span style="color:#b91c1c">*</span></div>
+      <canvas id="sig-canvas" width="440" height="110"></canvas>
+      <div class="sig-actions">
+        <span class="sig-hint">Sign using mouse, finger, or stylus</span>
+        <span class="sig-clear" onclick="clearSig()">Clear</span>
+      </div>
+    </div>
     <button class="approve-btn" id="approve-btn" onclick="doApprove()">✓ Approve In-Kind Billing</button>
     <div class="error-msg" id="error-msg"></div>
   `;
 }
 
 async function doApprove() {
+  if (!sigHasContent()) {
+    const el = document.getElementById('error-msg');
+    el.textContent = 'Please provide your signature before approving.';
+    el.classList.add('show');
+    return;
+  }
   const btn = document.getElementById('approve-btn');
   btn.disabled = true;
   btn.textContent = 'Processing…';
   document.getElementById('error-msg').classList.remove('show');
   try {
-    const res = await fetch(`/api/directbill/approve/${token}`, { method:'POST' });
+    const res = await fetch(`/api/directbill/approve/${token}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ approver_signature_png: getSigDataUrl() })
+    });
     if (res.ok) {
       document.getElementById('main-card').innerHTML = `
         <div class="icon">✅</div>
@@ -117,6 +142,27 @@ async function doApprove() {
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Signature pad ─────────────────────────────────────────────────────────────
+let _sd=false,_sp=[];
+function initSigPad(){
+  const c=document.getElementById('sig-canvas');if(!c)return;
+  const ctx=c.getContext('2d');ctx.strokeStyle='#111827';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
+  function pos(e){const r=c.getBoundingClientRect(),s=c.width/r.width,src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*s,y:(src.clientY-r.top)*s};}
+  function start(e){e.preventDefault();_sd=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);_sp.push(p);}
+  function move(e){e.preventDefault();if(!_sd)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x,p.y);_sp.push(p);c.classList.add('signed');}
+  function end(e){e.preventDefault();_sd=false;ctx.beginPath();}
+  c.addEventListener('mousedown',start);c.addEventListener('mousemove',move);c.addEventListener('mouseup',end);c.addEventListener('mouseleave',end);
+  c.addEventListener('touchstart',start,{passive:false});c.addEventListener('touchmove',move,{passive:false});c.addEventListener('touchend',end);
+}
+function clearSig(){const c=document.getElementById('sig-canvas');if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.classList.remove('signed');_sp=[];}
+function sigHasContent(){return _sp.length>5;}
+function getSigDataUrl(){const c=document.getElementById('sig-canvas');return c&&sigHasContent()?c.toDataURL('image/png'):'';}
+
+// Init sig pad after approval card renders
+const _origRenderApprovalCard=renderApprovalCard;
+function renderApprovalCard(d){_origRenderApprovalCard(d);setTimeout(initSigPad,50);}
+
 init();
 </script>
 </body>

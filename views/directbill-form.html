@@ -59,6 +59,14 @@
     .expired-icon{font-size:56px;margin-bottom:14px}
     .expired h2{font-size:20px;font-weight:700;color:#374151;margin-bottom:8px}
     .expired p{color:#6b7280;font-size:14px;line-height:1.7}
+    /* Signature pad */
+    .sig-section{margin-bottom:18px}
+    .sig-section .sec-title{margin-top:0}
+    #sig-canvas{width:100%;height:110px;border:1.5px solid #d1d5db;border-radius:10px;cursor:crosshair;touch-action:none;background:#fafafa;display:block}
+    #sig-canvas.signed{border-color:#006747;background:#fff}
+    .sig-actions{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
+    .sig-clear{font-size:12px;color:#9ca3af;cursor:pointer;text-decoration:underline}
+    .sig-hint{font-size:11px;color:#9ca3af}
   </style>
 </head>
 <body>
@@ -190,6 +198,15 @@ function renderForm() {
         <div class="total-amount">$${total}</div>
       </div>
 
+      <div class="sig-section">
+        <div class="sec-title">Your Signature <span style="color:#b91c1c">*</span></div>
+        <canvas id="sig-canvas" width="520" height="110"></canvas>
+        <div class="sig-actions">
+          <span class="sig-hint">Sign above using mouse, finger, or stylus</span>
+          <span class="sig-clear" onclick="clearSig()">Clear</span>
+        </div>
+      </div>
+
       <button class="submit-btn" id="submit-btn" onclick="submitForm()" disabled>Select Billing Method to Continue</button>
       <div class="error-msg" id="error-msg"></div>
     </div>
@@ -247,6 +264,8 @@ async function submitForm() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(approver)) { showErr('Please enter a valid approver email.'); return; }
   }
 
+  if (!sigHasContent()) { showErr('Please provide your signature before submitting.'); return; }
+
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
@@ -261,6 +280,7 @@ async function submitForm() {
     guest_name:   guest,
     inkind_account:  billingType === 'inkind' ? document.getElementById('f-inkind-acct')?.value?.trim() : '',
     approver_email:  billingType === 'inkind' ? document.getElementById('f-approver-email')?.value?.trim() : '',
+    signature_png:   getSigDataUrl(),
   };
 
   try {
@@ -290,6 +310,43 @@ async function submitForm() {
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Signature pad ────────────────────────────────────────────────────────────
+let _sigDrawing = false, _sigPoints = [];
+function initSigPad() {
+  const c = document.getElementById('sig-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  function pos(e) {
+    const r = c.getBoundingClientRect(), s = c.width / r.width;
+    const src = e.touches ? e.touches[0] : e;
+    return { x:(src.clientX-r.left)*s, y:(src.clientY-r.top)*s };
+  }
+  function start(e){ e.preventDefault(); _sigDrawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); _sigPoints.push(p); }
+  function move(e) { e.preventDefault(); if(!_sigDrawing)return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); _sigPoints.push(p); c.classList.add('signed'); }
+  function end(e)  { e.preventDefault(); _sigDrawing=false; ctx.beginPath(); }
+  c.addEventListener('mousedown',start); c.addEventListener('mousemove',move); c.addEventListener('mouseup',end); c.addEventListener('mouseleave',end);
+  c.addEventListener('touchstart',start,{passive:false}); c.addEventListener('touchmove',move,{passive:false}); c.addEventListener('touchend',end);
+}
+function clearSig() {
+  const c = document.getElementById('sig-canvas');
+  if (!c) return;
+  c.getContext('2d').clearRect(0,0,c.width,c.height);
+  c.classList.remove('signed'); _sigPoints = [];
+}
+function sigHasContent() { return _sigPoints.length > 5; }
+function getSigDataUrl() {
+  const c = document.getElementById('sig-canvas');
+  return c && sigHasContent() ? c.toDataURL('image/png') : '';
+}
+
+// Re-init sig pad after form renders
+const _origRenderForm = renderForm;
+function renderForm() {
+  _origRenderForm();
+  setTimeout(initSigPad, 50);
+}
 
 init();
 </script>

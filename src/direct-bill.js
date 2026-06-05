@@ -349,6 +349,7 @@ async function buildSignedFormPDF(reservation, billing) {
   field('Printed Name', reservation.name || '', ML, y, 280);
   field('Title / Position', '', ML+300, y, 208);
 
+  // Guest signature (submitted via web form)
   if (billing.signature_png) {
     try {
       const b64 = billing.signature_png.replace(/^data:image\/png;base64,/, '');
@@ -356,12 +357,33 @@ async function buildSignedFormPDF(reservation, billing) {
       const { width:iw, height:ih } = pngImage.scale(1);
       const maxW = 270, maxH = 28, scale = Math.min(maxW/iw, maxH/ih);
       page.drawImage(pngImage, { x:ML+2, y:y+2, width:iw*scale, height:ih*scale, opacity:0.92 });
-    } catch(e) { console.error('[DirectBill] Sig embed failed:', e.message); }
+    } catch(e) { console.error('[DirectBill] Guest sig embed failed:', e.message); }
   }
 
   y -= 24;
   const ts = new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
   text(`Authorized: ${ts}`, ML, y, { size:8, color:rgb(0.4,0.4,0.4) });
+
+  // Approver (In-Kind manager) signature block
+  if (billing.billing_type !== 'pcard') {
+    y -= 28;
+    rect(ML, y-6, CW, 20, rgb(0.94,0.99,0.96));
+    text('IN-KIND MANAGER APPROVAL', ML+6, y+7, { size:8, bold:true, color:GREEN });
+    y -= 6; hline(y, { color:GREEN, thick:0.8 }); y -= 28;
+    field('Approver Signature', '', ML, y, 280);
+    field('Date Approved', new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), ML+300, y, 208);
+    if (billing.approver_signature_png) {
+      try {
+        const b64 = billing.approver_signature_png.replace(/^data:image\/png;base64,/, '');
+        const pngImage = await pdfDoc.embedPng(Buffer.from(b64, 'base64'));
+        const { width:iw, height:ih } = pngImage.scale(1);
+        const maxW = 270, maxH = 28, scale = Math.min(maxW/iw, maxH/ih);
+        page.drawImage(pngImage, { x:ML+2, y:y+2, width:iw*scale, height:ih*scale, opacity:0.92 });
+      } catch(e) { console.error('[DirectBill] Approver sig embed failed:', e.message); }
+    }
+    y -= 8;
+    text('IN-KIND BILLING: APPROVED', ML, y, { size:9, bold:true, color:GREEN });
+  }
 
   // Footer
   hline(72, { thick:0.5 });
