@@ -1,10 +1,17 @@
 const sgMail = require('@sendgrid/mail');
-if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const FROM         = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+const FROM         = process.env.FROM_EMAIL  || 'reservations@topofthepalms.usf.edu';
 const NAME         = 'On Top of the Palms Reservations';
 const MANAGER_MAIL = process.env.MANAGER_EMAIL || 'akhil.sirra@compass-usa.com';
-const PHONE = process.env.RESTAURANT_PHONE || '(813) 974-0000';
+const PHONE        = process.env.RESTAURANT_PHONE || '(813) 974-0000';
+
+// Always set the API key if available
+function getSg() {
+  const key = process.env.SENDGRID_API_KEY;
+  if (!key) throw new Error('SENDGRID_API_KEY is not set in environment variables');
+  sgMail.setApiKey(key);
+  return sgMail;
+}
 
 function layout(body) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
@@ -34,25 +41,28 @@ function reservationRows(r) {
   ].filter(Boolean).join('');
 }
 
-async function sendEmail(reservation, type) {
-  if (!process.env.SENDGRID_API_KEY) {
-    console.log(`[Email] SENDGRID_API_KEY not set — skipping "${type}" to ${reservation.email}`);
-    return;
-  }
-  const templates = { confirmed: confirmedEmail, pending: pendingEmail, denied: deniedEmail };
-  const t = templates[type](reservation);
-  console.log(`[Email] Sending "${type}" to ${reservation.email} from ${FROM}`);
+async function _send(msg, label) {
+  const sg = getSg();
+  console.log(`[Email] Sending "${label}" → to:${msg.to} from:${msg.from?.email || msg.from}`);
   try {
-    await sgMail.send({ to:reservation.email, from:{email:FROM,name:NAME}, subject:t.subject, html:t.html });
-    console.log(`[Email] ✓ Sent "${type}" to ${reservation.email}`);
+    await sg.send(msg);
+    console.log(`[Email] ✓ Sent "${label}" → ${msg.to}`);
   } catch(err) {
-    console.error(`[Email] ✗ FAILED "${type}" to ${reservation.email}:`, err.response?.body || err.message);
+    const detail = err.response?.body ? JSON.stringify(err.response.body) : err.message;
+    console.error(`[Email] ✗ FAILED "${label}" → ${msg.to} | ${detail}`);
     throw err;
   }
 }
 
+// ── Guest emails ──────────────────────────────────────────────────────────────
+async function sendEmail(reservation, type) {
+  const templates = { confirmed: confirmedEmail, pending: pendingEmail, denied: deniedEmail };
+  const t = templates[type](reservation);
+  await _send({ to: reservation.email, from: { email: FROM, name: NAME }, subject: t.subject, html: t.html }, type);
+}
+
 function confirmedEmail(r) {
-  return { subject:'Your reservation is confirmed — Top of the Palms ✓', html:layout(`
+  return { subject: 'Your reservation is confirmed — Top of the Palms ✓', html: layout(`
     <div style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✓ Confirmed</div>
     <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">We look forward to seeing you!</h2>
     <p style="color:#6b7280;font-size:14px;margin:0 0 20px">Hi ${r.name}, your reservation is confirmed.</p>
@@ -61,7 +71,7 @@ function confirmedEmail(r) {
 }
 
 function pendingEmail(r) {
-  return { subject:'We received your reservation request — Top of the Palms', html:layout(`
+  return { subject: 'We received your reservation request — Top of the Palms', html: layout(`
     <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">⏳ Under review</div>
     <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Request received!</h2>
     <p style="color:#6b7280;font-size:14px;margin:0 0 20px">Hi ${r.name}, your request is under review. A manager will confirm it shortly — usually within a few hours.</p>
@@ -75,106 +85,26 @@ function pendingEmail(r) {
 }
 
 function deniedEmail(r) {
-  return { subject:'Update on your reservation request — Top of the Palms', html:layout(`
+  return { subject: 'Update on your reservation request — Top of the Palms', html: layout(`
     <div style="display:inline-block;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✕ Unable to accommodate</div>
     <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">We're sorry</h2>
     <p style="color:#6b7280;font-size:14px;margin:0 0 20px">Hi ${r.name}, unfortunately we cannot accommodate your request for ${r.datetime}.</p>
     <p style="color:#374151;font-size:14px">Please reply here or call ${PHONE} to find an alternative time. We'd love to have you!</p>`) };
 }
 
-// Direct Bill document email — sent at CHECK-IN
-// Sent when guest arrives and checks in, containing authorization form instructions
-async function sendDirectBillEmail(reservation) {
-  if (!process.env.SENDGRID_API_KEY) { console.log('[Email] No key — would send direct bill doc'); return; }
-  const ref = reservation.id.slice(0,8).toUpperCase();
-  const managerEmail = process.env.MANAGER_EMAIL || FROM;
-  await sgMail.send({
-    to:   reservation.email,
-    from: { email:FROM, name:NAME },
-    subject: `Direct Bill Authorization Required — ${ref} | On Top of the Palms`,
-    html: layout(`
-      <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">📄 Action Required</div>
-      <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Direct Bill Authorization</h2>
-      <p style="color:#6b7280;font-size:14px;margin:0 0 16px">Hi ${reservation.name}, thank you for dining with us today! As you selected <strong>Direct Bill</strong> payment, please complete the authorization below and return it to us.</p>
-
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">
-        ${row('Reservation #', `<span style="font-family:monospace;background:#f3f4f6;padding:2px 6px;border-radius:4px">${ref}</span>`)}
-        ${row('Name', reservation.name)}
-        ${row('Department', reservation.department||'—')}
-        ${row('Date', reservation.datetime)}
-        ${row('Party size', String(reservation.party)+(reservation.party===1?' guest':' guests'), true)}
-      </table></div>
-
-      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:18px;margin-bottom:20px">
-        <p style="font-size:14px;font-weight:700;color:#b45309;margin-bottom:12px">📋 Direct Bill Authorization Form</p>
-        <p style="font-size:13px;color:#374151;margin-bottom:10px">Please reply to this email with the completed authorization including:</p>
-        <ul style="font-size:13px;color:#374151;margin:0 0 14px 18px;line-height:1.8">
-          <li>Full name and USF UID</li>
-          <li>Department name and account number</li>
-          <li>Authorized signature and title</li>
-          <li>Date of dining: ${reservation.datetime}</li>
-          <li>Amount to be billed</li>
-        </ul>
-        <p style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:8px 12px;margin:0">⚠️ Payment must be received within <strong>30 days of dining</strong>. Please reply to this email with your completed form.</p>
-      </div>
-
-      <p style="color:#374151;font-size:13px">Return the completed form by replying directly to this email or contact us at ${PHONE}.</p>
-      <p style="color:#9ca3af;font-size:12px;margin-top:16px">Reply-to: ${managerEmail} · Reference: ${ref}</p>`)
-  });
-
-  // Also notify manager that direct bill guest has checked in
-  if (process.env.MANAGER_EMAIL) {
-    await sgMail.send({
-      to:   process.env.MANAGER_EMAIL,
-      from: { email:FROM, name:NAME },
-      subject: `Direct Bill checked in — ${reservation.name} (${ref})`,
-      html: layout(`
-        <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Direct Bill — Checked In</div>
-        <h2 style="color:#111827;font-size:17px;font-weight:700;margin:0 0 12px">${reservation.name} has checked in</h2>
-        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:16px"><table style="width:100%;border-collapse:collapse">
-          ${row('Confirmation', ref)}
-          ${row('Department', reservation.department||'—')}
-          ${row('Party', String(reservation.party)+(reservation.party===1?' guest':' guests'))}
-          ${row('Email', reservation.email, true)}
-        </table></div>
-        <p style="color:#374151;font-size:13px">Authorization form has been emailed to the guest. Mark as <strong>Document Received</strong> in the dashboard once they return the signed form.</p>
-        <p style="margin-top:12px"><a href="${getSafeBase()}/manager/dashboard" style="background:#006747;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">Open Dashboard →</a></p>`)
-    });
-  }
-
-  console.log(`[DirectBill] Check-in doc sent to ${reservation.email}, manager notified`);
-}
-
-
-function getSafeBase() {
-  // Use SAFE_URL first (set in Railway to .up.railway.app URL)
-  if (process.env.SAFE_URL) return process.env.SAFE_URL.trim().replace(/\/$/,'');
-  const base = (process.env.BASE_URL||'').trim().replace(/\/$/,'');
-  if (base && base.includes('railway.app')) return base;
-  return base || 'http://localhost:3000';
-}
-
+// ── Manager approval email ────────────────────────────────────────────────────
 async function sendManagerApprovalEmail(reservation) {
   const base       = getSafeBase();
-  // Use confirm flow — requires manager to be logged in before action is taken
   const approveUrl = `${base}/manager/confirm/approve/${reservation.id}`;
   const denyUrl    = `${base}/manager/confirm/deny/${reservation.id}`;
   const dashUrl    = `${base}/manager/dashboard`;
   const party      = reservation.party + (reservation.party===1?' guest':' guests');
 
-  console.log(`[Manager] SENDGRID_API_KEY set: ${!!process.env.SENDGRID_API_KEY}, MANAGER_EMAIL: ${MANAGER_MAIL}, FROM: ${FROM}`);
-  if (!process.env.SENDGRID_API_KEY) {
-    console.log(`[Manager] SENDGRID_API_KEY not set — skipping manager email. Approve URL: ${approveUrl}`);
-    return;
-  }
+  function r(k,v,last){ return `<tr><td style="color:#6b7280;padding:8px 0;font-size:13px;${last?'':'border-bottom:1px solid #f3f4f6'}">${k}</td><td style="color:#111827;font-weight:600;text-align:right;font-size:13px;padding:8px 0;${last?'':'border-bottom:1px solid #f3f4f6'}">${v}</td></tr>`; }
 
-  function row(k,v,last){ return `<tr><td style="color:#6b7280;padding:8px 0;font-size:13px;${last?'':'border-bottom:1px solid #f3f4f6'}">${k}</td><td style="color:#111827;font-weight:600;text-align:right;font-size:13px;padding:8px 0;${last?'':'border-bottom:1px solid #f3f4f6'}">${v}</td></tr>`; }
-
-  console.log(`[Manager] Sending approval email to ${MANAGER_MAIL} from ${FROM}`);
-  try {
-  await sgMail.send({
-    to:   MANAGER_MAIL,
-    from: { email: FROM, name: NAME },
+  await _send({
+    to:      MANAGER_MAIL,
+    from:    { email: FROM, name: NAME },
     subject: `Action needed — ${reservation.name} · ${parseInt(reservation.num_days||1)>1?reservation.num_days+' days · ':''}${party} · ${reservation.datetime}`,
     html: layout(`
       <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Action required</div>
@@ -182,16 +112,16 @@ async function sendManagerApprovalEmail(reservation) {
       ${(reservation.payment_method||'').includes('Direct Bill')?'<p style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1d4ed8;margin-bottom:16px">💳 <strong>Direct Bill</strong> — authorization form will be sent to guest automatically.</p>':''}
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:24px">
         <table style="width:100%;border-collapse:collapse">
-          ${row('Name', reservation.name)}
-          ${row('USF UID', `<span style="font-family:monospace">${reservation.uid||'—'}</span>`)}
-          ${row('Department', reservation.department||'—')}
-          ${row('Email', reservation.email)}
-          ${row('Start date', reservation.datetime)}
-          ${parseInt(reservation.num_days||1)>1 ? row('Days', `<strong>${reservation.num_days} consecutive weekdays</strong>`) : ''}
-          ${row('Party size', party)}
-          ${row('Payment', reservation.payment_method||'—')}
-          ${reservation.notes ? row('Notes', reservation.notes) : ''}
-          ${row('Type', reservation.guest_status==='faculty'?'Faculty':'Student', true)}
+          ${r('Name', reservation.name)}
+          ${r('USF UID', `<span style="font-family:monospace">${reservation.uid||'—'}</span>`)}
+          ${r('Department', reservation.department||'—')}
+          ${r('Email', reservation.email)}
+          ${r('Start date', reservation.datetime)}
+          ${parseInt(reservation.num_days||1)>1 ? r('Days', `<strong>${reservation.num_days} consecutive weekdays</strong>`) : ''}
+          ${r('Party size', party)}
+          ${r('Payment', reservation.payment_method||'—')}
+          ${reservation.notes ? r('Notes', reservation.notes) : ''}
+          ${r('Type', reservation.guest_status==='faculty'?'Faculty':'Student', true)}
         </table>
       </div>
       <p style="color:#374151;font-size:13px;margin-bottom:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px">
@@ -202,12 +132,77 @@ async function sendManagerApprovalEmail(reservation) {
         <a href="${denyUrl}" style="display:inline-block;background:#fff;color:#b91c1c;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;border:1.5px solid #b91c1c">✕ Review &amp; Deny</a>
       </div>
       <p style="text-align:center"><a href="${dashUrl}" style="color:#9ca3af;font-size:12px;text-decoration:none">View all pending reservations →</a></p>`)
-  });
-  console.log(`[Manager] ✓ Approval email sent to ${MANAGER_MAIL}`);
-  } catch(err) {
-    console.error(`[Manager] ✗ FAILED sending to ${MANAGER_MAIL}:`, err.response?.body || err.message);
-    throw err;
-  }
+  }, 'manager-approval');
 }
 
-module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail };
+// ── Direct Bill email ─────────────────────────────────────────────────────────
+async function sendDirectBillEmail(reservation) {
+  const ref = reservation.id.slice(0,8).toUpperCase();
+
+  await _send({
+    to:      reservation.email,
+    from:    { email: FROM, name: NAME },
+    subject: `Direct Bill Authorization Required — ${ref} | On Top of the Palms`,
+    html: layout(`
+      <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">📄 Action Required</div>
+      <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Direct Bill Authorization</h2>
+      <p style="color:#6b7280;font-size:14px;margin:0 0 16px">Hi ${reservation.name}, thank you for dining with us today! As you selected <strong>Direct Bill</strong> payment, please complete the authorization below.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">
+        ${row('Reservation #', `<span style="font-family:monospace;background:#f3f4f6;padding:2px 6px;border-radius:4px">${ref}</span>`)}
+        ${row('Name', reservation.name)}
+        ${row('Department', reservation.department||'—')}
+        ${row('Date', reservation.datetime)}
+        ${row('Party size', String(reservation.party)+(reservation.party===1?' guest':' guests'), true)}
+      </table></div>
+      <p style="color:#374151;font-size:13px">Return the completed form by replying directly to this email or contact us at ${PHONE}.</p>
+      <p style="color:#9ca3af;font-size:12px;margin-top:16px">Reply-to: ${MANAGER_MAIL} · Reference: ${ref}</p>`)
+  }, 'directbill-guest');
+
+  // Notify manager that direct bill guest has checked in
+  await _send({
+    to:      MANAGER_MAIL,
+    from:    { email: FROM, name: NAME },
+    subject: `Direct Bill checked in — ${reservation.name} (${ref})`,
+    html: layout(`
+      <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">Direct Bill — Checked In</div>
+      <h2 style="color:#111827;font-size:17px;font-weight:700;margin:0 0 12px">${reservation.name} has checked in</h2>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:16px"><table style="width:100%;border-collapse:collapse">
+        ${row('Confirmation', ref)}
+        ${row('Department', reservation.department||'—')}
+        ${row('Party', String(reservation.party)+(reservation.party===1?' guest':' guests'))}
+        ${row('Email', reservation.email, true)}
+      </table></div>
+      <p style="color:#374151;font-size:13px">Authorization form has been emailed to the guest.</p>
+      <p style="margin-top:12px"><a href="${getSafeBase()}/manager/dashboard" style="background:#006747;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">Open Dashboard →</a></p>`)
+  }, 'directbill-manager');
+
+  console.log(`[DirectBill] Check-in emails sent for ${reservation.email}`);
+}
+
+// ── Test email — called from /api/test-email ──────────────────────────────────
+async function sendTestEmail(toEmail) {
+  await _send({
+    to:      toEmail,
+    from:    { email: FROM, name: NAME },
+    subject: `✅ Email test — On Top of the Palms (${new Date().toLocaleTimeString()})`,
+    html: layout(`
+      <div style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✅ Email Working</div>
+      <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">SendGrid is configured correctly!</h2>
+      <p style="color:#6b7280;font-size:14px;margin:0 0 16px">This test email confirms that all email services are active.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:16px"><table style="width:100%;border-collapse:collapse">
+        ${row('From', FROM)}
+        ${row('Manager email', MANAGER_MAIL)}
+        ${row('Sent at', new Date().toISOString(), true)}
+      </table></div>
+      <p style="color:#374151;font-size:13px">All reservation emails (guest pending, confirmation, denial, manager approval, direct bill) are enabled.</p>`)
+  }, 'test');
+}
+
+function getSafeBase() {
+  if (process.env.SAFE_URL) return process.env.SAFE_URL.trim().replace(/\/$/,'');
+  const base = (process.env.BASE_URL||'').trim().replace(/\/$/,'');
+  if (base && base.includes('railway.app')) return base;
+  return base || 'http://localhost:3000';
+}
+
+module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail };

@@ -9,7 +9,7 @@ const { handleIncomingSMS }                         = require('./src/sms');
 const { handleIncomingCall, handleVoiceCollect, handleCallStatus } = require('./src/voice');
 const { getEmailReply }                             = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
-const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail } = require('./src/email');
+const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail } = require('./src/email');
 const directBill = require('./src/direct-bill');
 const multerMem = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } }); // 10MB for doc uploads
 
@@ -287,6 +287,18 @@ app.post('/api/demo/chat', async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/manager/dashboard', auth.requireManager, (req,res)=>res.sendFile(path.join(__dirname,'views','dashboard.html')));
 app.get('/manager/revenue',  auth.requireManager, (req,res)=>res.sendFile(path.join(__dirname,'views','revenue.html')));
+
+// ── Test email endpoint — manager only ────────────────────────────────────────
+app.post('/api/test-email', auth.requireManager, async (req, res) => {
+  const to = req.body.to || (process.env.MANAGER_EMAIL || 'akhil.sirra@compass-usa.com');
+  try {
+    await sendTestEmail(to);
+    res.json({ success: true, message: `Test email sent to ${to}` });
+  } catch(err) {
+    const detail = err.response?.body ? JSON.stringify(err.response.body) : err.message;
+    res.status(500).json({ success: false, error: detail });
+  }
+});
 app.get('/manager/confirm/:action/:id', (req,res)=>res.sendFile(path.join(__dirname,'views','confirm-action.html')));
 
 // GET — safe: only shows current status, never changes anything
