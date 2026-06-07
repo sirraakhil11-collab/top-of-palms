@@ -1,8 +1,9 @@
 const sgMail = require('@sendgrid/mail');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const FROM  = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
-const NAME  = 'On Top of the Palms Reservations';
+const FROM         = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+const NAME         = 'On Top of the Palms Reservations';
+const MANAGER_MAIL = process.env.MANAGER_EMAIL || 'akhil.sirra@compass-usa.com';
 const PHONE = process.env.RESTAURANT_PHONE || '(813) 974-0000';
 
 function layout(body) {
@@ -34,11 +35,20 @@ function reservationRows(r) {
 }
 
 async function sendEmail(reservation, type) {
-  if (!process.env.SENDGRID_API_KEY) { console.log(`[Email] No key — would send "${type}" to ${reservation.email}`); return; }
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log(`[Email] SENDGRID_API_KEY not set — skipping "${type}" to ${reservation.email}`);
+    return;
+  }
   const templates = { confirmed: confirmedEmail, pending: pendingEmail, denied: deniedEmail };
   const t = templates[type](reservation);
-  await sgMail.send({ to:reservation.email, from:{email:FROM,name:NAME}, subject:t.subject, html:t.html });
-  console.log(`[Email] Sent "${type}" to ${reservation.email}`);
+  console.log(`[Email] Sending "${type}" to ${reservation.email} from ${FROM}`);
+  try {
+    await sgMail.send({ to:reservation.email, from:{email:FROM,name:NAME}, subject:t.subject, html:t.html });
+    console.log(`[Email] ✓ Sent "${type}" to ${reservation.email}`);
+  } catch(err) {
+    console.error(`[Email] ✗ FAILED "${type}" to ${reservation.email}:`, err.response?.body || err.message);
+    throw err;
+  }
 }
 
 function confirmedEmail(r) {
@@ -152,15 +162,18 @@ async function sendManagerApprovalEmail(reservation) {
   const dashUrl    = `${base}/manager/dashboard`;
   const party      = reservation.party + (reservation.party===1?' guest':' guests');
 
-  if (!process.env.SENDGRID_API_KEY || !process.env.MANAGER_EMAIL) {
-    console.log(`[Manager] Email not configured. Approve: ${approveUrl}`);
+  console.log(`[Manager] SENDGRID_API_KEY set: ${!!process.env.SENDGRID_API_KEY}, MANAGER_EMAIL: ${MANAGER_MAIL}, FROM: ${FROM}`);
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log(`[Manager] SENDGRID_API_KEY not set — skipping manager email. Approve URL: ${approveUrl}`);
     return;
   }
 
   function row(k,v,last){ return `<tr><td style="color:#6b7280;padding:8px 0;font-size:13px;${last?'':'border-bottom:1px solid #f3f4f6'}">${k}</td><td style="color:#111827;font-weight:600;text-align:right;font-size:13px;padding:8px 0;${last?'':'border-bottom:1px solid #f3f4f6'}">${v}</td></tr>`; }
 
+  console.log(`[Manager] Sending approval email to ${MANAGER_MAIL} from ${FROM}`);
+  try {
   await sgMail.send({
-    to:   process.env.MANAGER_EMAIL,
+    to:   MANAGER_MAIL,
     from: { email: FROM, name: NAME },
     subject: `Action needed — ${reservation.name} · ${parseInt(reservation.num_days||1)>1?reservation.num_days+' days · ':''}${party} · ${reservation.datetime}`,
     html: layout(`
@@ -190,7 +203,11 @@ async function sendManagerApprovalEmail(reservation) {
       </div>
       <p style="text-align:center"><a href="${dashUrl}" style="color:#9ca3af;font-size:12px;text-decoration:none">View all pending reservations →</a></p>`)
   });
-  console.log(`[Manager] Approval email sent to ${process.env.MANAGER_EMAIL}`);
+  console.log(`[Manager] ✓ Approval email sent to ${MANAGER_MAIL}`);
+  } catch(err) {
+    console.error(`[Manager] ✗ FAILED sending to ${MANAGER_MAIL}:`, err.response?.body || err.message);
+    throw err;
+  }
 }
 
 module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail };
