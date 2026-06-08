@@ -7,7 +7,7 @@ const crypto  = require('crypto');
 const { handleIncomingEmail }                       = require('./src/emailInbound');
 const { handleIncomingSMS }                         = require('./src/sms');
 const { handleIncomingCall, handleVoiceCollect, handleCallStatus } = require('./src/voice');
-const { getEmailReply }                             = require('./src/agent');
+const { getEmailReply, getChatReply }               = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail } = require('./src/email');
 const directBill = require('./src/direct-bill');
@@ -280,6 +280,30 @@ app.post('/api/demo/chat', async (req, res) => {
     if (r.complete&&r.collected){ s.collected=r.collected; delete demoSessions[key]; setImmediate(()=>processReservation({...s}).catch(console.error)); }
     res.json({ text:r.text, complete:r.complete||false, collected:r.collected||null });
   } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+//  AI WIDGET CHAT  — stateless, history sent by client each turn
+// ══════════════════════════════════════════════════════════════════════════
+app.post('/api/chat', async (req, res) => {
+  const { messages } = req.body;
+  if (!Array.isArray(messages) || !messages.length)
+    return res.status(400).json({ error: 'messages array required' });
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!rateLimit(ip, 'chat', 40, 60000))
+    return res.status(429).json({ error: 'Too many messages — please slow down.' });
+
+  try {
+    const settings  = await db.getAllSettings().catch(() => ({}));
+    const openTime  = settings.open_time  || '11:00';
+    const closeTime = settings.close_time || '14:00';
+    const reply     = await getChatReply(messages, openTime, closeTime);
+    res.json(reply);
+  } catch (err) {
+    console.error('[Chat]', err.message);
+    res.status(500).json({ error: 'AI assistant is temporarily unavailable. Please use the reservation form instead.' });
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════

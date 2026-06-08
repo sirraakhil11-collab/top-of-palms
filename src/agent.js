@@ -173,4 +173,62 @@ async function getVoiceReply(conversationMessages) {
   return { text: fullText, complete: false };
 }
 
-module.exports = { getEmailReply, getSMSReply, getVoiceReply, VOICE_SYSTEM_PROMPT };
+// ── Widget chat ───────────────────────────────────────────────────────────────
+function buildWidgetPrompt(openTime, closeTime) {
+  const [oh, om] = (openTime  || '11:00').split(':').map(Number);
+  const [ch, cm] = (closeTime || '14:00').split(':').map(Number);
+  const lastH = cm === 0 ? ch - 1 : ch;
+  const lastM = cm === 0 ? 45 : cm - 15;
+  const fmt = (h, m) => `${h > 12 ? h - 12 : (h === 0 ? 12 : h)}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+
+  return `You are a warm, friendly reservation assistant for "On Top of the Palms" — a restaurant at the University of South Florida (USF Dining, Compass USA).
+
+You are chatting live with a guest in a chat widget. Be conversational and efficient. Keep replies to 1–3 short sentences. No bullet lists.
+
+Your job: collect ALL of the following. If the guest volunteers several pieces at once, extract them ALL and only ask for what is still missing.
+
+Required fields:
+• Full name (first and last)
+• Department (e.g. CSE, Nursing, Biology)
+• USF UID — optional 9-digit number; "skip" / "don't have one" / "none" is perfectly fine
+• Email address (for confirmation)
+• Guest type: Faculty or Student
+• Reservation date — Mon–Fri only, at least 24 hours from now. When asking for the date add [SHOW_CALENDAR] on its own line.
+• Preferred time (${fmt(oh,om)} – ${fmt(lastH,lastM)}). When asking for the time add [SHOW_TIMES] on its own line.
+• Party size (2–15 guests)
+• Payment method: Credit Card, USF Card, or Direct Bill
+• Special requests (dietary, occasion, accessibility) — optional, "skip" or "none" is fine
+
+Important rules:
+- Extract info from natural language ("I'm John Smith from CSE" → name=John Smith, dept=CSE)
+- UIDs must be exactly 9 digits unless guest says skip/none/don't have
+- Never accept a single word (like "hi", "hello", "hey") as a full name — ask again kindly
+- Weekend dates and dates less than 24 hours from now are not allowed; politely say so
+- Party must be 2–15; days 1–7
+- After collecting everything show a short summary and ask the guest to confirm
+
+Once the guest confirms the summary is correct, output EXACTLY this on one line (fill in real values):
+RESERVATION_DATA:{"name":"John Smith","department":"CSE","uid":"","email":"john@usf.edu","status":"faculty","party":3,"num_days":1,"date":"2026-06-10","time":"11:30","payment_method":"Credit Card","notes":""}
+
+Field rules: date = YYYY-MM-DD, time = 24-hour HH:MM, status = "faculty" or "student", uid = "" if skipped.
+
+Then say: "✅ Submitting your reservation now! 🌴"`;
+}
+
+async function getChatReply(conversationMessages, openTime, closeTime) {
+  const systemPrompt = buildWidgetPrompt(openTime, closeTime);
+  const fullText = await callGroq(
+    [{ role: 'system', content: systemPrompt }, ...conversationMessages],
+    500
+  );
+  const result = extractReservationData(fullText);
+  if (result) {
+    return { text: result.cleanText, complete: true, collected: result.collected };
+  }
+  const showCalendar = fullText.includes('[SHOW_CALENDAR]');
+  const showTimes    = fullText.includes('[SHOW_TIMES]');
+  const cleanText    = fullText.replace(/\[SHOW_CALENDAR\]/g,'').replace(/\[SHOW_TIMES\]/g,'').trim();
+  return { text: cleanText, complete: false, showCalendar, showTimes };
+}
+
+module.exports = { getEmailReply, getSMSReply, getVoiceReply, getChatReply, VOICE_SYSTEM_PROMPT };

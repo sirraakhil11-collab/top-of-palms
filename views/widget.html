@@ -55,217 +55,222 @@
   </div>
 
 <script>
-  // Resolve API base — works both on reserve.html origin and cross-origin embed
-  const API_BASE = (function(){
-    const s = document.currentScript;
-    if (s && s.dataset.api) return s.dataset.api.replace(/\/$/,'');
-    // If loaded as iframe from the same server, use relative URLs
-    return '';
+  const API_BASE = '';
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let openHour = 11, openMin = 30, closeHour = 14, closeMin = 0;
+  let blockedDatesSet = new Set();
+  let calYear = null, calMonth = null;
+  // Conversation history sent to the AI each turn (stateless server)
+  let history = [];
+  // 'chat' | 'another' | 'blocked'
+  let mode = 'chat';
+
+  const GREETING = "Hi! I'm your reservation assistant. 👋\n\nTo get started, what's your **full name** and **department**?";
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  (async function init() {
+    try {
+      const h = await fetch(API_BASE + '/api/reserve/hours').then(r => r.json());
+      if (h.open_time)  { const [hr,mn] = h.open_time.split(':').map(Number);  openHour=hr;  openMin=mn; }
+      if (h.close_time) { const [hr,mn] = h.close_time.split(':').map(Number); closeHour=hr; closeMin=mn; }
+    } catch(e) {}
+    try {
+      const d = await fetch(API_BASE + '/api/blocked-dates').then(r => r.json());
+      blockedDatesSet = new Set(d.map(x => x.date));
+    } catch(e) {}
+
+    // Seed history with the greeting so the AI knows what it already "said"
+    history = [{ role: 'assistant', content: GREETING }];
+    addMsg(GREETING, 'bot');
+    unblockInput();
   })();
 
-  let RATE = 12.75, openHour = 11, openMin = 30, closeHour = 14, closeMin = 0;
-  const MIN_PARTY = 2, MAX_PARTY = 15, MAX_DAYS = 7;
-  let blockedDatesBot = new Set();
-  let calMonth = null, calYear = null;
-  const ans = {};
-  let step = 0, botStarted = false;
-
-  function formatHM(h,m){const ampm=h>=12?'PM':'AM';const hh=h>12?h-12:(h===0?12:h);return `${hh}:${String(m).padStart(2,'0')} ${ampm}`;}
-
-  (async function init(){
-    try{
-      const d=await fetch(API_BASE+'/api/public/rate').then(r=>r.json());
-      RATE=parseFloat(d.rate)||12.75;
-    }catch(e){}
-    try{
-      const h=await fetch(API_BASE+'/api/reserve/hours').then(r=>r.json());
-      if(h.open_time){const[hr,mn]=h.open_time.split(':').map(Number);openHour=hr;openMin=mn;}
-      if(h.close_time){const[hr,mn]=h.close_time.split(':').map(Number);closeHour=hr;closeMin=mn;}
-    }catch(e){}
-    startBot();
-  })();
-
-  function buildTimeOpts(){
-    const lastSlotH=closeMin===0?closeHour-1:closeHour, lastSlotM=closeMin===0?45:closeMin-15;
-    const slots=[];
-    for(let h=openHour;h<=lastSlotH;h++){
-      const startM=h===openHour?openMin:0, endM=h===lastSlotH?lastSlotM:45;
-      for(let m=startM;m<=endM;m+=15) slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
-    }
-    return slots;
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function addMsg(text, who) {
+    const msgs = document.getElementById('cb-msgs');
+    const el = document.createElement('div');
+    el.className = who === 'bot' ? 'cb-bot' : 'cb-user';
+    el.innerHTML = text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    msgs.appendChild(el);
+    msgs.scrollTop = msgs.scrollHeight;
   }
-
-  function buildSteps(){
-    const closeLabel=formatHM(closeHour-(closeMin===0?1:0),closeMin===0?45:closeMin-15);
-    const openLabel=formatHM(openHour,openMin);
-    return[
-      {key:'name',q:"Hi! I'm your reservation assistant. 👋\n\nWhat's your **full name**?",validate:v=>v.length>=2?null:'Please enter your full name.'},
-      {key:'dept',q:"What **department** are you with?",validate:v=>v.length>=2?null:'Please enter your department.'},
-      {key:'uid',q:"What's your **USF UID**? (9 digits)\nType *skip* to skip.",validate:v=>{if(v.toLowerCase()==='skip'||v==='')return null;if(/^\d{9}$/.test(v))return null;return 'UID must be 9 digits, or type "skip".';}},
-      {key:'email',q:"What's your **email address**?",validate:v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?null:'Please enter a valid email address.'},
-      {key:'type',q:"Are you **Faculty** or **Student**?",opts:['Faculty','Student'],validate:v=>['faculty','student'].includes(v.toLowerCase())?null:'Please choose Faculty or Student.'},
-      {key:'date',q:"What **date** would you like to dine?\nChoose from the calendar below or type YYYY-MM-DD.",validate:validateBotDate,showCal:true},
-      {key:'time',q:`What **time** would you prefer?\nWe're open **${openLabel} – ${closeLabel}**.`,opts:buildTimeOpts(),validate:validateBotTime},
-      {key:'party',q:`How many **guests** in your party?\n(Min ${MIN_PARTY}, max ${MAX_PARTY})`,opts:['2','3','4','5','6','7','8','10','12','15'],validate:v=>{const n=parseInt(v);return(!isNaN(n)&&n>=MIN_PARTY&&n<=MAX_PARTY)?null:`Please enter ${MIN_PARTY}–${MAX_PARTY}.`;}},
-      {key:'days',
-        q:(()=>{if(!ans.date)return`Will you be dining **just this one day**, or across **multiple consecutive weekdays**?`;const d=new Date(ans.date+'T12:00:00');const label=d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});return`Will you be dining **just on ${label}**, or across **multiple consecutive weekdays** starting then?`;})(),
-        buildOpts:()=>{const slots=['1 day (just this date)'];if(!ans.date){for(let i=2;i<=MAX_DAYS;i++)slots.push(`${i} days`);return slots;}let cur=new Date(ans.date+'T12:00:00');for(let i=2;i<=MAX_DAYS;i++){cur.setDate(cur.getDate()+1);while(cur.getDay()===0||cur.getDay()===6)cur.setDate(cur.getDate()+1);const lbl=cur.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});slots.push(`${i} days (through ${lbl})`);}return slots;},
-        validate:v=>{const n=parseInt(v);return(!isNaN(n)&&n>=1&&n<=MAX_DAYS)?null:`Please enter 1–${MAX_DAYS}.`;},normalize:v=>String(parseInt(v))},
-      {key:'payment',q:"How will you be **paying**?",opts:['Credit Card','USF Card','Direct Bill'],validate:v=>['credit card','usf card','direct bill'].includes(v.toLowerCase())?null:'Please choose a payment method.'},
-      {key:'notes',q:"Any **special requests**? (dietary, accessibility, occasion…)",opts:['Skip'],validate:()=>null},
-    ];
+  function showOpts(opts) {
+    const row = document.getElementById('cb-opts-row');
+    row.innerHTML = '';
+    opts.forEach(o => {
+      const b = document.createElement('button');
+      b.className = 'cb-opt'; b.textContent = o;
+      b.onclick = () => { document.getElementById('cb-inp').value = o; cbSend(); };
+      row.appendChild(b);
+    });
   }
+  function clearOpts()   { document.getElementById('cb-opts-row').innerHTML = ''; }
+  function typing()      { const msgs=document.getElementById('cb-msgs'),el=document.createElement('div');el.className='cb-typing';el.id='cb-typing';el.textContent='···';msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight; }
+  function clearTyping() { document.getElementById('cb-typing')?.remove(); }
+  function blockInput()  { mode !== 'another' && (mode = 'blocked'); document.getElementById('cb-send').disabled = true; }
+  function unblockInput(){ document.getElementById('cb-send').disabled = false; document.getElementById('cb-inp').focus(); }
 
-  function validateBotDate(v){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return'Please use YYYY-MM-DD or tap a date above.';
-    const d=new Date(v+'T12:00:00');if(isNaN(d))return'Invalid date.';
-    if(d.getDay()===0||d.getDay()===6)return"We're open Mon–Fri only.";
-    if(blockedDatesBot.has(v))return'That date is unavailable.';
-    const minDate=new Date();minDate.setDate(minDate.getDate()+1);minDate.setHours(0,0,0,0);
-    if(d<minDate)return'Please book at least 1 day in advance.';
-    return null;
-  }
-  function validateBotTime(v){
-    const m=v.match(/^(\d{1,2}):(\d{2})$/);if(!m)return`Please use HH:MM format.`;
-    const h=parseInt(m[1]),mn=parseInt(m[2]);
-    const afterOpen=h>openHour||(h===openHour&&mn>=openMin);
-    const lastSlotH=closeMin===0?closeHour-1:closeHour,lastSlotM=closeMin===0?45:closeMin-15;
-    const beforeClose=h<lastSlotH||(h===lastSlotH&&mn<=lastSlotM);
-    if(!afterOpen||!beforeClose)return`Please choose a time between ${formatHM(openHour,openMin)} and ${formatHM(lastSlotH,lastSlotM)}.`;
-    return null;
-  }
-
-  function renderCal(year,month){
-    calYear=year;calMonth=month;
-    const msgs=document.getElementById('cb-msgs');
+  // ── Calendar ───────────────────────────────────────────────────────────────
+  function renderCal(year, month) {
+    calYear = year; calMonth = month;
+    const msgs = document.getElementById('cb-msgs');
     document.getElementById('cb-calendar')?.remove();
-    const cal=document.createElement('div');cal.className='cb-cal';cal.id='cb-calendar';
-    const now=new Date(),minDate=new Date();minDate.setDate(minDate.getDate()+1);minDate.setHours(0,0,0,0);
-    const monthLabel=new Date(year,month,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
-    const firstDay=new Date(year,month,1).getDay(),daysInMonth=new Date(year,month+1,0).getDate();
-    let html=`<div class="cb-cal-hdr"><button class="cb-cal-nav" onclick="calPrev()">‹</button><span>${monthLabel}</span><button class="cb-cal-nav" onclick="calNext()">›</button></div><div class="cb-cal-grid">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cb-cal-dow">${d}</div>`).join('')}${Array(firstDay).fill('<div class="cb-cal-day empty"></div>').join('')}`;
-    for(let d=1;d<=daysInMonth;d++){
-      const dt=new Date(year,month,d),iso=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const disabled=dt.getDay()===0||dt.getDay()===6||blockedDatesBot.has(iso)||dt<minDate;
-      const sel=ans.date===iso,isToday=dt.toDateString()===now.toDateString();
-      html+=`<div class="cb-cal-day${disabled?' disabled':''}${isToday?' today':''}${sel?' selected':''}" onclick="calPickDate('${iso}')">${d}</div>`;
+    const cal = document.createElement('div'); cal.className = 'cb-cal'; cal.id = 'cb-calendar';
+    const now = new Date(), minDate = new Date();
+    minDate.setDate(minDate.getDate() + 1); minDate.setHours(0,0,0,0);
+    const monthLabel = new Date(year, month, 1).toLocaleDateString('en-US', { month:'long', year:'numeric' });
+    const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month+1, 0).getDate();
+    let html = `<div class="cb-cal-hdr"><button class="cb-cal-nav" onclick="calPrev()">‹</button><span>${monthLabel}</span><button class="cb-cal-nav" onclick="calNext()">›</button></div><div class="cb-cal-grid">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cb-cal-dow">${d}</div>`).join('')}${Array(firstDay).fill('<div class="cb-cal-day empty"></div>').join('')}`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(year, month, d);
+      const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const disabled = dt.getDay()===0||dt.getDay()===6||blockedDatesSet.has(iso)||dt<minDate;
+      const isToday = dt.toDateString() === now.toDateString();
+      html += `<div class="cb-cal-day${disabled?' disabled':''}${isToday?' today':''}" onclick="calPickDate('${iso}')">${d}</div>`;
     }
-    html+='</div>';cal.innerHTML=html;msgs.appendChild(cal);msgs.scrollTop=msgs.scrollHeight;
+    html += '</div>'; cal.innerHTML = html; msgs.appendChild(cal); msgs.scrollTop = msgs.scrollHeight;
   }
-  window.calPrev=()=>renderCal(calMonth===0?calYear-1:calYear,calMonth===0?11:calMonth-1);
-  window.calNext=()=>renderCal(calMonth===11?calYear+1:calYear,calMonth===11?0:calMonth+1);
-  window.calPickDate=function(iso){const err=validateBotDate(iso);if(err){addMsg('⚠️ '+err,'bot');return;}document.getElementById('cb-inp').value=iso;cbSend();};
-
-  function addMsg(text,who){
-    const msgs=document.getElementById('cb-msgs'),el=document.createElement('div');
-    el.className=who==='bot'?'cb-bot':'cb-user';
-    el.innerHTML=text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>').replace(/\*(skip|none)\*/g,'<em>$1</em>');
-    msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;
-  }
-  function showOpts(opts){const row=document.getElementById('cb-opts-row');row.innerHTML='';opts.forEach(o=>{const b=document.createElement('button');b.className='cb-opt';b.textContent=o;b.onclick=()=>{document.getElementById('cb-inp').value=o;cbSend();};row.appendChild(b);});}
-  function clearOpts(){document.getElementById('cb-opts-row').innerHTML='';}
-  function typing(){const msgs=document.getElementById('cb-msgs'),el=document.createElement('div');el.className='cb-typing';el.id='cb-typing';el.textContent='···';msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;}
-  function clearTyping(){document.getElementById('cb-typing')?.remove();}
-
-  function askStep(i){
-    const steps=buildSteps();
-    if(i>=steps.length){doConfirm();return;}
-    const s=steps[i];
-    setTimeout(()=>{
-      clearTyping();addMsg(s.q,'bot');
-      const opts=s.buildOpts?s.buildOpts():s.opts;
-      if(opts)showOpts(opts);else clearOpts();
-      if(s.showCal){const now=new Date();renderCal(now.getFullYear(),now.getMonth());}
-      else document.getElementById('cb-calendar')?.remove();
-      document.getElementById('cb-inp').focus();
-    },400);
-  }
-
-  function startBot(){
-    botStarted=true;
-    fetch(API_BASE+'/api/blocked-dates').then(r=>r.json()).then(d=>{blockedDatesBot=new Set(d.map(x=>x.date));}).catch(()=>{});
-    step=0;typing();askStep(0);
-  }
-
-  function buildDiningDates(startIso,numDays){
-    const dates=[];let cur=new Date(startIso+'T12:00:00');
-    for(let i=0;i<numDays;i++){
-      if(i>0){cur.setDate(cur.getDate()+1);while(cur.getDay()===0||cur.getDay()===6)cur.setDate(cur.getDate()+1);}
-      dates.push(cur.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}));
-    }
-    return dates;
-  }
-
-  function doConfirm(){
-    const party=parseInt(ans.party),days=parseInt(ans.days||'1'),total=(party*days*RATE).toFixed(2);
-    const diningDates=buildDiningDates(ans.date,days);
-    const datesLine=days===1?`**Date:** ${diningDates[0]} at ${ans.time}`:`**Dates:** ${diningDates.map((d,i)=>`\n  Day ${i+1}: ${d}`).join('')} at ${ans.time}`;
-    const summary=`Here's your reservation summary:\n\n**Name:** ${ans.name}\n**Dept:** ${ans.dept}\n**Email:** ${ans.email}\n${datesLine}\n**Party:** ${ans.party} guest${party===1?'':'s'}${days>1?' × '+days+' days':''}\n**Payment:** ${ans.payment}\n**Total:** $${total}${ans.notes?'\n**Notes:** '+ans.notes:''}\n\nShall I submit this?`;
-    addMsg(summary,'bot');showOpts(['Yes, submit!','No, start over']);step=99;
-    window.cbSend=function(){
-      const inp=document.getElementById('cb-inp'),raw=inp.value.trim().toLowerCase();
-      inp.value='';clearOpts();
-      addMsg(raw.includes('yes')?'Yes, submit!':'No, start over','user');
-      if(raw.includes('yes')||raw.includes('submit')){addMsg('Submitting your reservation…','bot');submitBot();}
-      else{step=0;botStarted=false;addMsg("No problem! Let's start over.",'bot');typing();startBot();}
-    };
-  }
-
-  window.cbSend=function(){
-    const inp=document.getElementById('cb-inp'),raw=inp.value.trim();
-    const steps=buildSteps();
-    if(step>=steps.length)return;
-    const s=steps[step];
-    if(s.key==='notes'&&(!raw||raw.toLowerCase()==='skip')){inp.value='';clearOpts();if(raw)addMsg(raw,'user');ans.notes='';step++;typing();askStep(step);return;}
-    if(!raw)return;
-    inp.value='';clearOpts();addMsg(raw,'user');
-    const err=s.validate(raw);
-    if(err){typing();setTimeout(()=>{clearTyping();addMsg('⚠️ '+err,'bot');const opts=s.buildOpts?s.buildOpts():s.opts;if(opts)showOpts(opts);},300);return;}
-    let val=s.normalize?s.normalize(raw):raw;
-    if(s.key==='uid'&&raw.toLowerCase()==='skip')val='';
-    if(s.key==='type')val=raw.charAt(0).toUpperCase()+raw.slice(1).toLowerCase();
-    ans[s.key]=val;step++;typing();askStep(step);
+  window.calPrev = () => renderCal(calMonth===0?calYear-1:calYear, calMonth===0?11:calMonth-1);
+  window.calNext = () => renderCal(calMonth===11?calYear+1:calYear, calMonth===11?0:calMonth+1);
+  window.calPickDate = function(iso) {
+    document.getElementById('cb-calendar')?.remove();
+    document.getElementById('cb-inp').value = iso;
+    cbSend();
   };
 
-  async function submitBot(){
-    try{
-      const dateISO=ans.date+'T'+ans.time;
-      const displayTime=new Date(dateISO+':00').toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
-      const resp=await fetch(API_BASE+'/api/reserve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        name:ans.name,department:ans.dept,phone_ext:'',guest_type:ans.type.toLowerCase(),
-        uid:ans.uid||'',email:ans.email,party:parseInt(ans.party),num_days:parseInt(ans.days||'1'),
-        datetime_iso:dateISO,datetime_display:displayTime,
-        reservation_time:new Date(dateISO+':00').toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-        seating_preference:'',payment_method:ans.payment,notes:ans.notes||''
-      })});
-      const data=await resp.json();
-      if(!resp.ok){addMsg('❌ '+(data.error||'Submission failed.'),'bot');return;}
-      const _name = ans.name;
-      addMsg('✅ **Reservation submitted!** You\'ll receive a confirmation email shortly. Thank you, '+_name+'! 🌴','bot');
-      clearOpts(); step=0; botStarted=false; Object.keys(ans).forEach(k=>delete ans[k]);
-      // Block input while showing another-reservation prompt
-      window.cbSend = function(){};
-      setTimeout(()=>{
-        typing();
-        setTimeout(()=>{
-          clearTyping();
-          addMsg('Would you like to make **another reservation**?','bot');
-          showOpts(['Yes, new reservation','No, thanks']);
-          window.cbSend = function(){
-            const inp=document.getElementById('cb-inp'), raw=(inp.value||'').trim().toLowerCase();
-            if(!raw) return;
-            inp.value=''; clearOpts();
-            addMsg(raw.includes('yes')||raw.includes('new')||raw.includes('reserv')?'Yes, new reservation':'No, thanks','user');
-            if(raw.includes('yes')||raw.includes('new')||raw.includes('reserv')){
-              window.cbSend=cbSendOriginal; typing(); startBot();
-            } else {
-              window.cbSend=cbSendOriginal;
-              addMsg('No problem! Feel free to chat again anytime. 😊','bot');
-            }
-          };
-        },400);
-      },1500);
-    }catch(e){addMsg('❌ Could not reach the server. Please try again.','bot');}
+  // ── Time slots ─────────────────────────────────────────────────────────────
+  function renderTimeSlots() {
+    const lastH = closeMin===0 ? closeHour-1 : closeHour;
+    const lastM = closeMin===0 ? 45 : closeMin-15;
+    const slots = [];
+    for (let h = openHour; h <= lastH; h++) {
+      const startM = h===openHour ? openMin : 0, endM = h===lastH ? lastM : 45;
+      for (let m = startM; m <= endM; m += 15)
+        slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+    }
+    showOpts(slots);
+  }
+
+  // ── Main send ──────────────────────────────────────────────────────────────
+  window.cbSend = function cbSend() {
+    const inp = document.getElementById('cb-inp');
+    const raw = inp.value.trim();
+    if (!raw) return;
+
+    // "another reservation?" mode — yes/no only
+    if (mode === 'another') {
+      inp.value = ''; clearOpts();
+      const yes = /yes|new|reserv/i.test(raw);
+      addMsg(yes ? 'Yes, new reservation' : 'No, thanks', 'user');
+      if (yes) {
+        history = [{ role: 'assistant', content: GREETING }];
+        mode = 'chat';
+        addMsg(GREETING, 'bot');
+        unblockInput();
+      } else {
+        mode = 'chat';
+        addMsg('No problem! Feel free to chat again anytime. 😊', 'bot');
+        unblockInput();
+      }
+      return;
+    }
+
+    if (mode !== 'chat') return;
+
+    inp.value = ''; clearOpts();
+    document.getElementById('cb-calendar')?.remove();
+    addMsg(raw, 'user');
+    blockInput();
+    typing();
+
+    history.push({ role: 'user', content: raw });
+
+    fetch(API_BASE + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history.slice(-24) })
+    })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      clearTyping();
+      if (!ok) { addMsg('⚠️ ' + (d.error || 'Something went wrong.'), 'bot'); unblockInput(); return; }
+
+      // Store AI reply in history
+      history.push({ role: 'assistant', content: d.text || '' });
+      addMsg(d.text || '', 'bot');
+
+      if (d.showCalendar) { const n = new Date(); renderCal(n.getFullYear(), n.getMonth()); }
+      if (d.showTimes)    { renderTimeSlots(); }
+
+      if (d.complete && d.collected) {
+        submitReservation(d.collected);
+      } else {
+        unblockInput();
+      }
+    })
+    .catch(() => { clearTyping(); addMsg('⚠️ Network error. Please try again.', 'bot'); unblockInput(); });
+  };
+
+  // ── Submit collected data ──────────────────────────────────────────────────
+  async function submitReservation(c) {
+    // Normalise time: "11:30 AM" → "11:30", "11:30" stays
+    function toHHMM(t) {
+      if (!t) return '11:30';
+      const m = String(t).match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (!m) return t;
+      let h = parseInt(m[1]), min = m[2], ap = (m[3]||'').toUpperCase();
+      if (ap === 'PM' && h !== 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      return `${String(h).padStart(2,'0')}:${min}`;
+    }
+    const time24   = toHHMM(c.time);
+    const dateISO  = c.date + 'T' + time24;
+    const dispTime = new Date(dateISO + ':00').toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+
+    try {
+      const resp = await fetch(API_BASE + '/api/reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:               c.name,
+          department:         c.department || '',
+          phone_ext:          '',
+          guest_type:         (c.status || 'faculty').toLowerCase(),
+          uid:                c.uid || '',
+          email:              c.email,
+          party:              parseInt(c.party),
+          num_days:           parseInt(c.num_days || 1),
+          datetime_iso:       dateISO,
+          datetime_display:   new Date(dateISO + ':00').toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }),
+          reservation_time:   dispTime,
+          seating_preference: '',
+          payment_method:     c.payment_method || 'Credit Card',
+          notes:              c.notes || ''
+        })
+      });
+      const data = await resp.json();
+      clearTyping();
+      if (!resp.ok) {
+        addMsg('❌ ' + (data.error || 'Submission failed. Please try again.'), 'bot');
+        unblockInput(); return;
+      }
+      addMsg(`✅ **Reservation submitted!** You'll receive a confirmation email shortly. Thank you, ${c.name}! 🌴`, 'bot');
+
+      // Ask about another reservation
+      mode = 'another';
+      setTimeout(() => {
+        addMsg('Would you like to make **another reservation**?', 'bot');
+        showOpts(['Yes, new reservation', 'No, thanks']);
+        unblockInput();
+      }, 1400);
+
+    } catch(e) {
+      addMsg('❌ Could not reach the server. Please try again.', 'bot');
+      unblockInput();
+    }
   }
 </script>
 </body>
