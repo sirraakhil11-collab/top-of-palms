@@ -6,10 +6,10 @@ const sgMail  = require('@sendgrid/mail');
 const crypto  = require('crypto');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const FROM       = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+const FROM       = process.env.FROM_EMAIL;
 const NAME       = 'On Top of the Palms';
 const PHONE      = process.env.RESTAURANT_PHONE || '(813) 974-3573';
-const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL || 'topofthepalms@usf.edu';
+const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL;
 
 // Resolve the base URL for email links — must never return a Zscaler-blocked domain
 function getBaseUrl() {

@@ -290,7 +290,7 @@ app.get('/manager/revenue',  auth.requireManager, (req,res)=>res.sendFile(path.j
 
 // ── Test email endpoint — manager only ────────────────────────────────────────
 app.post('/api/test-email', auth.requireManager, async (req, res) => {
-  const to = req.body.to || (process.env.MANAGER_EMAIL || 'akhil.sirra@compass-usa.com');
+  const to = req.body.to || process.env.MANAGER_EMAIL;
   try {
     await sendTestEmail(to);
     res.json({ success: true, message: `Test email sent to ${to}` });
@@ -681,7 +681,7 @@ app.post('/api/directbill/send-batch', auth.requireManager, async (req, res) => 
     if (!process.env.SENDGRID_API_KEY) return res.status(400).json({ error:'SENDGRID_API_KEY not configured' });
     const sgMail = require('@sendgrid/mail');
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+    const FROM_EMAIL = process.env.FROM_EMAIL;
 
     // Build attachments array
     const attachments = docs.map(d => ({
@@ -969,19 +969,19 @@ app.get('/api/revenue', auth.requireManager, async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 // Debug: shows what base URL the server will use in emails (manager only)
 app.get('/api/debug/baseurl', auth.requireManager, (req, res) => {
-  const safeUrl  = process.env.SAFE_URL || null;
-  const base     = (process.env.BASE_URL || '').trim().replace(/\/$/,'');
-  const resolved = safeUrl
+  const safeUrl      = process.env.SAFE_URL || null;
+  const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || null;
+  const base         = (process.env.BASE_URL || '').trim().replace(/\/$/,'');
+  const resolved     = safeUrl
     ? safeUrl
-    : base && base.includes('railway.app')
-      ? base
-      : 'https://top-of-palms-staging.up.railway.app';
+    : railwayDomain
+      ? `https://${railwayDomain}`
+      : base || 'http://localhost:3000';
   res.json({
     SAFE_URL:              safeUrl,
-    RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || null,
+    RAILWAY_PUBLIC_DOMAIN: railwayDomain,
     BASE_URL:              process.env.BASE_URL || null,
-    resolved_url:          resolved,
-    is_safe:               resolved.includes('railway.app') || (safeUrl && !safeUrl.includes('chartwells.com'))
+    resolved_url:          resolved
   });
 });
 
@@ -1317,7 +1317,7 @@ async function runScheduledBatch() {
 
     const sgMail = require('@sendgrid/mail');
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    const FROM_EMAIL = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+    const FROM_EMAIL = process.env.FROM_EMAIL;
     const rate = await directBill.getRate();
     const attachments = docs.map(d => ({ content: d.data_base64, filename: d.filename, type: d.mimetype||'application/pdf', disposition:'attachment' }));
     const rows = docs.map(d => `<tr><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.name||'—'}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.department||'—'}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">${d.reservation_date||'—'}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">$${((d.party||0)*rate).toFixed(2)}</td><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">${d.filename}</td></tr>`).join('');

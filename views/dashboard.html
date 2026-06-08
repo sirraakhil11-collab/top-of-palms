@@ -274,7 +274,7 @@
       <table>
         <thead><tr>
           <th>Name / Type</th><th>Status</th><th>Reservation Date & Time</th>
-          <th>Party</th><th>Department</th><th>Payment</th>
+          <th>Party</th><th>Days</th><th>Ref #</th><th>Department</th><th>Payment</th>
           <th>Seating</th><th>Table</th><th>UID</th><th>Email</th>
           <th>Submitted</th><th>Actions</th>
         </tr></thead>
@@ -938,11 +938,15 @@ function renderTable(data, resetPage=false){
   tb.innerHTML=page.map(r=>{
     const multiDay=r._groupDays>1?`<br><span style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:4px">📅 ${r._groupDays} days</span>`:'';
     const dateDisplay=r._dateRange?`<span style="font-size:11px;color:#6b7280">${x(r._dateRange)}</span>`:x(r.datetime);
+    const days=parseInt(r._groupDays||r.num_days||1);
+    const ref=r.id.slice(0,8).toUpperCase();
     return `<tr>
     <td><strong>${x(r.name)}</strong>${multiDay}<br>${te(r.guest_status)}</td>
     <td>${pm[r.status]||r.status}</td>
     <td style="white-space:nowrap">${dateDisplay}</td>
     <td>${r.party}</td>
+    <td style="font-size:12px;text-align:center">${days>1?`<span style="background:#dbeafe;color:#1d4ed8;font-weight:600;padding:2px 7px;border-radius:5px">${days}</span>`:'<span style="color:#d1d5db">1</span>'}</td>
+    <td style="font-family:monospace;font-size:11px;color:#6b7280">${ref}</td>
     <td style="font-size:11px">${x(r.department||'—')}</td>
     <td style="font-size:11px">${x(r.payment_method||'—')}<br>${dbBadge(r.direct_bill_status)}</td>
     <td style="font-size:11px">${x(r.seating_preference||'—')}</td>

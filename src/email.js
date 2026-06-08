@@ -1,8 +1,8 @@
 const sgMail = require('@sendgrid/mail');
 
-const FROM         = process.env.FROM_EMAIL  || 'reservations@topofthepalms.usf.edu';
+const FROM         = process.env.FROM_EMAIL;
 const NAME         = 'On Top of the Palms Reservations';
-const MANAGER_MAIL = process.env.MANAGER_EMAIL || 'akhil.sirra@compass-usa.com';
+const MANAGER_MAIL = process.env.MANAGER_EMAIL;
 const PHONE        = process.env.RESTAURANT_PHONE || '(813) 974-0000';
 
 // Always set the API key if available
@@ -200,8 +200,8 @@ async function sendTestEmail(toEmail) {
 
 function getSafeBase() {
   if (process.env.SAFE_URL) return process.env.SAFE_URL.trim().replace(/\/$/,'');
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN.trim()}`;
   const base = (process.env.BASE_URL||'').trim().replace(/\/$/,'');
-  if (base && base.includes('railway.app')) return base;
   return base || 'http://localhost:3000';
 }
 
