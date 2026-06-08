@@ -750,6 +750,24 @@ app.get('/directbill/form/:token', (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'directbill-form.html'))
 );
 
+// Demo preview — returns empty mock data so the form renders without a real reservation
+app.get('/api/directbill/form-info/demo', auth.requireManager, (req, res) => {
+  res.json({
+    ref:              'DEMO0000',
+    name:             '',
+    email:            '',
+    phone_ext:        '',
+    department:       '',
+    datetime:         'Demo — not a real reservation',
+    reservation_date: '',
+    reservation_time: '',
+    party:            1,
+    num_days:         1,
+    rate:             12.75,
+    demo:             true
+  });
+});
+
 // Return pre-fill data for the form page
 app.get('/api/directbill/form-info/:token', async (req, res) => {
   try {

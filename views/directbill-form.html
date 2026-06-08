@@ -123,6 +123,8 @@ function renderForm() {
     <h2>Direct Bill Authorization</h2>
     <p class="subtitle">Please complete this form to authorize billing for your upcoming reservation at On Top of the Palms.</p>
 
+    ${rData.demo ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e;font-weight:600">👁 Preview mode — form is read-only, submission disabled</div>` : ''}
+
     <div class="info-box">
       <table>
         <tr><td>Reservation Date</td><td>${esc(rData.reservation_date || rData.datetime)}</td></tr>
@@ -213,7 +215,7 @@ function renderForm() {
         <div class="hint" style="margin-top:4px">A typed name counts as your electronic signature</div>
       </div>
 
-      <button class="submit-btn" id="submit-btn" onclick="submitForm()" disabled>Select Billing Method to Continue</button>
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()" disabled>${rData.demo ? '👁 Preview only — submission disabled' : 'Select Billing Method to Continue'}</button>
       <div class="error-msg" id="error-msg"></div>
     </div>
 
@@ -239,6 +241,7 @@ function showBilling(type) {
   document.getElementById('sec-inkind').classList.toggle('show', type === 'inkind');
   document.getElementById('sec-pcard').classList.toggle('show', type === 'pcard');
   const btn = document.getElementById('submit-btn');
+  if (rData.demo) return;
   btn.disabled = false;
   btn.textContent = type === 'inkind' ? '📧 Submit & Send for Approval' : '✓ Submit Authorization';
 }
