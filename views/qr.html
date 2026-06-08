@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Top of the Palms – QR Code</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:#fff;border-radius:20px;box-shadow:0 4px 32px rgba(0,0,0,.10);padding:40px 32px;max-width:480px;width:100%;text-align:center}
+    .logo{font-size:40px;margin-bottom:8px}
+    h1{font-size:22px;font-weight:800;color:#006747;margin-bottom:4px}
+    .sub{font-size:14px;color:#6b7280;margin-bottom:28px}
+    #qr-wrap{display:inline-block;padding:16px;background:#fff;border:2px solid #e5e7eb;border-radius:16px;margin-bottom:20px}
+    #qr-wrap canvas{display:block}
+    .url-box{background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;font-size:13px;color:#065f46;word-break:break-all;margin-bottom:24px;font-family:monospace}
+    .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .btn{padding:11px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-primary{background:#006747;color:#fff}
+    .btn-primary:hover{background:#005538}
+    .btn-outline{background:#fff;color:#006747;border:1.5px solid #006747}
+    .btn-outline:hover{background:#f0fdf4}
+    .embed-section{margin-top:32px;text-align:left}
+    .embed-section h2{font-size:15px;font-weight:700;color:#111827;margin-bottom:8px}
+    .embed-section p{font-size:13px;color:#6b7280;margin-bottom:10px}
+    .code-box{background:#1e293b;border-radius:10px;padding:14px 16px;font-family:monospace;font-size:12px;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;position:relative}
+    .copy-btn{position:absolute;top:8px;right:8px;background:#334155;color:#94a3b8;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .12s}
+    .copy-btn:hover{background:#475569;color:#fff}
+    .copy-btn.copied{background:#006747;color:#fff}
+    .tabs{display:flex;gap:4px;margin-bottom:12px}
+    .tab{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;color:#6b7280;background:#fff;transition:all .12s}
+    .tab.active{background:#006747;color:#fff;border-color:#006747}
+    .note{font-size:12px;color:#9ca3af;margin-top:8px}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🌴</div>
+  <h1>Top of the Palms</h1>
+  <p class="sub">Scan to make a reservation</p>
+
+  <div id="qr-wrap"></div>
+  <div class="url-box" id="qr-url-display"></div>
+
+  <div class="btns">
+    <button class="btn btn-primary" onclick="downloadQR()">⬇ Download PNG</button>
+    <button class="btn btn-outline" onclick="printQR()">🖨 Print</button>
+  </div>
+
+  <div class="embed-section">
+    <h2>Embed on the USF Website</h2>
+    <p>Choose what to share with USF's web team:</p>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('chatbot',this)">💬 Chat Widget</button>
+      <button class="tab" onclick="switchTab('iframe',this)">🖼 iFrame</button>
+      <button class="tab" onclick="switchTab('link',this)">🔗 Direct Link</button>
+    </div>
+
+    <div id="tab-chatbot">
+      <p>Paste this before <code>&lt;/body&gt;</code> — adds the floating chat bubble to any page:</p>
+      <div class="code-box" id="code-chatbot"><button class="copy-btn" onclick="copyCode('code-chatbot',this)">Copy</button><span id="snippet-chatbot"></span></div>
+      <p class="note">The chat widget connects directly to the Top of the Palms server. No setup needed beyond pasting the snippet.</p>
+    </div>
+
+    <div id="tab-iframe" style="display:none">
+      <p>Embed the full chat UI inside a box on the USF page:</p>
+      <div class="code-box" id="code-iframe"><button class="copy-btn" onclick="copyCode('code-iframe',this)">Copy</button><span id="snippet-iframe"></span></div>
+    </div>
+
+    <div id="tab-link" style="display:none">
+      <p>Just a direct link to the reservation page — simplest option:</p>
+      <div class="code-box" id="code-link"><button class="copy-btn" onclick="copyCode('code-link',this)">Copy</button><span id="snippet-link"></span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const baseUrl = (window.location.origin).replace(/\/$/,'');
+  const reserveUrl = baseUrl + '/reserve';
+  const widgetUrl  = baseUrl + '/widget';
+  const embedJs    = baseUrl + '/embed/chatbot.js';
+
+  document.getElementById('qr-url-display').textContent = reserveUrl;
+
+  // Snippets
+  document.getElementById('snippet-chatbot').textContent =
+    `<!-- Top of the Palms Reservation Widget -->\n<script src="${embedJs}" data-api="${baseUrl}"><\/script>`;
+  document.getElementById('snippet-iframe').textContent =
+    `<!-- Top of the Palms Reservation Chat -->\n<iframe\n  src="${widgetUrl}"\n  width="360"\n  height="560"\n  style="border:none;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.12)"\n  title="Top of the Palms Reservation"\n  allow="clipboard-write"\n></iframe>`;
+  document.getElementById('snippet-link').textContent =
+    `<a href="${reserveUrl}" target="_blank">\n  Make a Reservation at Top of the Palms\n</a>`;
+
+  // Generate QR using qrcodejs (new QRCode API)
+  const qr = new QRCode(document.getElementById('qr-wrap'), {
+    text: reserveUrl,
+    width: 240, height: 240,
+    colorDark: '#006747', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  function getQRCanvas() {
+    return document.getElementById('qr-wrap').querySelector('canvas');
+  }
+
+  function downloadQR() {
+    const canvas = getQRCanvas();
+    const link = document.createElement('a');
+    link.download = 'top-of-palms-qr.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  function printQR() {
+    const canvas = getQRCanvas();
+    const img = canvas.toDataURL('image/png');
+    const w = window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Top of the Palms QR</title><style>body{text-align:center;font-family:sans-serif;padding:40px}img{width:280px;height:280px}h2{color:#006747;margin-bottom:8px}p{color:#374151;font-size:14px}</style></head><body><h2>🌴 Top of the Palms</h2><p>Scan to make a reservation</p><br><img src="${img}"><br><br><p style="font-size:12px;color:#9ca3af">${reserveUrl}</p></body></html>`);
+    w.document.close();
+    w.print();
+  }
+
+  function switchTab(name, btn) {
+    ['chatbot','iframe','link'].forEach(t => {
+      document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+    });
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function copyCode(boxId, btn) {
+    const text = document.getElementById(boxId).querySelector('span').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+</script>
+</body>
+</html>

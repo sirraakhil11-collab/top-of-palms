@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Approve In-Kind Billing — On Top of the Palms</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh;display:flex;flex-direction:column}
+    header{background:#006747;padding:18px 24px;text-align:center}
+    header h1{color:#fff;font-size:20px;font-weight:800}
+    header p{color:#a7d9c2;font-size:12px;margin-top:3px}
+    .wrap{max-width:500px;margin:40px auto;padding:0 16px 60px;width:100%}
+    .card{background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center}
+    .icon{font-size:60px;margin-bottom:16px}
+    h2{font-size:22px;font-weight:700;color:#111827;margin-bottom:10px}
+    p{color:#6b7280;font-size:14px;line-height:1.7;margin-bottom:14px}
+    .info-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:4px 16px;margin:20px 0;text-align:left}
+    .info-box table{width:100%;border-collapse:collapse;font-size:13px}
+    .info-box td{padding:8px 0;border-bottom:1px solid #f3f4f6}
+    .info-box tr:last-child td{border-bottom:none}
+    .info-box td:first-child{color:#6b7280}
+    .info-box td:last-child{font-weight:600;text-align:right}
+    .approve-btn{display:inline-block;background:#006747;color:#fff;border:none;padding:15px 40px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:8px;width:100%}
+    .approve-btn:hover:not(:disabled){background:#005538}
+    .approve-btn:disabled{background:#9ca3af;cursor:default}
+    .error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;color:#b91c1c;font-size:13px;margin-top:12px;display:none}
+    .error-msg.show{display:block}
+    .sig-wrap{margin:20px 0 4px;text-align:left}
+    .sig-label{font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
+    #sig-canvas{width:100%;height:110px;border:1.5px solid #d1d5db;border-radius:10px;cursor:crosshair;touch-action:none;background:#fafafa;display:block}
+    #sig-canvas.signed{border-color:#006747}
+    .sig-actions{display:flex;justify-content:space-between;margin-top:4px;margin-bottom:12px}
+    .sig-hint{font-size:11px;color:#9ca3af}
+    .sig-clear{font-size:12px;color:#9ca3af;cursor:pointer;text-decoration:underline}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>On Top of the Palms</h1>
+    <p>USF Dining · Compass USA</p>
+  </header>
+  <div class="wrap">
+    <div class="card" id="main-card">
+      <p style="color:#9ca3af;padding:20px 0">Loading…</p>
+    </div>
+  </div>
+<script>
+const token = location.pathname.split('/').pop();
+
+async function init() {
+  const card = document.getElementById('main-card');
+  try {
+    const res = await fetch(`/api/directbill/approve-info/${token}`);
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({error:'Invalid link.'}));
+      card.innerHTML = renderState('🔒','Link Not Valid', esc(e.error||'This approval link is invalid, expired, or already used.'));
+      return;
+    }
+    const d = await res.json();
+    if (d.already_approved) {
+      card.innerHTML = renderState('✅','Already Approved','This In-Kind billing has already been approved. No further action needed.');
+      return;
+    }
+    renderApprovalCard(d);
+    setTimeout(initSigPad, 50);
+  } catch(e) {
+    card.innerHTML = renderState('⚠️','Error','Please try again or contact On Top of the Palms.');
+  }
+}
+
+function renderState(icon, title, msg) {
+  return `<div class="icon">${icon}</div><h2>${title}</h2><p>${msg}</p>`;
+}
+
+function renderApprovalCard(d) {
+  const card = document.getElementById('main-card');
+  card.innerHTML = `
+    <div class="icon">📋</div>
+    <h2>In-Kind Billing Approval</h2>
+    <p>Please review the details below and approve the charge to your In-Kind account.</p>
+    <div class="info-box">
+      <table>
+        <tr><td>Guest Name</td><td>${esc(d.name)}</td></tr>
+        <tr><td>Dining Date</td><td>${esc(d.datetime)}</td></tr>
+        <tr><td>Party Size</td><td>${d.party} guest${d.party===1?'':'s'}</td></tr>
+        <tr><td>In-Kind Account</td><td>${esc(d.inkind_account)}</td></tr>
+        <tr><td>Total Amount</td><td style="color:#006747;font-weight:700">${esc(d.amount)}</td></tr>
+      </table>
+    </div>
+    <p style="font-size:13px;color:#374151">Please sign below and click Approve to authorize On Top of the Palms to charge the above In-Kind account.</p>
+    <div class="sig-wrap">
+      <div class="sig-label">Your Signature <span style="color:#b91c1c">*</span> <span style="font-size:11px;font-weight:400;color:#9ca3af">(draw OR type)</span></div>
+      <canvas id="sig-canvas" width="440" height="110"></canvas>
+      <div class="sig-actions">
+        <span class="sig-hint">Draw using mouse, finger, or stylus</span>
+        <span class="sig-clear" onclick="clearSig()">Clear drawing</span>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;color:#9ca3af;white-space:nowrap">— or type —</span>
+        <input type="text" id="f-typed-sig" placeholder="Type your full name as signature" style="flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:15px;font-style:italic;color:#006747;font-family:Georgia,serif" oninput="onTypedSig()">
+      </div>
+      <p style="font-size:11px;color:#9ca3af;margin-top:4px;text-align:left">A typed name counts as your electronic signature</p>
+    </div>
+    <button class="approve-btn" id="approve-btn" onclick="doApprove()">✓ Approve In-Kind Billing</button>
+    <div class="error-msg" id="error-msg"></div>
+  `;
+}
+
+async function doApprove() {
+  const typedSig = (document.getElementById('f-typed-sig')?.value||'').trim();
+  if (!sigHasContent() && !typedSig) {
+    const el = document.getElementById('error-msg');
+    el.textContent = 'Please draw your signature or type your name before approving.';
+    el.classList.add('show');
+    return;
+  }
+  const btn = document.getElementById('approve-btn');
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+  document.getElementById('error-msg').classList.remove('show');
+  try {
+    const res = await fetch(`/api/directbill/approve/${token}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        approver_signature_png: getSigDataUrl(),
+        approver_typed_name: (document.getElementById('f-typed-sig')?.value||'').trim()
+      })
+    });
+    if (res.ok) {
+      document.getElementById('main-card').innerHTML = `
+        <div class="icon">✅</div>
+        <h2 style="color:#15803d">Approval Complete!</h2>
+        <p>You have approved the In-Kind billing. The guest and restaurant have been notified, and the authorization document has been recorded.<br><br>Thank you!</p>
+      `;
+    } else {
+      const e = await res.json().catch(()=>({error:'Approval failed.'}));
+      btn.disabled = false;
+      btn.textContent = '✓ Approve In-Kind Billing';
+      const el = document.getElementById('error-msg');
+      el.textContent = e.error || 'Approval failed. Please try again.';
+      el.classList.add('show');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '✓ Approve In-Kind Billing';
+    const el = document.getElementById('error-msg');
+    el.textContent = 'Network error. Please try again.';
+    el.classList.add('show');
+  }
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Signature pad ─────────────────────────────────────────────────────────────
+let _sd=false,_sp=[];
+function initSigPad(){
+  const c=document.getElementById('sig-canvas');if(!c)return;
+  const ctx=c.getContext('2d');ctx.strokeStyle='#111827';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
+  function pos(e){const r=c.getBoundingClientRect(),s=c.width/r.width,src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*s,y:(src.clientY-r.top)*s};}
+  function start(e){e.preventDefault();_sd=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);_sp.push(p);}
+  function move(e){e.preventDefault();if(!_sd)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x,p.y);_sp.push(p);c.classList.add('signed');}
+  function end(e){e.preventDefault();_sd=false;ctx.beginPath();}
+  c.addEventListener('mousedown',start);c.addEventListener('mousemove',move);c.addEventListener('mouseup',end);c.addEventListener('mouseleave',end);
+  c.addEventListener('touchstart',start,{passive:false});c.addEventListener('touchmove',move,{passive:false});c.addEventListener('touchend',end);
+}
+function clearSig(){const c=document.getElementById('sig-canvas');if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.classList.remove('signed');_sp=[];}
+function sigHasContent(){return _sp.length>5;}
+function onTypedSig(){if((document.getElementById('f-typed-sig')?.value||'').trim())clearSig();}
+function getSigDataUrl(){const c=document.getElementById('sig-canvas');return c&&sigHasContent()?c.toDataURL('image/png'):'';}
+
+// Init sig pad after approval card renders
+init();
+</script>
+</body>
+</html>

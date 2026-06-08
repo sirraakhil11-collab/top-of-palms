@@ -24,6 +24,12 @@
     .deny{background:#b91c1c;color:#fff}
     .deny:hover{background:#991b1b}
     .loading{display:none;color:#6b7280;font-size:14px;margin-top:12px}
+    .sig-wrap{display:none;margin-bottom:20px;text-align:left}
+    .sig-label{font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+    .sig-hint{font-size:12px;color:#9ca3af;margin-bottom:8px}
+    #sig-canvas{width:100%;height:120px;border:1.5px solid #d1d5db;border-radius:10px;cursor:crosshair;touch-action:none;background:#fafafa;display:block}
+    #sig-canvas.signed{border-color:#006747}
+    .sig-clear{font-size:12px;color:#9ca3af;cursor:pointer;text-decoration:underline;margin-top:4px;display:inline-block}
   </style>
 </head>
 <body>
@@ -32,6 +38,12 @@
   <h1 id="title">Loading…</h1>
   <p class="sub" id="sub"></p>
   <div class="details" id="details"></div>
+  <div class="sig-wrap" id="sig-wrap">
+    <div class="sig-label">Manager Signature</div>
+    <div class="sig-hint">Sign below to confirm this action (mouse or touch)</div>
+    <canvas id="sig-canvas" width="420" height="120"></canvas>
+    <span class="sig-clear" onclick="clearSig()">Clear signature</span>
+  </div>
   <div class="btns" id="btns"></div>
   <p class="loading" id="loading">Processing…</p>
 </div>
@@ -59,6 +71,7 @@
       }
 
       const party = r.party + (r.party===1?' guest':' guests');
+      const days  = parseInt(r.num_days || 1);
       document.getElementById('icon').textContent  = action==='approve' ? '✓' : '✕';
       document.getElementById('title').textContent = action==='approve' ? 'Approve this reservation?' : 'Deny this reservation?';
       document.getElementById('sub').textContent   = action==='approve'
@@ -67,10 +80,14 @@
 
       document.getElementById('details').innerHTML = `
         <div class="dr"><span class="dk">Name</span><span class="dv">${esc(r.name)}</span></div>
-        <div class="dr"><span class="dk">Date & time</span><span class="dv">${esc(r.datetime)}</span></div>
+        <div class="dr"><span class="dk">${days>1?'Start date':'Date & time'}</span><span class="dv">${esc(r.datetime)}</span></div>
+        ${days>1?`<div class="dr"><span class="dk">Days</span><span class="dv">${days} consecutive weekdays</span></div>`:''}
         <div class="dr"><span class="dk">Party size</span><span class="dv">${party}</span></div>
         <div class="dr"><span class="dk">Email</span><span class="dv">${esc(r.email)}</span></div>
-        <div class="dr"><span class="dk">USF UID</span><span class="dv" style="font-family:monospace">${esc(r.uid)}</span></div>`;
+        <div class="dr"><span class="dk">Department</span><span class="dv">${esc(r.department||'—')}</span></div>
+        <div class="dr"><span class="dk">USF UID</span><span class="dv" style="font-family:monospace">${esc(r.uid||'—')}</span></div>`;
+
+      // No signature required for restaurant manager — they just click approve
 
       const btnCls  = action==='approve' ? 'approve' : 'deny';
       const btnText = action==='approve' ? '✓ Yes, approve reservation' : '✕ Yes, deny reservation';
@@ -83,7 +100,32 @@
   async function confirm_action() {
     document.getElementById('btns').style.display = 'none';
     document.getElementById('loading').style.display = 'block';
-    window.location.href = `/manager/${action}/${id}`;
+    try {
+      // POST — never fires from an email preview (GET only), confirms the action
+      const resp = await fetch(`/manager/${action}/${id}`, { method: 'POST' });
+      const data = await resp.json();
+      if (!resp.ok) { showError(data.error || 'Action failed. Please try again.'); return; }
+      if (data.already) {
+        document.getElementById('icon').textContent  = '✅';
+        document.getElementById('title').textContent = 'Already processed';
+        document.getElementById('sub').textContent   = `This reservation is already ${data.status}. No further action needed.`;
+        document.getElementById('details').style.display = 'none';
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('btns').innerHTML = `<a href="/manager/dashboard" style="flex:1;display:block;background:#006747;color:#fff;text-decoration:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;text-align:center">← Back to dashboard</a>`;
+        document.getElementById('btns').style.display = 'flex';
+        return;
+      }
+      // Success
+      document.getElementById('icon').textContent  = action === 'approve' ? '✅' : '✕';
+      document.getElementById('title').textContent = action === 'approve' ? '✓ Reservation Approved!' : 'Reservation Denied';
+      document.getElementById('sub').textContent   = action === 'approve'
+        ? `${data.name} has been confirmed for ${data.datetime}. A confirmation email was sent to ${data.email}.`
+        : `${data.name} has been notified at ${data.email}.`;
+      document.getElementById('details').style.display = 'none';
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('btns').innerHTML = `<a href="/manager/dashboard" style="flex:1;display:block;background:#006747;color:#fff;text-decoration:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;text-align:center">← Back to dashboard</a>`;
+      document.getElementById('btns').style.display = 'flex';
+    } catch(e) { showError('Network error — please try again.'); }
   }
 
   function showError(msg) {
@@ -95,6 +137,32 @@
   }
 
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ── Signature pad ────────────────────────────────────────────────────────
+  let sigDrawing = false, sigPoints = [];
+  function initSigPad() {
+    const c = document.getElementById('sig-canvas');
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = '#006747'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    function pos(e) {
+      const r = c.getBoundingClientRect(), scale = c.width / r.width;
+      const src = e.touches ? e.touches[0] : e;
+      return { x:(src.clientX - r.left)*scale, y:(src.clientY - r.top)*scale };
+    }
+    function start(e) { e.preventDefault(); sigDrawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); sigPoints.push(p); }
+    function move(e)  { e.preventDefault(); if(!sigDrawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); sigPoints.push(p); c.classList.add('signed'); }
+    function end(e)   { e.preventDefault(); sigDrawing=false; ctx.beginPath(); }
+
+    c.addEventListener('mousedown', start); c.addEventListener('mousemove', move); c.addEventListener('mouseup', end); c.addEventListener('mouseleave', end);
+    c.addEventListener('touchstart', start, {passive:false}); c.addEventListener('touchmove', move, {passive:false}); c.addEventListener('touchend', end);
+  }
+  function clearSig() {
+    const c = document.getElementById('sig-canvas');
+    c.getContext('2d').clearRect(0,0,c.width,c.height);
+    c.classList.remove('signed'); sigPoints = [];
+  }
+  function sigHasContent() { return sigPoints.length > 5; }
 
   loadReservation();
 </script>

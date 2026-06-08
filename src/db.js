@@ -25,6 +25,8 @@ if (USE_PG) {
     INSERT INTO settings (key, value, updated_at) VALUES ('web_form_enabled',   'true',  NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
     INSERT INTO settings (key, value, updated_at) VALUES ('email_intake_enabled','false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
     INSERT INTO settings (key, value, updated_at) VALUES ('sms_intake_enabled',  'false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('direct_bill_rate',    '12.75', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('daily_limit',         '60',    NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
 
     CREATE TABLE IF NOT EXISTS documents (
       id             TEXT PRIMARY KEY,
@@ -57,6 +59,8 @@ if (USE_PG) {
       attendance          TEXT DEFAULT 'pending',
       checked_in_at       TEXT,
       channel             TEXT DEFAULT 'form',
+      num_days            INTEGER DEFAULT 1,
+      group_id            TEXT DEFAULT NULL,
       created_at          TEXT NOT NULL DEFAULT '',
       processed_at        TEXT
     );
@@ -75,6 +79,12 @@ if (USE_PG) {
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS table_number       TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS channel            TEXT DEFAULT 'form';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS reservation_date   TEXT DEFAULT '';
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS num_days           INTEGER DEFAULT 1;
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS group_id           TEXT DEFAULT NULL;
+
+    -- Direct Bill form submission data
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_data             TEXT DEFAULT '';
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_approval_token   TEXT DEFAULT '';
 
     -- Fix any rows that have NULL in important fields
     UPDATE reservations SET department        = '' WHERE department IS NULL;
@@ -120,7 +130,7 @@ function toDateStr(val) {
 // ── JSON migration ─────────────────────────────────────────────────────────
 if (!USE_PG) {
   const rows = readJSON(); let ch = 0;
-  const defs = { reservation_date:'', reservation_time:'', department:'', phone_ext:'', seating_preference:'', payment_method:'', direct_bill_status:'na', attendance:'pending', checked_in_at:null, notes:'', table_number:'', channel:'form' };
+  const defs = { reservation_date:'', reservation_time:'', department:'', phone_ext:'', seating_preference:'', payment_method:'', direct_bill_status:'na', attendance:'pending', checked_in_at:null, notes:'', table_number:'', channel:'form', direct_bill_data:'', direct_bill_approval_token:'' };
   rows.forEach(r => {
     if (!r.reservation_date && r.datetime) { const d=toDateStr(r.datetime); if(d){r.reservation_date=d;ch++;} }
     Object.entries(defs).forEach(([k,v]) => { if(r[k]===undefined){r[k]=v;ch++;} });
@@ -157,6 +167,8 @@ async function createReservation(data) {
     attendance:         'pending',
     checked_in_at:      null,
     channel:            data.channel           || 'form',
+    num_days:           Math.max(1, parseInt(data.num_days || 1, 10)),
+    group_id:           data.group_id          || null,
     created_at:         now,
     processed_at:       null
   };
@@ -168,15 +180,16 @@ async function createReservation(data) {
         (id, name, guest_status, department, phone_ext, uid, email, party,
          datetime, reservation_date, reservation_time, seating_preference,
          payment_method, direct_bill_status, notes, table_number, status,
-         attendance, checked_in_at, channel, created_at, processed_at)
+         attendance, checked_in_at, channel, num_days, group_id, created_at, processed_at)
       VALUES
-        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
     `, [
       record.id, record.name, record.guest_status, record.department, record.phone_ext,
       record.uid, record.email, record.party, record.datetime, record.reservation_date,
       record.reservation_time, record.seating_preference, record.payment_method,
       record.direct_bill_status, record.notes, record.table_number, record.status,
-      record.attendance, record.checked_in_at, record.channel, record.created_at, record.processed_at
+      record.attendance, record.checked_in_at, record.channel, record.num_days,
+      record.group_id, record.created_at, record.processed_at
     ]);
   } else {
     const rows = readJSON(); rows.unshift(record); writeJSON(rows);
@@ -197,6 +210,11 @@ async function getAllReservations() {
 async function getReservationsByStatus(status) {
   if (USE_PG) { const {rows}=await pool.query('SELECT * FROM reservations WHERE status=$1 ORDER BY created_at DESC',[status]); return rows; }
   return readJSON().filter(r=>r.status===status);
+}
+
+async function getReservationsByGroup(groupId) {
+  if (USE_PG) { const {rows}=await pool.query('SELECT * FROM reservations WHERE group_id=$1 ORDER BY reservation_date ASC',[groupId]); return rows; }
+  return readJSON().filter(r=>r.group_id===groupId).sort((a,b)=>a.reservation_date.localeCompare(b.reservation_date));
 }
 
 async function updateReservation(id, updates) {
@@ -229,7 +247,8 @@ async function getDailyPeopleCount(date) {
 
 async function getStats() {
   const today = new Date().toISOString().split('T')[0];
-  const limit = parseInt(process.env.DAILY_LIMIT||'60');
+  const s = await getAllSettings().catch(()=>({}));
+  const limit = parseInt(s.daily_limit || process.env.DAILY_LIMIT || '60');
 
   if (USE_PG) {
     const {rows}=await pool.query(`
@@ -358,7 +377,7 @@ async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) 
 // ── Service settings (feature flags) ────────────────────────────────────────
 // JSON fallback: persist in a settings.json file in the data directory
 const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
-const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'' };
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'', open_time:'11:30', close_time:'14:00', direct_bill_rate:'12.75', daily_limit:'60' };
 
 async function getAllSettings() {
   if (USE_PG) {
@@ -384,4 +403,4 @@ async function updateSetting(key, value) {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
 }
 
-module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange,getAllSettings,updateSetting};
+module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,getReservationsByGroup,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange,getAllSettings,updateSetting};

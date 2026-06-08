@@ -3,440 +3,740 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Reservation Manager — Top of the Palms</title>
+  <title>Manager Dashboard — Top of the Palms</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --green:#006747;--green-dark:#004d34;--green-pale:#f0fdf4;
+      --gold:#CFC493;--amber:#d97706;--amber-pale:#fffbeb;
+      --red:#b91c1c;--red-pale:#fef2f2;--blue:#2563eb;--blue-pale:#eff6ff;
+      --purple:#7c3aed;--purple-pale:#f5f3ff;
+      --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+      --gray-400:#9ca3af;--gray-600:#4b5563;--gray-900:#111827;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-100);color:var(--gray-900);min-height:100vh}
 
-    :root {
-      --green:      #006747;
-      --green-dark: #004d34;
-      --green-pale: #f0fdf4;
-      --gold:       #CFC493;
-      --amber:      #d97706;
-      --amber-pale: #fffbeb;
-      --red:        #b91c1c;
-      --red-pale:   #fef2f2;
-      --blue:       #2563eb;
-      --gray-50:    #f9fafb;
-      --gray-100:   #f3f4f6;
-      --gray-200:   #e5e7eb;
-      --gray-400:   #9ca3af;
-      --gray-600:   #4b5563;
-      --gray-900:   #111827;
-    }
+    /* ── Header ── */
+    header{background:var(--green);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+    .hl{display:flex;align-items:center;gap:12px}
+    .logo{width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .h-title{color:#fff;font-size:16px;font-weight:700}
+    .h-sub{color:var(--gold);font-size:12px;margin-top:1px}
+    .hr{display:flex;align-items:center;gap:10px}
+    .ts{background:rgba(255,255,255,.12);color:var(--gold);font-size:11px;padding:4px 10px;border-radius:12px;font-weight:500}
+    .hbtn{background:rgba(255,255,255,.15);color:#fff;border:none;padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500}
+    .hbtn:hover{background:rgba(255,255,255,.25)}
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-      background: var(--gray-100);
-      color: var(--gray-900);
-      min-height: 100vh;
-    }
+    /* ── Nav tabs ── */
+    .nav{background:#fff;border-bottom:1px solid var(--gray-200);padding:0 32px;display:flex;gap:0;position:sticky;top:64px;z-index:19}
+    .nav-btn{padding:14px 20px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--gray-400);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .15s}
+    .nav-btn.active{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+    .nav-btn:hover:not(.active){color:var(--gray-900)}
+    .nav-badge{background:var(--amber);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:6px}
+    .nav-badge.green{background:var(--green)}
 
-    /* ── Header ─────────────────────────────────────────────── */
-    header {
-      background: var(--green);
-      padding: 0 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 64px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      box-shadow: 0 2px 8px rgba(0,0,0,.18);
-    }
-    .header-left { display: flex; align-items: center; gap: 12px; }
-    .header-logo {
-      width: 38px; height: 38px; background: rgba(255,255,255,.15);
-      border-radius: 10px; display: flex; align-items: center;
-      justify-content: center; font-size: 20px;
-    }
-    .header-title { color: #fff; font-size: 16px; font-weight: 700; }
-    .header-sub   { color: var(--gold); font-size: 12px; margin-top: 1px; }
-    .header-right { display: flex; align-items: center; gap: 12px; }
-    .refresh-badge {
-      background: rgba(255,255,255,.12); color: var(--gold);
-      font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 500;
-    }
-    .refresh-btn {
-      background: rgba(255,255,255,.15); color: #fff; border: none;
-      padding: 7px 14px; border-radius: 8px; font-size: 13px;
-      cursor: pointer; font-weight: 500;
-    }
-    .refresh-btn:hover { background: rgba(255,255,255,.25); }
+    /* ── Layout ── */
+    main{max-width:1280px;margin:0 auto;padding:28px 24px 80px}
+    .tab-pane{display:none}
+    .tab-pane.active{display:block}
 
-    /* ── Layout ─────────────────────────────────────────────── */
-    main { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
+    /* ── Stats row ── */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+    .stat-card{background:#fff;border-radius:12px;padding:20px 24px;border:1px solid var(--gray-200);position:relative;overflow:hidden}
+    .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--green))}
+    .stat-lbl{font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+    .stat-val{font-size:32px;font-weight:700;color:var(--gray-900);line-height:1}
+    .stat-sub{font-size:12px;color:var(--gray-400);margin-top:4px}
+    .sc-amber{--accent:var(--amber)}.sc-green{--accent:var(--green)}.sc-red{--accent:var(--red)}.sc-blue{--accent:var(--blue)}.sc-purple{--accent:var(--purple)}
 
-    /* ── Stats row ──────────────────────────────────────────── */
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
-    .stat-card {
-      background: #fff; border-radius: 12px; padding: 20px 24px;
-      border: 1px solid var(--gray-200); position: relative; overflow: hidden;
-    }
-    .stat-card::before {
-      content: ''; position: absolute; top: 0; left: 0;
-      right: 0; height: 3px; background: var(--accent, var(--green));
-    }
-    .stat-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
-    .stat-value { font-size: 32px; font-weight: 700; color: var(--gray-900); line-height: 1; }
-    .stat-card.pending  { --accent: var(--amber); }
-    .stat-card.approved { --accent: var(--green); }
-    .stat-card.denied   { --accent: var(--red); }
-    .stat-card.total    { --accent: var(--blue); }
+    /* ── Section headers ── */
+    .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;margin-top:8px}
+    .sec-title{font-size:16px;font-weight:700;color:var(--gray-900)}
+    .cnt-badge{background:var(--amber);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;margin-left:8px}
+    .cnt-badge.zero{background:var(--gray-200);color:var(--gray-600)}
 
-    /* ── Section headers ────────────────────────────────────── */
-    .section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 16px; margin-top: 8px;
-    }
-    .section-title { font-size: 16px; font-weight: 700; color: var(--gray-900); }
-    .count-badge {
-      background: var(--amber); color: #fff;
-      font-size: 11px; font-weight: 700; padding: 3px 9px;
-      border-radius: 10px; margin-left: 8px;
-    }
-    .count-badge.zero { background: var(--gray-200); color: var(--gray-600); }
+    /* ── Pending cards ── */
+    .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+    .res-card{background:#fff;border-radius:12px;border:1px solid var(--gray-200);overflow:hidden;transition:box-shadow .15s}
+    .res-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.09)}
+    .card-hdr{padding:16px 20px 12px;border-bottom:1px solid var(--gray-100);display:flex;align-items:flex-start;justify-content:space-between}
+    .card-name{font-size:15px;font-weight:700;color:var(--gray-900)}
+    .card-time{font-size:12px;color:var(--gray-400);margin-top:2px}
+    .spill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;white-space:nowrap;flex-shrink:0;margin-left:8px}
+    .sp-pending{background:#fef3c7;color:#b45309}
+    .sp-approved{background:#dcfce7;color:#15803d}
+    .sp-denied{background:#fee2e2;color:#b91c1c}
+    .sp-auto{background:#dbeafe;color:#1d4ed8}
+    .card-body{padding:14px 20px}
+    .card-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+    .card-key{color:var(--gray-400)}.card-val{color:var(--gray-900);font-weight:500;text-align:right;max-width:60%;word-break:break-word}
+    .mono{font-family:'SF Mono','Fira Code',monospace;font-size:12px}
+    .card-acts{padding:12px 20px 16px;display:flex;gap:8px}
+    .btn-ok,.btn-no{flex:1;padding:9px 0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;text-align:center;text-decoration:none;display:block;transition:opacity .12s}
+    .btn-ok{background:var(--green);color:#fff}.btn-ok:hover{opacity:.88}
+    .btn-no{background:#fff;color:var(--red);border:1.5px solid var(--red)}.btn-no:hover{background:var(--red-pale)}
 
-    /* ── Pending cards grid ─────────────────────────────────── */
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    /* ── Table ── */
+    .tbl-wrap{background:#fff;border-radius:12px;border:1px solid var(--gray-200);overflow:hidden;margin-top:20px}
+    .tab-bar{display:flex;border-bottom:1px solid var(--gray-200);padding:0 20px;overflow-x:auto;gap:0}
+    .tab-btn{padding:12px 16px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--gray-400);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+    .tab-btn.active{color:var(--green);border-bottom-color:var(--green)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;padding:11px 16px;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;background:var(--gray-50);border-bottom:1px solid var(--gray-200)}
+    td{padding:11px 16px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:var(--gray-50)}
+    .empty{text-align:center;padding:48px 20px;color:var(--gray-400)}
+    .empty-icon{font-size:32px;margin-bottom:12px}
 
-    .res-card {
-      background: #fff; border-radius: 12px; border: 1px solid var(--gray-200);
-      overflow: hidden; transition: box-shadow .15s;
-    }
-    .res-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.09); }
-    .card-header {
-      padding: 16px 20px 12px; border-bottom: 1px solid var(--gray-100);
-      display: flex; align-items: flex-start; justify-content: space-between;
-    }
-    .card-name { font-size: 15px; font-weight: 700; color: var(--gray-900); }
-    .card-time { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
-    .status-pill {
-      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px;
-      white-space: nowrap; flex-shrink: 0; margin-left: 8px;
-    }
-    .status-pending  { background: #fef3c7; color: #b45309; }
-    .status-approved { background: #dcfce7; color: #15803d; }
-    .status-denied   { background: #fee2e2; color: #b91c1c; }
-    .status-auto     { background: #dbeafe; color: #1d4ed8; }
+    /* ── DB status badges ── */
+    .db-na{color:var(--gray-400);font-size:12px}
+    .db-pending{background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px}
+    .db-sent{background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px}
+    .db-received{background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px}
 
-    .card-body { padding: 14px 20px; }
-    .card-row  { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
-    .card-key  { color: var(--gray-400); }
-    .card-val  { color: var(--gray-900); font-weight: 500; text-align: right; max-width: 60%; word-break: break-word; }
-    .mono      { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+    /* ── Revenue cards ── */
+    .rev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:28px}
 
-    .card-actions {
-      padding: 12px 20px 16px; display: flex; gap: 8px;
-    }
-    .btn-approve, .btn-deny {
-      flex: 1; padding: 9px 0; border-radius: 8px; font-size: 13px;
-      font-weight: 600; cursor: pointer; border: none; text-align: center;
-      text-decoration: none; display: block; transition: opacity .12s;
-    }
-    .btn-approve { background: var(--green); color: #fff; }
-    .btn-approve:hover { opacity: .88; }
-    .btn-deny    { background: #fff; color: var(--red); border: 1.5px solid var(--red); }
-    .btn-deny:hover { background: var(--red-pale); }
+    /* ── Settings panels ── */
+    .settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+    .settings-panel{background:#fff;border-radius:12px;border:1px solid var(--gray-200);padding:24px}
+    .settings-panel h3{font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:4px}
+    .settings-panel p{font-size:13px;color:var(--gray-400);margin-bottom:18px;line-height:1.5}
+    .settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-100)}
+    .settings-row:last-child{border-bottom:none}
+    .sr-label{font-size:13px;font-weight:500;color:var(--gray-900)}
+    .sr-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
+    .toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+    .toggle input{opacity:0;width:0;height:0}
+    .slider{position:absolute;inset:0;background:#d1d5db;border-radius:12px;cursor:pointer;transition:.2s}
+    .slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+    input:checked+.slider{background:var(--green)}
+    input:checked+.slider:before{transform:translateX(18px)}
+    .time-row{display:flex;gap:12px;margin-top:12px}
+    .time-inp{flex:1;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:var(--gray-900)}
+    .time-inp:focus{border-color:var(--green)}
+    .price-inp{padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:18px;font-weight:700;font-family:inherit;outline:none;color:var(--green);width:120px;text-align:center}
+    .price-inp:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,103,71,.08)}
+    .save-btn{background:var(--green);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;margin-top:12px}
+    .save-btn:hover{opacity:.88}
+    .save-btn:disabled{background:var(--gray-400);cursor:default}
 
-    /* ── All reservations table ─────────────────────────────── */
-    .table-wrapper {
-      background: #fff; border-radius: 12px; border: 1px solid var(--gray-200);
-      overflow: hidden; margin-top: 32px;
-    }
-    .tab-bar {
-      display: flex; border-bottom: 1px solid var(--gray-200); padding: 0 20px;
-    }
-    .tab-btn {
-      padding: 12px 16px; font-size: 13px; font-weight: 500;
-      border: none; background: none; cursor: pointer; color: var(--gray-400);
-      border-bottom: 2px solid transparent; margin-bottom: -1px;
-    }
-    .tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
-    .tab-btn:hover:not(.active) { color: var(--gray-900); }
+    /* ── QR code panel ── */
+    .qr-box{text-align:center;padding:12px 0}
+    .qr-box img{width:200px;height:200px;border:4px solid var(--green);border-radius:12px;margin:0 auto 12px;display:block}
+    .qr-url{font-size:12px;color:var(--blue);word-break:break-all;text-decoration:none;display:block;margin-bottom:12px}
+    .qr-url:hover{text-decoration:underline}
+    .copy-btn{background:var(--blue-pale);color:var(--blue);border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-right:8px}
+    .dl-btn{background:var(--green-pale);color:var(--green);border:1px solid var(--green);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
 
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      text-align: left; padding: 11px 16px; font-size: 11px; font-weight: 600;
-      color: var(--gray-400); text-transform: uppercase; letter-spacing: .05em;
-      background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
-    }
-    td { padding: 12px 16px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--gray-50); }
+    /* ── Toast ── */
+    #toast{position:fixed;bottom:24px;right:24px;background:var(--gray-900);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:100}
+    #toast.show{opacity:1}
+    .spinner{width:18px;height:18px;border:2px solid var(--gray-200);border-top-color:var(--green);border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* ── Empty states ───────────────────────────────────────── */
-    .empty {
-      text-align: center; padding: 48px 20px; color: var(--gray-400);
+    @media(max-width:768px){
+      .stats{grid-template-columns:1fr 1fr}
+      header{padding:0 16px}.nav{padding:0 12px}
+      main{padding:20px 12px 60px}
     }
-    .empty-icon { font-size: 32px; margin-bottom: 12px; }
-    .empty p { font-size: 14px; }
-
-    /* ── Toast ──────────────────────────────────────────────── */
-    #toast {
-      position: fixed; bottom: 24px; right: 24px; background: var(--gray-900);
-      color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px;
-      opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 100;
-    }
-    #toast.show { opacity: 1; }
-
-    /* ── Spinner ────────────────────────────────────────────── */
-    .spinner {
-      width: 18px; height: 18px; border: 2px solid var(--gray-200);
-      border-top-color: var(--green); border-radius: 50%;
-      animation: spin .6s linear infinite; display: inline-block;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    @media (max-width: 640px) {
-      .stats { grid-template-columns: 1fr 1fr; }
-      header { padding: 0 16px; }
-      main   { padding: 20px 12px 48px; }
+    @media(max-width:480px){
+      .stats{grid-template-columns:1fr 1fr}
+      .nav-btn{padding:12px 10px;font-size:12px}
     }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="header-left">
-    <div class="header-logo">🌴</div>
-    <div>
-      <div class="header-title">Reservation Manager</div>
-      <div class="header-sub">Top of the Palms · USF Dining</div>
-    </div>
+  <div class="hl">
+    <div class="logo">🌴</div>
+    <div><div class="h-title">Reservation Manager</div><div class="h-sub">Top of the Palms · USF Dining</div></div>
   </div>
-  <div class="header-right">
-    <span class="refresh-badge" id="last-updated">Loading…</span>
-    <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+  <div class="hr">
+    <span class="ts" id="last-updated">Loading…</span>
+    <button class="hbtn" onclick="loadAll()">↻ Refresh</button>
+    <a class="hbtn" href="/pos" style="text-decoration:none">POS →</a>
   </div>
 </header>
 
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchNav('reservations',this)">Reservations <span class="nav-badge" id="nb-pending">0</span></button>
+  <button class="nav-btn" onclick="switchNav('directbill',this)">Direct Bill <span class="nav-badge green" id="nb-db">0</span></button>
+  <button class="nav-btn" onclick="switchNav('revenue',this)">Revenue</button>
+  <button class="nav-btn" onclick="switchNav('settings',this)">Settings</button>
+</nav>
+
 <main>
 
-  <!-- Stats row -->
+<!-- ══════════════════ RESERVATIONS TAB ══════════════════ -->
+<div class="tab-pane active" id="pane-reservations">
   <div class="stats">
-    <div class="stat-card pending">
-      <div class="stat-label">Pending approval</div>
-      <div class="stat-value" id="stat-pending"><span class="spinner"></span></div>
-    </div>
-    <div class="stat-card approved">
-      <div class="stat-label">Approved today</div>
-      <div class="stat-value" id="stat-approved">–</div>
-    </div>
-    <div class="stat-card denied">
-      <div class="stat-label">Denied today</div>
-      <div class="stat-value" id="stat-denied">–</div>
-    </div>
-    <div class="stat-card total">
-      <div class="stat-label">Total today</div>
-      <div class="stat-value" id="stat-total">–</div>
-    </div>
+    <div class="stat-card sc-amber"><div class="stat-lbl">Pending approval</div><div class="stat-val" id="s-pending"><span class="spinner"></span></div></div>
+    <div class="stat-card sc-green"><div class="stat-lbl">Approved today</div><div class="stat-val" id="s-approved">–</div></div>
+    <div class="stat-card sc-red"><div class="stat-lbl">Denied all-time</div><div class="stat-val" id="s-denied">–</div></div>
+    <div class="stat-card sc-blue"><div class="stat-lbl">Guests today</div><div class="stat-val" id="s-people">–</div><div class="stat-sub" id="s-slots"></div></div>
   </div>
 
-  <!-- Pending section -->
-  <div class="section-header">
+  <div class="sec-hdr">
     <div style="display:flex;align-items:center">
-      <span class="section-title">Pending approvals</span>
-      <span class="count-badge zero" id="pending-count">0</span>
+      <span class="sec-title">Pending approvals</span>
+      <span class="cnt-badge zero" id="pending-count">0</span>
     </div>
   </div>
-  <div class="cards-grid" id="pending-grid">
-    <div class="empty"><div class="spinner"></div></div>
-  </div>
+  <div class="cards-grid" id="pending-grid"><div class="empty"><div class="spinner"></div></div></div>
 
-  <!-- All reservations table -->
-  <div class="table-wrapper" style="margin-top:36px">
+  <div class="tbl-wrap" style="margin-top:32px">
     <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchTab('all', this)">All reservations</button>
-      <button class="tab-btn" onclick="switchTab('approved', this)">Approved</button>
-      <button class="tab-btn" onclick="switchTab('pending_approval', this)">Pending</button>
-      <button class="tab-btn" onclick="switchTab('denied', this)">Denied</button>
+      <button class="tab-btn active" onclick="switchTab('all',this)">All</button>
+      <button class="tab-btn" onclick="switchTab('approved',this)">Approved</button>
+      <button class="tab-btn" onclick="switchTab('pending_approval',this)">Pending</button>
+      <button class="tab-btn" onclick="switchTab('denied',this)">Denied</button>
+    </div>
+    <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--gray-100)">
+      <input id="tbl-search" placeholder="Search name, email, ref…" oninput="renderTable(filteredData())"
+        style="flex:1;min-width:160px;padding:7px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit;outline:none;color:var(--gray-900)">
+      <input type="date" id="tbl-date" oninput="renderTable(filteredData())"
+        style="padding:7px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit;outline:none">
     </div>
     <div style="overflow-x:auto">
       <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Date & time</th>
-            <th>Party</th>
-            <th>UID</th>
-            <th>Email</th>
-            <th>Requested</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="res-tbody">
-          <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray-400)">Loading…</td></tr>
-        </tbody>
+        <thead><tr>
+          <th>Name</th><th>Status</th><th>Date & time</th><th>Party</th><th>Payment</th><th>Direct Bill</th><th>Requested</th><th>Action</th>
+        </tr></thead>
+        <tbody id="res-tbody"><tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray-400)">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
+</div>
+
+<!-- ══════════════════ DIRECT BILL TAB ══════════════════ -->
+<div class="tab-pane" id="pane-directbill">
+  <div class="stats">
+    <div class="stat-card sc-amber"><div class="stat-lbl">Pending send</div><div class="stat-val" id="db-s-pending">–</div></div>
+    <div class="stat-card sc-blue"><div class="stat-lbl">Form sent</div><div class="stat-val" id="db-s-sent">–</div></div>
+    <div class="stat-card sc-green"><div class="stat-lbl">Received/approved</div><div class="stat-val" id="db-s-received">–</div></div>
+    <div class="stat-card sc-purple"><div class="stat-lbl">In-Kind pending</div><div class="stat-val" id="db-s-inkind">–</div></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div style="font-size:15px;font-weight:700">Direct Bill Reservations</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="db-filter" onchange="renderDbTable()" style="padding:7px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit;outline:none">
+          <option value="all">All statuses</option>
+          <option value="pending_send">Pending send</option>
+          <option value="sent">Sent / awaiting</option>
+          <option value="received">Received / approved</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Name</th><th>Dining Date</th><th>Party</th><th>Amount</th><th>Status</th><th>Billing Type</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="db-tbody"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--gray-400)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ REVENUE TAB ══════════════════ -->
+<div class="tab-pane" id="pane-revenue">
+  <div class="stats rev-grid" id="rev-stats">
+    <div class="stat-card sc-green"><div class="stat-lbl">Estimated Revenue</div><div class="stat-val" id="rev-total">–</div><div class="stat-sub">All active reservations</div></div>
+    <div class="stat-card sc-blue"><div class="stat-lbl">Actual (Checked-In)</div><div class="stat-val" id="rev-actual">–</div><div class="stat-sub">Confirmed attendance</div></div>
+    <div class="stat-card sc-purple"><div class="stat-lbl">Direct Bill Revenue</div><div class="stat-val" id="rev-db">–</div><div class="stat-sub">Direct bill reservations</div></div>
+    <div class="stat-card sc-amber"><div class="stat-lbl">Rate Per Person</div><div class="stat-val" id="rev-rate">–</div><div class="stat-sub">Current dining rate</div></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--gray-100)">
+      <div style="font-size:15px;font-weight:700">Monthly Breakdown</div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Month</th><th>Reservations</th><th>Guests</th><th>Est. Revenue</th><th>Direct Bill</th><th>Other</th>
+        </tr></thead>
+        <tbody id="rev-tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray-400)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ SETTINGS TAB ══════════════════ -->
+<div class="tab-pane" id="pane-settings">
+  <div class="settings-grid">
+
+    <!-- Price per person -->
+    <div class="settings-panel">
+      <h3>💰 Dining Rate</h3>
+      <p>Price per person charged on reservations. Updates everywhere — reserve form, direct bill PDFs, and revenue calculations.</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="font-size:28px;font-weight:700;color:var(--green)">$</div>
+        <input type="number" class="price-inp" id="rate-inp" min="1" max="999" step="0.25" placeholder="12.75">
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-bottom:12px">Per person, per day</div>
+      <button class="save-btn" onclick="saveRate()">Save Rate</button>
+      <div id="rate-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+    </div>
+
+    <!-- Operating hours -->
+    <div class="settings-panel">
+      <h3>🕐 Operating Hours</h3>
+      <p>Sets the available time slots shown on the reservation form. Monday–Friday only.</p>
+      <div class="settings-row">
+        <div><div class="sr-label">Open time</div><div class="sr-sub">Earliest bookable slot</div></div>
+        <input type="time" class="time-inp" id="open-time" style="width:120px">
+      </div>
+      <div class="settings-row">
+        <div><div class="sr-label">Close time</div><div class="sr-sub">Latest bookable slot</div></div>
+        <input type="time" class="time-inp" id="close-time" style="width:120px">
+      </div>
+      <button class="save-btn" onclick="saveHours()">Save Hours</button>
+      <div id="hours-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+    </div>
+
+    <!-- Feature flags (admin only) -->
+    <div class="settings-panel" id="admin-panel" style="display:none">
+      <h3>⚙️ Intake Channels</h3>
+      <p>Enable or disable reservation intake sources. Admin PIN required.</p>
+      <div class="settings-row">
+        <div><div class="sr-label">Web form</div><div class="sr-sub">reserve.html public form</div></div>
+        <label class="toggle"><input type="checkbox" id="tog-web" onchange="toggleFlag('web_form_enabled',this.checked)"><span class="slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="sr-label">Email intake</div><div class="sr-sub">Inbound email → reservation</div></div>
+        <label class="toggle"><input type="checkbox" id="tog-email" onchange="toggleFlag('email_intake_enabled',this.checked)"><span class="slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="sr-label">SMS intake</div><div class="sr-sub">Inbound SMS → reservation</div></div>
+        <label class="toggle"><input type="checkbox" id="tog-sms" onchange="toggleFlag('sms_intake_enabled',this.checked)"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- Reserve Form Config -->
+    <div class="settings-panel">
+      <h3>📋 Reserve Form</h3>
+      <p>Control what guests see on the reservation form at <code>/reserve</code>.</p>
+      <div class="settings-row">
+        <div><div class="sr-label">Online reservations</div><div class="sr-sub">Enable the public reservation form</div></div>
+        <label class="toggle"><input type="checkbox" id="tog-web2" onchange="toggleFlag('web_form_enabled',this.checked)"><span class="slider"></span></label>
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <div class="sr-label">Daily guest limit</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="daily-limit-inp" min="1" max="500" step="1" placeholder="60"
+            style="width:90px;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:15px;font-family:inherit;outline:none;color:var(--gray-900)">
+          <button class="save-btn" style="margin-top:0" onclick="saveDailyLimit()">Save</button>
+        </div>
+        <div id="limit-msg" style="font-size:12px;min-height:16px"></div>
+      </div>
+      <div style="margin-top:12px">
+        <a href="/reserve" target="_blank" style="display:inline-block;background:var(--green-pale);color:var(--green);border:1px solid #bbf7d0;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">🔗 Preview Form →</a>
+      </div>
+    </div>
+
+    <!-- QR Code -->
+    <div class="settings-panel">
+      <h3>📱 Reservation QR Code</h3>
+      <p>Share this QR code on your website, posters, or digital signage so guests can scan to make a reservation.</p>
+      <div class="qr-box" id="qr-box">
+        <div class="spinner" style="margin:30px auto"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 </main>
-
 <div id="toast"></div>
 
 <script>
-  let allData = [];
-  let currentTab = 'all';
+let allData = [], currentTab = 'all', currentRole = null;
 
-  // ── Data loading ───────────────────────────────────────────────────────────
+// ── Navigation ───────────────────────────────────────────────────────────────
+function switchNav(pane, el) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pane-'+pane).classList.add('active');
+  if (pane === 'revenue') loadRevenue();
+  if (pane === 'settings') loadSettings();
+  if (pane === 'directbill') renderDbTable();
+}
 
-  async function loadAll() {
-    try {
-      const [stats, reservations] = await Promise.all([
-        fetch('/api/stats').then(r => r.json()),
-        fetch('/api/reservations').then(r => r.json())
-      ]);
+// ── Load all data ─────────────────────────────────────────────────────────────
+async function loadAll() {
+  try {
+    const [meRes, statsRes, resRes] = await Promise.all([
+      fetch('/api/me'),
+      fetch('/api/stats').then(r=>r.json()),
+      fetch('/api/reservations').then(r=>r.json())
+    ]);
+    if (meRes.ok) { const me = await meRes.json(); currentRole = me.role; }
 
-      allData = reservations;
-      renderStats(stats);
-      renderPendingCards(reservations.filter(r => r.status === 'pending_approval'));
-      renderTable(filteredData());
-      updateTimestamp();
-    } catch (err) {
-      showToast('Failed to load data — retrying in 30s');
-      console.error(err);
-    }
+    allData = resRes;
+    renderStats(statsRes);
+    renderPendingCards(allData.filter(r => r.status === 'pending_approval'));
+    renderTable(filteredData());
+    updateTs();
+
+    const dbActive = allData.filter(r => r.payment_method && r.payment_method.includes('Direct Bill'));
+    document.getElementById('nb-db').textContent = dbActive.filter(r => ['pending_send','sent'].includes(r.direct_bill_status)).length;
+    document.getElementById('nb-pending').textContent = statsRes.pending || 0;
+
+    renderDbStats(dbActive);
+  } catch(err) {
+    showToast('Failed to load data');
+    console.error(err);
   }
+}
 
-  function filteredData() {
-    if (currentTab === 'all') return allData;
-    return allData.filter(r => r.status === currentTab);
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderStats(s) {
+  document.getElementById('s-pending').textContent  = s.pending || 0;
+  document.getElementById('s-approved').textContent = s.approved_today || 0;
+  document.getElementById('s-denied').textContent   = s.denied_all || 0;
+  document.getElementById('s-people').textContent   = s.people_today || 0;
+  document.getElementById('s-slots').textContent    = `${s.slots_left ?? '–'} slots left`;
+}
+
+// ── Pending cards ─────────────────────────────────────────────────────────────
+function renderPendingCards(pending) {
+  const grid  = document.getElementById('pending-grid');
+  const badge = document.getElementById('pending-count');
+  badge.textContent = pending.length;
+  badge.className   = 'cnt-badge' + (pending.length ? '' : ' zero');
+
+  if (!pending.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">✓</div><p>No pending approvals!</p></div>`;
+    return;
   }
-
-  // ── Stats ──────────────────────────────────────────────────────────────────
-
-  function renderStats(s) {
-    document.getElementById('stat-pending').textContent  = s.pending;
-    document.getElementById('stat-approved').textContent = s.approved_today;
-    document.getElementById('stat-denied').textContent   = s.denied_today;
-    document.getElementById('stat-total').textContent    = s.total_today;
-  }
-
-  // ── Pending cards ──────────────────────────────────────────────────────────
-
-  function renderPendingCards(pending) {
-    const grid  = document.getElementById('pending-grid');
-    const badge = document.getElementById('pending-count');
-    badge.textContent = pending.length;
-    badge.className   = 'count-badge' + (pending.length ? '' : ' zero');
-
-    if (!pending.length) {
-      grid.innerHTML = `<div class="empty"><div class="empty-icon">✓</div><p>No pending approvals — you're all caught up!</p></div>`;
-      return;
-    }
-
-    grid.innerHTML = pending.map(r => `
-      <div class="res-card" id="card-${r.id}">
-        <div class="card-header">
-          <div>
-            <div class="card-name">${esc(r.name)}</div>
-            <div class="card-time">Requested ${timeAgo(r.created_at)}</div>
-          </div>
-          <span class="status-pill status-pending">Pending</span>
+  grid.innerHTML = pending.map(r => {
+    const days = parseInt(r.num_days || 1);
+    // Build date rows for multi-day bookings
+    const datesHtml = `
+      <div class="card-row"><span class="card-key">${days > 1 ? 'Start date' : 'Date & time'}</span><span class="card-val">${esc(r.datetime)}</span></div>
+      ${days > 1 ? `<div class="card-row"><span class="card-key">Days</span><span class="card-val"><strong>${days} consecutive weekdays</strong></span></div>` : ''}`;
+    return `
+    <div class="res-card" id="card-${r.id}">
+      <div class="card-hdr">
+        <div>
+          <div class="card-name">${esc(r.name)}</div>
+          <div class="card-time">Requested ${timeAgo(r.created_at)}</div>
         </div>
-        <div class="card-body">
-          <div class="card-row"><span class="card-key">Date & time</span><span class="card-val">${esc(r.datetime)}</span></div>
-          <div class="card-row"><span class="card-key">Party size</span><span class="card-val">${r.party} ${r.party === 1 ? 'guest' : 'guests'}</span></div>
-          <div class="card-row"><span class="card-key">USF UID</span><span class="card-val mono">${esc(r.uid)}</span></div>
-          <div class="card-row"><span class="card-key">Email</span><span class="card-val">${esc(r.email)}</span></div>
-          <div class="card-row"><span class="card-key">Caller</span><span class="card-val">${esc(r.caller_number) || '—'}</span></div>
-        </div>
-        <div class="card-actions">
-          <a class="btn-approve" href="/manager/approve/${r.id}">✓ Approve</a>
-          <a class="btn-deny" href="/manager/deny/${r.id}">✕ Deny</a>
-        </div>
+        <span class="spill sp-pending">Pending</span>
       </div>
-    `).join('');
+      <div class="card-body">
+        ${datesHtml}
+        <div class="card-row"><span class="card-key">Party size</span><span class="card-val">${r.party} guest${r.party===1?'':'s'}</span></div>
+        <div class="card-row"><span class="card-key">Days</span><span class="card-val">${parseInt(r.num_days||1)} day${parseInt(r.num_days||1)===1?'':'s'}</span></div>
+        <div class="card-row"><span class="card-key">USF UID</span><span class="card-val mono">${esc(r.uid||'—')}</span></div>
+        <div class="card-row"><span class="card-key">Email</span><span class="card-val">${esc(r.email)}</span></div>
+        <div class="card-row"><span class="card-key">Payment</span><span class="card-val">${esc(r.payment_method||'—')}</span></div>
+        ${r.department?`<div class="card-row"><span class="card-key">Dept</span><span class="card-val">${esc(r.department)}</span></div>`:''}
+        ${r.notes?`<div class="card-row"><span class="card-key">Notes</span><span class="card-val">${esc(r.notes)}</span></div>`:''}
+      </div>
+      <div class="card-acts">
+        <a class="btn-ok" href="/manager/approve/${r.id}">✓ Approve${days>1?' All '+days+' Days':''}</a>
+        <a class="btn-no" href="/manager/deny/${r.id}">✕ Deny</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Reservations table ────────────────────────────────────────────────────────
+function filteredData() {
+  let d = currentTab === 'all' ? allData : allData.filter(r => r.status === currentTab);
+  const q = (document.getElementById('tbl-search')?.value||'').toLowerCase();
+  const dt = document.getElementById('tbl-date')?.value;
+  if (q) d = d.filter(r => (r.name||'').toLowerCase().includes(q) || (r.email||'').toLowerCase().includes(q) || r.id.slice(0,8).toLowerCase().includes(q));
+  if (dt) d = d.filter(r => r.reservation_date === dt);
+  return d;
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('res-tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">📋</div><p>No reservations found.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(r => {
+    const sl = {
+      pending_approval: `<span class="spill sp-pending">Pending</span>`,
+      approved:         `<span class="spill sp-approved">Approved</span>`,
+      auto_approved:    `<span class="spill sp-auto">Auto</span>`,
+      denied:           `<span class="spill sp-denied">Denied</span>`
+    }[r.status] || r.status;
+
+    const gb = r.guest_status === 'faculty'
+      ? '<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px">Faculty</span>'
+      : '<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px">Student</span>';
+
+    const db = r.direct_bill_status;
+    const dbBadge = !db||db==='na' ? '' :
+      db==='pending_send' ? '<span class="db-pending">DB: Pending</span>' :
+      db==='sent'         ? '<span class="db-sent">DB: Sent</span>' :
+      db==='received'     ? '<span class="db-received">DB: Done</span>' : '';
+
+    const act = r.status === 'pending_approval'
+      ? `<a href="/manager/approve/${r.id}" style="color:var(--green);font-weight:600;text-decoration:none;font-size:12px;margin-right:8px">Approve</a><a href="/manager/deny/${r.id}" style="color:var(--red);font-weight:600;text-decoration:none;font-size:12px">Deny</a>`
+      : (db === 'pending_send'
+          ? `<button onclick="sendDbForm('${r.id}')" style="background:var(--blue-pale);color:var(--blue);border:1px solid #bfdbfe;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Send Form</button>`
+          : `<span style="color:var(--gray-400);font-size:12px">—</span>`);
+
+    return `<tr>
+      <td><strong>${esc(r.name)}</strong><br><span style="font-size:11px">${gb}</span></td>
+      <td>${sl}</td>
+      <td style="white-space:nowrap">${esc(r.reservation_date||'')} ${esc(r.reservation_time||'')}</td>
+      <td>${r.party}</td>
+      <td style="font-size:12px">${esc(r.payment_method||'—')}</td>
+      <td>${dbBadge||'<span class="db-na">—</span>'}</td>
+      <td style="white-space:nowrap;font-size:12px;color:var(--gray-400)">${fmtDate(r.created_at)}</td>
+      <td>${act}</td>
+    </tr>`;
+  }).join('');
+}
+
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTable(filteredData());
+}
+
+// ── Direct Bill tab ───────────────────────────────────────────────────────────
+function renderDbStats(dbAll) {
+  document.getElementById('db-s-pending').textContent  = dbAll.filter(r=>r.direct_bill_status==='pending_send').length;
+  document.getElementById('db-s-sent').textContent     = dbAll.filter(r=>r.direct_bill_status==='sent').length;
+  document.getElementById('db-s-received').textContent = dbAll.filter(r=>r.direct_bill_status==='received').length;
+  // In-Kind pending = sent but with inkind billing data and not yet approved
+  const inkindPending = dbAll.filter(r => {
+    if (r.direct_bill_status !== 'sent') return false;
+    try { const d = JSON.parse(r.direct_bill_data||'{}'); return d.billing_type === 'inkind'; } catch { return false; }
+  }).length;
+  document.getElementById('db-s-inkind').textContent = inkindPending;
+}
+
+function renderDbTable() {
+  const filter = document.getElementById('db-filter')?.value || 'all';
+  let data = allData.filter(r => r.payment_method && r.payment_method.includes('Direct Bill'));
+  if (filter !== 'all') data = data.filter(r => r.direct_bill_status === filter);
+
+  const tbody = document.getElementById('db-tbody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">📄</div><p>No direct bill reservations found.</p></div></td></tr>`;
+    return;
   }
 
-  // ── Table ──────────────────────────────────────────────────────────────────
+  tbody.innerHTML = data.map(r => {
+    const ds = r.direct_bill_status;
+    const badge = ds==='pending_send' ? '<span class="db-pending">Pending send</span>' :
+                  ds==='sent'         ? '<span class="db-sent">Awaiting approval</span>' :
+                  ds==='received'     ? '<span class="db-received">Authorized</span>' : '<span class="db-na">—</span>';
 
-  function renderTable(data) {
-    const tbody = document.getElementById('res-tbody');
-    if (!data.length) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">📋</div><p>No reservations found.</p></div></td></tr>`;
-      return;
+    let billing = {};
+    try { billing = JSON.parse(r.direct_bill_data||'{}'); } catch {}
+    const billingType = billing.billing_type
+      ? (billing.billing_type === 'pcard' ? '💳 P-Card' : '📁 In-Kind')
+      : '—';
+
+    const actions = [];
+    if (ds === 'pending_send') {
+      actions.push(`<button onclick="sendDbForm('${r.id}')" style="background:var(--blue-pale);color:var(--blue);border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Send Form</button>`);
+    }
+    if (ds === 'received') {
+      actions.push(`<button onclick="viewDocs('${r.id}')" style="background:var(--green-pale);color:var(--green);border:1px solid #bbf7d0;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">View Docs</button>`);
+    }
+    if (ds !== 'received') {
+      actions.push(`<button onclick="markDbReceived('${r.id}')" style="background:var(--gray-50);color:var(--gray-600);border:1px solid var(--gray-200);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer">Mark Done</button>`);
     }
 
-    tbody.innerHTML = data.map(r => {
-      const statusLabel = {
-        pending_approval: '<span class="status-pill status-pending">Pending</span>',
-        approved:         '<span class="status-pill status-approved">Approved</span>',
-        auto_approved:    '<span class="status-pill status-auto">Auto-approved</span>',
-        denied:           '<span class="status-pill status-denied">Denied</span>'
-      }[r.status] || r.status;
+    const rate = parseFloat(document.getElementById('rev-rate')?.textContent?.replace('$','')) || 12.75;
+    const amt  = '$' + (r.party * Math.max(1, parseInt(r.num_days||1)) * rate).toFixed(2);
 
-      const guestBadge = r.guest_status === 'faculty'
-        ? '<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px">Faculty</span>'
-        : '<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px">Student</span>';
+    return `<tr>
+      <td><strong>${esc(r.name)}</strong><br><span style="font-size:11px;color:var(--gray-400)">${esc(r.email)}</span></td>
+      <td style="white-space:nowrap">${esc(r.reservation_date||r.datetime||'')}</td>
+      <td>${r.party}</td>
+      <td style="font-weight:700;color:var(--green)">${amt}</td>
+      <td>${badge}</td>
+      <td>${billingType}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;padding-top:10px">${actions.join('')}</td>
+    </tr>`;
+  }).join('');
+}
 
-      const actionCell = r.status === 'pending_approval'
-        ? `<a href="/manager/approve/${r.id}" style="color:var(--green);font-weight:600;text-decoration:none;font-size:12px;margin-right:10px">Approve</a>
-           <a href="/manager/deny/${r.id}" style="color:var(--red);font-weight:600;text-decoration:none;font-size:12px">Deny</a>`
-        : `<span style="color:var(--gray-400);font-size:12px">—</span>`;
+async function sendDbForm(id) {
+  try {
+    const r = await fetch(`/api/reservations/${id}/directbill/send`, {method:'POST'});
+    if (r.ok) { showToast('Form sent ✓'); await loadAll(); renderDbTable(); }
+    else showToast('Send failed');
+  } catch { showToast('Send failed'); }
+}
 
+async function markDbReceived(id) {
+  try {
+    const r = await fetch(`/api/reservations/${id}/directbill/received`, {method:'POST'});
+    if (r.ok) { showToast('Marked as received ✓'); await loadAll(); renderDbTable(); }
+    else showToast('Update failed');
+  } catch { showToast('Update failed'); }
+}
+
+async function viewDocs(id) {
+  const docs = await fetch(`/api/reservations/${id}/documents`).then(r=>r.json()).catch(()=>[]);
+  if (!docs.length) { showToast('No documents stored'); return; }
+  docs.forEach(d => { window.open(`/api/documents/${d.id}/download`, '_blank'); });
+}
+
+// ── Revenue tab ───────────────────────────────────────────────────────────────
+async function loadRevenue() {
+  try {
+    const d = await fetch('/api/revenue').then(r=>r.json());
+    document.getElementById('rev-total').textContent  = '$' + d.estimated_revenue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('rev-actual').textContent = '$' + d.actual_revenue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('rev-db').textContent     = '$' + d.direct_bill_revenue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('rev-rate').textContent   = '$' + parseFloat(d.rate).toFixed(2);
+
+    const months = Object.values(d.monthly).sort((a,b)=>b.month.localeCompare(a.month));
+    const tbody = document.getElementById('rev-tbody');
+    if (!months.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📊</div><p>No reservation revenue data yet.</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = months.map(m => {
+      const label = new Date(m.month+'-15').toLocaleDateString('en-US',{month:'long',year:'numeric'});
       return `<tr>
-        <td><strong>${esc(r.name)}</strong><br><span style="font-size:11px;color:var(--gray-400)">${guestBadge}</span></td>
-        <td>${statusLabel}</td>
-        <td style="white-space:nowrap">${esc(r.datetime)}</td>
-        <td>${r.party}</td>
-        <td class="mono" style="font-size:12px">${esc(r.uid)}</td>
-        <td style="font-size:12px">${esc(r.email)}</td>
-        <td style="white-space:nowrap;font-size:12px;color:var(--gray-400)">${formatDate(r.created_at)}</td>
-        <td>${actionCell}</td>
+        <td style="font-weight:600">${label}</td>
+        <td>${m.reservations}</td>
+        <td>${m.guests}</td>
+        <td style="font-weight:700;color:var(--green)">$${m.revenue.toFixed(2)}</td>
+        <td>$${m.direct_bill.toFixed(2)}</td>
+        <td>$${m.other.toFixed(2)}</td>
       </tr>`;
     }).join('');
+  } catch(e) {
+    document.getElementById('rev-tbody').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)">Could not load revenue data.</td></tr>`;
   }
+}
 
-  // ── Tabs ───────────────────────────────────────────────────────────────────
+// ── Settings tab ──────────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const s = await fetch('/api/settings').then(r=>r.json());
+    document.getElementById('rate-inp').value    = parseFloat(s.direct_bill_rate || '12.75').toFixed(2);
+    document.getElementById('open-time').value   = s.open_time  || '11:30';
+    document.getElementById('close-time').value  = s.close_time || '14:00';
+    const dlInp = document.getElementById('daily-limit-inp');
+    if (dlInp) dlInp.value = s.daily_limit || process.env?.DAILY_LIMIT || '60';
 
-  function switchTab(tab, el) {
-    currentTab = tab;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
-    renderTable(filteredData());
+    // Show admin panel only for admin role
+    if (currentRole === 'admin') {
+      document.getElementById('admin-panel').style.display = 'block';
+      document.getElementById('tog-web').checked   = s.web_form_enabled   === 'true';
+      document.getElementById('tog-email').checked = s.email_intake_enabled === 'true';
+      document.getElementById('tog-sms').checked   = s.sms_intake_enabled   === 'true';
+      // Also sync the Reserve Form toggle
+      const wt2 = document.getElementById('tog-web2');
+      if (wt2) wt2.checked = s.web_form_enabled === 'true';
+    }
+
+    // Build QR code
+    const baseUrl = window.location.origin;
+    const reserveUrl = baseUrl + '/reserve';
+    buildQR(reserveUrl);
+  } catch(e) { console.error(e); }
+}
+
+function buildQR(url) {
+  const box = document.getElementById('qr-box');
+  const encoded = encodeURIComponent(url);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}&color=006747&bgcolor=FFFFFF&margin=10`;
+  box.innerHTML = `
+    <img src="${qrSrc}" alt="Reservation QR Code" onerror="this.style.display='none'">
+    <a class="qr-url" href="${esc(url)}" target="_blank">${esc(url)}</a>
+    <div>
+      <button class="copy-btn" onclick="copyUrl('${esc(url)}')">📋 Copy Link</button>
+      <a class="dl-btn" href="${qrSrc}&format=png" download="reservation-qr.png">↓ Download QR</a>
+    </div>
+  `;
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(()=>showToast('Link copied!')).catch(()=>{
+    const inp=document.createElement('input'); inp.value=url; document.body.appendChild(inp); inp.select(); document.execCommand('copy'); document.body.removeChild(inp); showToast('Link copied!');
+  });
+}
+
+async function saveRate() {
+  const val = parseFloat(document.getElementById('rate-inp').value);
+  if (isNaN(val) || val <= 0) { document.getElementById('rate-msg').textContent = '✕ Enter a valid rate'; return; }
+  const btn = document.querySelector('#pane-settings .save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const r = await fetch('/api/settings/direct_bill_rate', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(val)})});
+    const d = await r.json();
+    if (r.ok) {
+      document.getElementById('rate-msg').style.color = 'var(--green)';
+      document.getElementById('rate-msg').textContent = `✓ Rate updated to $${d.value}/person`;
+      showToast(`Rate updated to $${d.value} ✓`);
+    } else {
+      document.getElementById('rate-msg').style.color = 'var(--red)';
+      document.getElementById('rate-msg').textContent = '✕ ' + (d.error||'Save failed');
+    }
+  } catch { document.getElementById('rate-msg').textContent = '✕ Save failed'; }
+  if (btn) { btn.disabled = false; btn.textContent = 'Save Rate'; }
+}
+
+async function saveDailyLimit() {
+  const val = parseInt(document.getElementById('daily-limit-inp')?.value);
+  if (isNaN(val)||val<1||val>500) { document.getElementById('limit-msg').textContent='✕ Enter 1–500'; return; }
+  try {
+    const r = await fetch('/api/settings/daily_limit',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(val)})});
+    const d = await r.json();
+    if (r.ok) { document.getElementById('limit-msg').style.color='var(--green)'; document.getElementById('limit-msg').textContent=`✓ Limit set to ${val}`; showToast(`Daily limit → ${val}`); }
+    else { document.getElementById('limit-msg').style.color='var(--red)'; document.getElementById('limit-msg').textContent='✕ '+(d.error||'Failed'); }
+  } catch { document.getElementById('limit-msg').textContent='✕ Save failed'; }
+}
+
+async function saveHours() {
+  const open  = document.getElementById('open-time').value;
+  const close = document.getElementById('close-time').value;
+  if (!open||!close) return;
+  try {
+    await Promise.all([
+      fetch('/api/settings/open_time',  {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:open})}),
+      fetch('/api/settings/close_time', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:close})})
+    ]);
+    document.getElementById('hours-msg').style.color = 'var(--green)';
+    document.getElementById('hours-msg').textContent = '✓ Hours saved';
+    showToast('Hours updated ✓');
+  } catch {
+    document.getElementById('hours-msg').textContent = '✕ Save failed';
   }
+}
 
-  // ── Utilities ──────────────────────────────────────────────────────────────
+async function toggleFlag(key, val) {
+  try {
+    const r = await fetch(`/api/settings/${key}`, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(val)})});
+    if (r.ok) showToast(`${key} → ${val ? 'enabled' : 'disabled'}`);
+    else { showToast('Admin access required'); loadSettings(); }
+  } catch { showToast('Save failed'); }
+}
 
-  function esc(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function timeAgo(iso){ const s=Math.floor((Date.now()-new Date(iso))/1000); if(s<60)return 'just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
+function fmtDate(iso){ return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function updateTs(){ document.getElementById('last-updated').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
-  function timeAgo(iso) {
-    const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
-    if (secs < 60)   return 'just now';
-    if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
-    if (secs < 86400)return `${Math.floor(secs/3600)}h ago`;
-    return `${Math.floor(secs/86400)}d ago`;
-  }
-
-  function formatDate(iso) {
-    return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-  }
-
-  function updateTimestamp() {
-    document.getElementById('last-updated').textContent =
-      'Updated ' + new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3000);
-  }
-
-  // ── Init & auto-refresh ────────────────────────────────────────────────────
-
-  loadAll();
-  setInterval(loadAll, 30000); // Auto-refresh every 30 seconds
+loadAll();
+setInterval(loadAll, 30000);
 </script>
-
 </body>
 </html>

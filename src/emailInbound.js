@@ -28,7 +28,7 @@ const sessions = {};
 const completedAt = {};
 const COOLDOWN_MS = 30 * 60 * 1000;
 
-const FROM = process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu';
+const FROM = process.env.FROM_EMAIL;
 const NAME = 'On Top of the Palms';
 
 // ─────────────────────────────────────────────────────────────────────────────

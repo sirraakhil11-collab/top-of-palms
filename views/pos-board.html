@@ -2,152 +2,317 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Top of Palms POS">
+  <meta name="theme-color" content="#006747">
+  <link rel="manifest" href="/manifest.json">
   <title>POS Board — On Top of the Palms</title>
   <style>
+    /* ── Reset & base ── */
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e8e8e8;min-height:100vh}
-    header{background:linear-gradient(135deg,#006747,#004d34);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-    .hl h1{color:#fff;font-size:18px;font-weight:800}
-    .hl p{color:#CFC493;font-size:11px;margin-top:2px}
-    .hr{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .dp-wrap{display:flex;align-items:center;gap:8px}
-    .dp-wrap label{color:#a7d9c2;font-size:12px;white-space:nowrap}
-    .dp{padding:7px 11px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;outline:none}
+    html{height:100%;height:-webkit-fill-available}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      background:#0f1117;color:#e8e8e8;
+      /* Fill exactly the visual viewport — no URL bar bounce */
+      height:100dvh;
+      height:100vh;
+      display:flex;flex-direction:column;
+      overflow:hidden;
+      overscroll-behavior:none;
+      /* Safe area for notched devices */
+      padding-top:env(safe-area-inset-top);
+      padding-bottom:env(safe-area-inset-bottom);
+      padding-left:env(safe-area-inset-left);
+      padding-right:env(safe-area-inset-right);
+    }
+
+    /* ── Header — fixed top bar ── */
+    #hdr{
+      flex-shrink:0;
+      background:linear-gradient(135deg,#006747,#004d34);
+      padding:10px 12px;
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      min-height:54px;overflow:visible;
+    }
+    .hl{flex-shrink:0}
+    .hl h1{color:#fff;font-size:15px;font-weight:800;white-space:nowrap}
+    .hl p{color:#CFC493;font-size:10px;margin-top:1px}
+    .hr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:1;justify-content:flex-end}
+    .dp{padding:5px 8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;outline:none;font-family:inherit;min-width:120px;max-width:140px}
     .dp:focus{border-color:#CFC493}
-    .tbtn{padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,.2);color:#fff;background:rgba(255,255,255,.12)}
-    .tbtn:hover{background:rgba(255,255,255,.22)}
-    .nbtn{padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid #CFC493;color:#CFC493;background:rgba(207,196,147,.12);text-decoration:none}
-    .nbtn:hover{background:rgba(207,196,147,.25)}
-    .rbtn{padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid rgba(239,68,68,.4);color:#f87171;background:rgba(239,68,68,.1);text-decoration:none}
-    .clock{text-align:right}
-    .cdate{color:#fff;font-size:13px;font-weight:600}
-    .ctime{color:#CFC493;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
-    .controls{padding:10px 24px;background:#1a1d27;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2d3148;flex-wrap:wrap}
-    .sp{background:#252836;border:1px solid #3d4065;border-radius:18px;padding:5px 14px;font-size:13px;color:#9ca3af;cursor:pointer;transition:background .15s}
+    .tbtn{padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,.2);color:#fff;background:rgba(255,255,255,.12);white-space:nowrap;flex-shrink:0}
+    .tbtn:hover,.tbtn:active{background:rgba(255,255,255,.25)}
+    .nbtn{padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid #CFC493;color:#CFC493;background:rgba(207,196,147,.12);text-decoration:none;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center}
+    .rbtn{padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid rgba(239,68,68,.4);color:#f87171;background:rgba(239,68,68,.1);white-space:nowrap;flex-shrink:0}
+    .clock{text-align:right;white-space:nowrap;flex-shrink:0}
+    .cdate{color:#e8e8e8;font-size:10px}
+    .ctime{color:#CFC493;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+
+    /* ── Toolbar (search + filter pills) ── */
+    #toolbar{
+      flex-shrink:0;
+      background:#151821;
+      border-bottom:1px solid #252836;
+      padding:8px 16px;
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    }
+    .search-wrap{position:relative;flex:1;min-width:160px;max-width:320px}
+    .search-input{
+      width:100%;padding:7px 12px 7px 32px;
+      background:#252836;border:1px solid #3d4065;border-radius:18px;
+      color:#e8e8e8;font-size:13px;outline:none;font-family:inherit;
+    }
+    .search-input::placeholder{color:#4b5563}
+    .search-input:focus{border-color:#4ade80}
+    .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#4b5563;font-size:13px;pointer-events:none}
+    .pills{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+    .pills::-webkit-scrollbar{display:none}
+    .sp{
+      background:#252836;border:1px solid #3d4065;border-radius:14px;
+      padding:4px 12px;font-size:12px;color:#9ca3af;cursor:pointer;
+      white-space:nowrap;flex-shrink:0;transition:background .12s;
+      -webkit-tap-highlight-color:transparent;
+    }
     .sp:hover{background:#2d3148}
     .sp.active{border-color:#4ade80;color:#4ade80}
     .sp.active-ns{border-color:#f87171;color:#f87171}
-    .sp strong{color:#fff;margin-right:4px}
+    .sp strong{color:#fff;margin-right:3px}
     .sp.ci strong{color:#4ade80}
     .sp.ns strong{color:#f87171}
-    .sp.a strong{color:#fbbf24}
-    .viewing{color:#a7d9c2;font-size:12px;font-weight:600;margin-left:auto}
-    .legend{padding:7px 24px;background:#1a1d27;border-bottom:1px solid #2d3148;display:flex;align-items:center;gap:20px;font-size:12px;color:#6b7280}
-    .ldot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
-    .lw{background:#60a5fa}.li{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.5)}.ln{background:#f87171;opacity:.6}
-    .board{padding:18px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
-    /* Card */
-    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:transform .15s}
-    .rc:hover{transform:translateY(-1px)}
+    .sp.cov strong{color:#fbbf24}
+    .vlbl{color:#a7d9c2;font-size:11px;font-weight:600;margin-left:auto;white-space:nowrap;display:none}
+    @media(min-width:600px){.vlbl{display:block}}
+
+    /* ── Board — the scrollable card area ── */
+    #board-wrap{
+      flex:1;
+      overflow-y:auto;
+      overflow-x:hidden;
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
+      padding:12px 14px 20px;
+    }
+    #board{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+      gap:10px;
+    }
+    @media(min-width:900px){#board{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}}
+    @media(max-width:480px){#board{grid-template-columns:1fr 1fr}}
+    @media(max-width:360px){#board{grid-template-columns:1fr}}
+
+    /* ── Card ── */
+    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:box-shadow .15s}
     .rc.checked-in{border-color:rgba(74,222,128,.4);background:#1a2e20}
-    .rc.no-show{opacity:.55}
-    .rt{padding:13px 16px 9px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start}
-    .rn{font-size:15px;font-weight:700;color:#fff}
-    .rs{font-size:12px;color:#6b7280;margin-top:2px}
-    .rdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
-    .df{background:#60a5fa;box-shadow:0 0 7px rgba(96,165,250,.5)}
-    .ds{background:#4ade80;box-shadow:0 0 7px rgba(74,222,128,.5)}
-    .rb{padding:12px 16px;display:flex;flex-direction:column;gap:5px}
-    .rr{display:flex;justify-content:space-between;align-items:center;font-size:13px}
-    .rk{color:#6b7280}.rv{color:#d1d5db;font-weight:500}
-    .rv.big{font-size:26px;font-weight:800;color:#fff}
-    .rbg{font-size:11px;font-weight:600;padding:2px 8px;border-radius:7px}
+    .rc.no-show{opacity:.5}
+    .rt{padding:11px 14px 8px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+    .rn{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
+    .rs{font-size:11px;color:#6b7280;margin-top:2px}
+    .rdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+    .df{background:#60a5fa}.ds{background:#4ade80}
+    .rb{padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+    .rr{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+    .rk{color:#6b7280;font-size:11px}.rv{color:#d1d5db;font-weight:500}
+    .rv.big{font-size:24px;font-weight:800;color:#fff;line-height:1}
+    .rbg{font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px}
     .rf{background:#1e3a5f;color:#60a5fa}.rsb{background:#14532d;color:#4ade80}
-    /* Att badge */
-    .att-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px}
+    .att-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;white-space:nowrap}
     .badge-checkin{background:#14532d;color:#4ade80}
     .badge-noshow{background:#3b1515;color:#f87171}
     .badge-pending{background:#252836;color:#6b7280}
-    /* Sections */
-    .tbl-section{padding:9px 16px;border-top:1px solid #2d3148}
-    .tbl-label{color:#6b7280;font-size:11px;font-weight:500;margin-bottom:5px}
-    .att-section{padding:9px 16px 13px;border-top:1px solid #2d3148}
-    .att-label{color:#6b7280;font-size:11px;font-weight:500;margin-bottom:6px}
-    .att-btns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-    .att-btn{border:none;border-radius:8px;padding:9px 0;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px}
-    .btn-checkin{background:rgba(74,222,128,.12);color:#4ade80;border:1.5px solid rgba(74,222,128,.3)}
-    .btn-checkin.active{background:#15532d;color:#4ade80;border-color:#4ade80}
-    .btn-noshow{background:rgba(248,113,113,.1);color:#f87171;border:1.5px solid rgba(248,113,113,.2)}
-    .btn-noshow.active{background:#3b1515;color:#f87171;border-color:#f87171}
-    /* POS dropdowns */
-    .pos-select{width:100%;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:8px 10px;color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;margin-top:2px}
+
+    /* ── Seating / Payment sections ── */
+    .tbl-section,.pay-section{padding:8px 14px;border-top:1px solid #2d3148}
+    .sec-lbl{color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+    .pos-select{width:100%;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:7px 9px;color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer}
     .pos-select:focus{border-color:#4ade80}
-    .pos-ms-wrap{position:relative}
-    /* Compact payment chips */
-    .pay-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
-    .pay-chip{padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #3d4065;color:#6b7280;background:#252836;transition:all .15s;user-select:none;-webkit-tap-highlight-color:transparent;min-height:38px;display:flex;align-items:center}
-    .pay-chip:hover,.pay-chip:active{border-color:#4ade80;color:#d1d5db;background:#2d3148}
-    .pay-chip.on{background:#1a2e20;color:#4ade80;border-color:#4ade80;box-shadow:0 0 8px rgba(74,222,128,.2)}
-    .save-sm{background:#006747;border:none;color:#fff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;margin-top:5px}
-    .save-sm:hover{background:#004d34}
-    /* Compact POS table section */
-    .tbl-label{color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-    /* Empty */
-    .empty{grid-column:1/-1;text-align:center;padding:72px 20px;color:#4b5563}
-    .ei{font-size:44px;margin-bottom:14px}
-    .empty h2{font-size:18px;color:#6b7280;margin-bottom:6px}
-    @media(max-width:768px){
-      .board{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+    .pay-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+    .pay-chip{
+      padding:7px 11px;border-radius:9px;font-size:12px;font-weight:600;
+      cursor:pointer;border:1.5px solid #3d4065;color:#6b7280;background:#252836;
+      transition:all .12s;user-select:none;-webkit-tap-highlight-color:transparent;
+      min-height:34px;display:flex;align-items:center;
     }
-    @media(max-width:640px){
-      header{padding:10px 14px;flex-direction:column;align-items:flex-start;gap:8px}
-      .hr{width:100%;justify-content:space-between}
-      .board{padding:10px 12px;grid-template-columns:1fr;gap:10px}
-      .controls{padding:8px 12px;gap:6px}
-      .sp{font-size:12px;padding:5px 10px}
-      .pay-chip{padding:10px 12px;font-size:13px;flex:1;justify-content:center}
-      .pay-chips{gap:6px}
-      .save-sm{font-size:13px;padding:10px}
-      .rn{font-size:14px}
+    .pay-chip:active{transform:scale(.96)}
+    .pay-chip.on{background:#1a2e20;color:#4ade80;border-color:#4ade80}
+    .save-sm{
+      background:#006747;border:none;color:#fff;border-radius:6px;
+      padding:8px;font-size:12px;font-weight:600;cursor:pointer;
+      margin-top:6px;width:100%;
     }
-    @media(max-width:400px){
-      .att-btns{grid-template-columns:1fr}
-      .dp-wrap label{display:none}
+
+    /* ── Attendance buttons ── */
+    .att-section{padding:8px 14px 12px;border-top:1px solid #2d3148}
+    .att-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .att-btn{
+      border:none;border-radius:8px;padding:11px 0;font-size:13px;font-weight:700;
+      cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:4px;
+      -webkit-tap-highlight-color:transparent;
     }
+    .att-btn:active{transform:scale(.96)}
+    .btn-ci{background:rgba(74,222,128,.12);color:#4ade80;border:1.5px solid rgba(74,222,128,.3)}
+    .btn-ci.active{background:#15532d;color:#4ade80;border-color:#4ade80}
+    .btn-ns{background:rgba(248,113,113,.1);color:#f87171;border:1.5px solid rgba(248,113,113,.2)}
+    .btn-ns.active{background:#3b1515;color:#f87171;border-color:#f87171}
+
+    /* ── Empty state ── */
+    .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:#4b5563}
+    .empty-icon{font-size:40px;margin-bottom:12px}
+    .empty h2{font-size:17px;color:#6b7280;margin-bottom:6px}
+
+    /* ── Install banner ── */
+    #install-banner{
+      display:none;flex-shrink:0;
+      background:#006747;padding:8px 16px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      font-size:12px;color:#fff;
+    }
+    #install-banner.hidden{display:none!important}
+
+    /* ── Toast ── */
+    #_t{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+      background:#111;color:#fff;padding:9px 18px;border-radius:10px;font-size:13px;
+      z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+
+    /* ── Direct Bill badge ── */
+    .db-badge{font-size:10px;color:#c4b5fd;margin-top:5px}
+    .db-sign{display:block;text-align:center;background:#7c3aed;color:#fff;border-radius:7px;
+      padding:8px;font-size:12px;font-weight:700;text-decoration:none;margin-top:6px}
+    .db-ok{font-size:10px;color:#4ade80;margin-top:5px;font-weight:600}
+
+    /* ── Direct Bill Modal ── */
+    #db-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+    #db-modal-overlay.open{display:flex}
+    #db-modal{background:#1e2130;border:1px solid #3d4065;border-radius:16px;width:100%;max-width:420px;padding:24px;max-height:90vh;overflow-y:auto}
+    #db-modal h3{color:#fff;font-size:16px;font-weight:700;margin-bottom:6px}
+    #db-modal p{color:#9ca3af;font-size:13px;margin-bottom:18px;line-height:1.5}
+    .db-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+    .db-type-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+    .db-type-opt label{display:flex;align-items:center;gap:8px;padding:12px 14px;border:2px solid #3d4065;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:#9ca3af;transition:all .15s}
+    .db-type-opt input:checked+label{border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,.08)}
+    .db-type-opt label .ico{font-size:20px}
+    .db-field{margin-bottom:14px}
+    .db-field label{display:block;font-size:12px;font-weight:600;color:#9ca3af;margin-bottom:5px}
+    .db-field input{width:100%;padding:10px 12px;background:#252836;border:1px solid #3d4065;border-radius:8px;color:#fff;font-size:14px;font-family:inherit;outline:none}
+    .db-field input:focus{border-color:#4ade80}
+    .db-section{display:none}
+    .db-section.show{display:block}
+    .db-notice{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:8px;padding:10px 13px;font-size:12px;color:#4ade80;margin-bottom:14px}
+    .db-modal-btns{display:flex;gap:10px;margin-top:18px}
+    .db-save-btn{flex:1;background:#006747;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer}
+    .db-cancel-btn{background:#252836;color:#9ca3af;border:1px solid #3d4065;border-radius:8px;padding:12px 16px;font-size:13px;cursor:pointer}
+
+    /* ── Signature in modal ── */
+    .sig-wrap{border:1.5px dashed #3d4065;border-radius:8px;background:#151821;overflow:hidden;position:relative;touch-action:none;margin-bottom:6px}
+    .sig-wrap.signed{border-color:#4ade80}
+    #pos-sig-canvas{display:block;width:100%;cursor:crosshair;touch-action:none}
+    .sig-clear{background:none;border:none;color:#6b7280;font-size:11px;cursor:pointer;margin-top:4px}
+    .sig-clear:hover{color:#9ca3af}
   </style>
 </head>
 <body>
-<header>
-  <div class="hl"><h1>🌴 On Top of the Palms — Reservations</h1><p>POS Board · USF Dining · Compass USA</p></div>
+
+<!-- Header -->
+<div id="hdr">
+  <div class="hl"><h1>🌴 Top of the Palms</h1><p>POS · USF Dining</p></div>
   <div class="hr">
-    <div class="dp-wrap">
-      <label>Date:</label>
-      <input class="dp" type="date" id="dpick" onchange="load()">
-      <button class="tbtn" onclick="goToday()">Today</button>
-    </div>
+    <input class="dp" type="date" id="dpick" onchange="load()">
+    <button class="tbtn" onclick="goToday()">Today</button>
     <div class="clock"><div class="cdate" id="cdate"></div><div class="ctime" id="ctime"></div></div>
-    <a class="nbtn" href="/manager/dashboard">← Manager</a>
-    <button class="rbtn" onclick="logout()">Sign out</button>
+    <a class="nbtn" href="/manager/dashboard">Mgr</a>
+    <button class="rbtn" onclick="doLogout()">Out</button>
   </div>
-</header>
-
-<div class="controls">
-  <div class="sp" id="f-all"  onclick="setFilter('all')"><strong id="tot">0</strong>Total</div>
-  <div class="sp ci" id="f-ci"  onclick="setFilter('checked_in')"><strong id="ci">0</strong>Checked in</div>
-  <div class="sp ns" id="f-ns"  onclick="setFilter('no_show')"><strong id="ns">0</strong>No-show</div>
-  <div class="sp" id="f-pw"  onclick="setFilter('pending')"><strong id="pw">0</strong>Waiting</div>
-  <div class="sp a"><strong id="cov">0</strong>Covers</div>
-  <span class="viewing" id="vlbl"></span>
 </div>
 
-<div class="legend">
-  <span><span class="ldot lw"></span>Waiting</span>
-  <span><span class="ldot li"></span>Checked in</span>
-  <span><span class="ldot ln"></span>No-show</span>
-  <span style="margin-left:auto;font-size:11px">Tap a card to check in or mark no-show</span>
+<!-- Install banner (shown only in browser, not when installed as app) -->
+<div id="install-banner" class="hidden">
+  <span>📲 Install as app for full screen — tap Share → Add to Home Screen</span>
+  <button onclick="document.getElementById('install-banner').classList.add('hidden')" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">×</button>
 </div>
 
-<div class="board" id="board">
-  <div class="empty"><div class="ei">🔄</div><h2>Loading…</h2></div>
+<!-- Toolbar: search + filter pills -->
+<div id="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="srch" type="text" placeholder="Search name, dept, ref…" oninput="applySearch()">
+  </div>
+  <div class="pills">
+    <div class="sp" id="f-all" onclick="setFilter('all')"><strong id="tot">0</strong>All</div>
+    <div class="sp ci" id="f-ci" onclick="setFilter('checked_in')"><strong id="ci">0</strong>In</div>
+    <div class="sp ns" id="f-ns" onclick="setFilter('no_show')"><strong id="ns">0</strong>No-show</div>
+    <div class="sp" id="f-pw" onclick="setFilter('pending')"><strong id="pw">0</strong>Waiting</div>
+    <div class="sp cov"><strong id="cov">0</strong>Covers</div>
+  </div>
+  <span class="vlbl" id="vlbl"></span>
+</div>
+
+<!-- Board -->
+<div id="board-wrap">
+  <div id="board"><div class="empty"><div class="empty-icon">🔄</div><h2>Loading…</h2></div></div>
+</div>
+
+<div id="_t"></div>
+
+<!-- ── Direct Bill Modal ── -->
+<div id="db-modal-overlay">
+  <div id="db-modal">
+    <h3>📄 Direct Bill Details</h3>
+    <p>Collect billing information from the guest before processing.</p>
+
+    <div class="db-type-grid">
+      <div class="db-type-opt">
+        <input type="radio" name="db-type" id="dbt-inkind" value="inkind" onchange="dbTypeChange('inkind')">
+        <label for="dbt-inkind"><span class="ico">📁</span>In-Kind</label>
+      </div>
+      <div class="db-type-opt">
+        <input type="radio" name="db-type" id="dbt-pcard" value="pcard" onchange="dbTypeChange('pcard')">
+        <label for="dbt-pcard"><span class="ico">💳</span>P-Card</label>
+      </div>
+    </div>
+
+    <div class="db-section" id="dbs-inkind">
+      <div class="db-field">
+        <label>In-Kind Account Name *</label>
+        <input type="text" id="db-inkind-acct" placeholder="Account name or number">
+      </div>
+      <div class="db-field">
+        <label>Approver Manager Email *</label>
+        <input type="email" id="db-approver-email" placeholder="manager@usf.edu">
+      </div>
+    </div>
+
+    <div class="db-section" id="dbs-pcard">
+      <div class="db-notice">💳 P-Card selected. Authorization will be recorded on submission.</div>
+    </div>
+
+    <div class="db-field" style="margin-top:4px">
+      <label>Guest Signature <span style="color:#6b7280;font-weight:400">(draw below)</span></label>
+      <div class="sig-wrap" id="pos-sig-wrap">
+        <canvas id="pos-sig-canvas" height="100"></canvas>
+      </div>
+      <button class="sig-clear" onclick="clearPosSig()">✕ Clear signature</button>
+    </div>
+
+    <div class="db-modal-btns">
+      <button class="db-cancel-btn" onclick="closeDbModal()">Cancel</button>
+      <button class="db-save-btn" onclick="saveDbModal()">Save & Record ✓</button>
+    </div>
+  </div>
 </div>
 
 <script>
 const todayISO = new Date().toISOString().split('T')[0];
 document.getElementById('dpick').value = todayISO;
 
-let allData = [], activeFilter = 'all';
-const posPaySel = {}; // tracks per-card payment selections
+let allData = [], activeFilter = 'all', searchQ = '', posRate = 12.75;
+const posPaySel = {};
+
+// Load rate once at startup
+fetch('/api/public/rate').then(r=>r.json()).then(d=>{ if(d.rate) posRate=parseFloat(d.rate)||12.75; }).catch(()=>{});
 
 function goToday(){ document.getElementById('dpick').value=todayISO; load(); }
 
@@ -158,29 +323,31 @@ async function load(){
     if(resp.status===401){ window.location.href='/login?type=pos'; return; }
     const d = await resp.json();
     allData = d.reservations || [];
-    render(date);
+    renderAll(date);
   }catch(e){
-    document.getElementById('board').innerHTML=`<div class="empty"><div class="ei">⚠️</div><h2>Could not load</h2><p>${e.message}</p></div>`;
+    document.getElementById('board').innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div><h2>Could not load</h2></div>`;
   }
+}
+
+function applySearch(){
+  searchQ = (document.getElementById('srch').value||'').toLowerCase().trim();
+  renderAll(document.getElementById('dpick').value||todayISO);
 }
 
 function setFilter(f){
   activeFilter=f;
-  ['all','ci','ns','pw'].forEach((_,i)=>{
-    const ids=['f-all','f-ci','f-ns','f-pw'];
-    document.getElementById(ids[i]).classList.remove('active','active-ns');
-  });
+  ['f-all','f-ci','f-ns','f-pw'].forEach(id=>document.getElementById(id).classList.remove('active','active-ns'));
   const map={all:'f-all',checked_in:'f-ci',no_show:'f-ns',pending:'f-pw'};
   if(map[f]) document.getElementById(map[f]).classList.add(f==='no_show'?'active-ns':'active');
-  render(document.getElementById('dpick').value||todayISO);
+  renderAll(document.getElementById('dpick').value||todayISO);
 }
 
-function render(date){
+function renderAll(date){
   const isToday = date===todayISO;
   const label = isToday
     ? 'Today — '+new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
     : new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-  document.getElementById('vlbl').textContent=label;
+  document.getElementById('vlbl').textContent = label;
 
   const ci  = allData.filter(r=>r.attendance==='checked_in').length;
   const ns  = allData.filter(r=>r.attendance==='no_show').length;
@@ -192,199 +359,302 @@ function render(date){
   document.getElementById('pw').textContent=pw;
   document.getElementById('cov').textContent=cov;
 
-  let filtered = allData;
-  if(activeFilter==='checked_in') filtered=allData.filter(r=>r.attendance==='checked_in');
-  else if(activeFilter==='no_show') filtered=allData.filter(r=>r.attendance==='no_show');
-  else if(activeFilter==='pending') filtered=allData.filter(r=>!r.attendance||r.attendance==='pending');
-  // Sort: waiting first, then no-show, then checked-in at the bottom
-  const order = {'pending':0,'no_show':1,'checked_in':2};
-  filtered = [...filtered].sort((a,b) => {
-    const ao = order[a.attendance||'pending'] ?? 0;
-    const bo = order[b.attendance||'pending'] ?? 0;
-    return ao - bo;
-  });
+  // Filter by tab
+  let list = allData;
+  if(activeFilter==='checked_in') list=allData.filter(r=>r.attendance==='checked_in');
+  else if(activeFilter==='no_show') list=allData.filter(r=>r.attendance==='no_show');
+  else if(activeFilter==='pending') list=allData.filter(r=>!r.attendance||r.attendance==='pending');
 
-  if(!filtered.length){
-    const msgs={all:'No confirmed reservations for this date.',checked_in:'No guests checked in yet.',no_show:'No no-shows recorded.',pending:'Everyone is checked in!'};
+  // Filter by search
+  if(searchQ){
+    list=list.filter(r=>{
+      const ref=r.id.slice(0,8).toUpperCase();
+      return (r.name||'').toLowerCase().includes(searchQ)||(r.department||'').toLowerCase().includes(searchQ)||ref.toLowerCase().includes(searchQ);
+    });
+  }
+
+  // Sort by reservation time
+  list=[...list].sort((a,b)=>(a.datetime_iso||a.datetime||'').localeCompare(b.datetime_iso||b.datetime||''));
+
+  if(!list.length){
+    const msgs={all:'No confirmed reservations.',checked_in:'No check-ins yet.',no_show:'No no-shows.',pending:'Everyone is checked in!'};
     document.getElementById('board').innerHTML=`<div class="empty">
-      <div class="ei">${activeFilter==='checked_in'?'✅':activeFilter==='no_show'?'🚫':'🌴'}</div>
-      <h2>${msgs[activeFilter]||'No reservations.'}</h2>
-      ${!isToday&&activeFilter==='all'?`<p style="margin-top:10px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">← Back to today</button></p>`:''}
+      <div class="empty-icon">${activeFilter==='checked_in'?'✅':activeFilter==='no_show'?'🚫':'🌴'}</div>
+      <h2>${searchQ?'No results for "'+x(searchQ)+'"':(msgs[activeFilter]||'No reservations.')}</h2>
+      ${!isToday&&activeFilter==='all'&&!searchQ?`<p style="margin-top:10px"><button onclick="goToday()" style="background:#006747;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px">← Today</button></p>`:''}
     </div>`;
     return;
   }
 
   const SEATING = ['Window','Middle','Bench','Private Room A','Private Room B','Private Room C'];
-  const PAYMENT = ['CC/Cash','USF Card','Direct Bill'];
+  const PAYMENT = ['Credit Card','USF Card','Direct Bill'];
 
-  document.getElementById('board').innerHTML = filtered.map(r => {
-    const ref         = r.id.slice(0,8).toUpperCase();
-    const isFac       = r.guest_status === 'faculty';
-    const att         = r.attendance || 'pending';
-    const isCheckedIn = att === 'checked_in';
-    const isNoShow    = att === 'no_show';
-    const curSeat     = r.table_number || '';
-    const curPay      = (posPaySel[r.id] || (r.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean));
-    if(!posPaySel[r.id]) posPaySel[r.id]=[...curPay];
+  document.getElementById('board').innerHTML = list.map(r=>{
+    const ref   = r.id.slice(0,8).toUpperCase();
+    const isFac = r.guest_status==='faculty';
+    const att   = r.attendance||'pending';
+    const isCI  = att==='checked_in';
+    const isNS  = att==='no_show';
+    const seat  = r.table_number||'';
+    if(!posPaySel[r.id]) posPaySel[r.id]=(r.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean);
 
-    const attBadge = isCheckedIn
-      ? `<span class="att-badge badge-checkin">✓ Checked in${r.checked_in_at?' '+fmtTime(r.checked_in_at):''}</span>`
-      : isNoShow ? `<span class="att-badge badge-noshow">✕ No-show</span>`
+    const badge = isCI
+      ? `<span class="att-badge badge-checkin">✓ In${r.checked_in_at?' '+fmtTime(r.checked_in_at):''}</span>`
+      : isNS ? `<span class="att-badge badge-noshow">✕ No-show</span>`
       : `<span class="att-badge badge-pending">Waiting</span>`;
 
-    const seatSection = `<div class="tbl-section">
-      <div class="tbl-label">Seating${isCheckedIn?'':' <span style="color:#6b7280;font-size:10px">(tap to assign)</span>'}</div>
-      ${isCheckedIn
-        ? `<div style="font-size:18px;font-weight:800;color:#4ade80">${curSeat||'<span style="color:#4b5563;font-size:13px">Not assigned</span>'}</div>`
+    const seatHtml = `<div class="tbl-section">
+      <div class="sec-lbl">Seating</div>
+      ${isCI
+        ? `<div style="font-size:17px;font-weight:800;color:#4ade80;margin-top:2px">${seat||'<span style="color:#4b5563;font-size:12px">Not set</span>'}</div>`
         : `<select class="pos-select" onchange="saveSeating('${r.id}',this.value)">
-            <option value="">— Select seating —</option>
-            ${SEATING.map(s=>`<option value="${s}"${curSeat===s?' selected':''}>${s}</option>`).join('')}
+            <option value="">— Assign seat —</option>
+            ${SEATING.map(s=>`<option value="${s}"${seat===s?' selected':''}>${s}</option>`).join('')}
           </select>`
       }
     </div>`;
 
-    const paySection = `<div class="tbl-section">
-      <div class="tbl-label">Payment <span style="color:#6b7280;font-weight:400">(tap to toggle)</span></div>
+    // Payment — normalize old "CC/Cash" to "Credit Card" for display
+    const normalizedPay = posPaySel[r.id].map(p=>p==='CC/Cash'?'Credit Card':p);
+    posPaySel[r.id] = normalizedPay;
+
+    const dbStatus = r.direct_bill_status;
+    const payHtml = `<div class="pay-section">
+      <div class="sec-lbl">Payment</div>
       <div class="pay-chips" id="pchips-${r.id}">
-        ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-rid="${r.id}" data-val="${pm}" onclick="toggleChip('${r.id}','${pm}')">${pm}</span>`).join('')}
+        ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-rid="${r.id}" data-val="${pm}" onclick="chipTap(this)">${pm}</span>`).join('')}
       </div>
-      <button class="save-sm" id="psave-${r.id}" style="display:none;margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700" onclick="savePay('${r.id}')">💾 Save Payment</button>
-      ${r.direct_bill_status==='pending_send'||r.direct_bill_status==='sent'?`
-        <div style="margin-top:8px">
-          <div style="font-size:10px;color:#c4b5fd;margin-bottom:5px">📄 Direct Bill — ${r.direct_bill_status==='sent'?'form sent, awaiting return':'form not yet sent'}</div>
-          <a href="/directbill/sign?id=${r.id}" style="display:block;text-align:center;background:#7c3aed;color:#fff;border-radius:7px;padding:9px;font-size:12px;font-weight:700;text-decoration:none">✍️ Sign at Reception</a>
-        </div>`:''}
-      ${r.direct_bill_status==='received'?`<div style="font-size:10px;color:#4ade80;margin-top:6px;font-weight:600">✓ Direct Bill — document received</div>`:''}
-      ${(r.payment_method||'').includes('Direct Bill')&&(!r.direct_bill_status||r.direct_bill_status==='na')?`
-        <div style="margin-top:8px">
-          <a href="/directbill/sign?id=${r.id}" style="display:block;text-align:center;background:#7c3aed;color:#fff;border-radius:7px;padding:9px;font-size:12px;font-weight:700;text-decoration:none">✍️ Sign Direct Bill at Reception</a>
-        </div>`:''}
-      ${r.seating_preference?`<div style="font-size:10px;color:#6b7280;margin-top:5px">Pref: ${x(r.seating_preference)}</div>`:''}
+      <button class="save-sm" id="psave-${r.id}" style="display:none" onclick="savePay('${r.id}')">Save Payment</button>
+      ${dbStatus==='pending_send'||dbStatus==='sent'?`<div class="db-badge">📄 Direct Bill — ${dbStatus==='sent'?'form sent, awaiting return':'form not yet sent'}</div><a href="/directbill/sign?id=${r.id}" class="db-sign">✍️ Sign at Reception</a>`:''}
+      ${dbStatus==='pending_inkind_approval'?`<div class="db-badge" style="color:#fbbf24">⏳ In-Kind — awaiting manager approval</div>`:''}
+      ${dbStatus==='received'?`<div class="db-ok">✓ Direct Bill received</div>`:''}
+      ${(r.payment_method||'').includes('Direct Bill')&&(!dbStatus||dbStatus==='na')?`<a href="/directbill/sign?id=${r.id}" class="db-sign">✍️ Sign Direct Bill</a>`:''}
     </div>`;
 
-    const attSection = `<div class="att-section">
-      <div class="att-label">Attendance</div>
+    const attHtml = `<div class="att-section">
       <div class="att-btns">
-        <button class="att-btn btn-checkin${isCheckedIn?' active':''}" onclick="markAtt('${r.id}','${isCheckedIn?'pending':'checked_in'}')">
-          ✓ ${isCheckedIn?'Undo':'Check in'}
+        <button class="att-btn btn-ci${isCI?' active':''}" onclick="markAtt('${r.id}','${isCI?'pending':'checked_in'}')">
+          ✓ ${isCI?'Undo':'Check In'}
         </button>
-        <button class="att-btn btn-noshow${isNoShow?' active':''}" onclick="markAtt('${r.id}','${isNoShow?'pending':'no_show'}')">
-          ✕ ${isNoShow?'Undo':'No-show'}
+        <button class="att-btn btn-ns${isNS?' active':''}" onclick="markAtt('${r.id}','${isNS?'pending':'no_show'}')">
+          ✕ ${isNS?'Undo':'No-show'}
         </button>
       </div>
     </div>`;
 
-    return `<div class="rc${isCheckedIn?' checked-in':isNoShow?' no-show':''}" id="rc-${r.id}">
+    return `<div class="rc${isCI?' checked-in':isNS?' no-show':''}" id="rc-${r.id}">
       <div class="rt">
-        <div><div class="rn">${x(r.name)}</div><div class="rs">${x(r.datetime)}</div></div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-          <div class="rdot ${isFac?'df':'ds'}"></div>
-          ${attBadge}
+        <div style="flex:1;min-width:0">
+          <div class="rn">${x(r.name)}</div>
+          <div class="rs">${x(r.datetime)}</div>
+          <div style="margin-top:4px">${badge}</div>
         </div>
+        <div class="rdot ${isFac?'df':'ds'}" style="margin-top:2px"></div>
       </div>
       <div class="rb">
-        <div class="rr"><span class="rk">Party</span><span class="rv big">${r.party}</span></div>
+        <div class="rr">
+          <span class="rk">Party</span>
+          <span class="rv big" id="party-disp-${r.id}" onclick="editParty('${r.id}')" style="cursor:pointer;border-bottom:1px dashed #4b5563" title="Tap to edit">${r.party}</span>
+        </div>
+        <div id="party-edit-${r.id}" style="display:none;margin-bottom:4px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" min="1" max="50" value="${r.party}" id="party-inp-${r.id}"
+              style="width:70px;background:#252836;border:1px solid #4ade80;border-radius:6px;color:#fff;font-size:16px;padding:5px 8px;font-family:inherit;outline:none">
+            <button onclick="saveParty('${r.id}')" style="background:#4ade80;color:#111;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer">✓</button>
+            <button onclick="cancelParty('${r.id}','${r.party}')" style="background:#3d4065;color:#9ca3af;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">✕</button>
+          </div>
+        </div>
         <div class="rr"><span class="rk">Type</span><span class="rbg ${isFac?'rf':'rsb'}">${isFac?'Faculty':'Student'}</span></div>
-        ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:12px">${x(r.department)}</span></div>`:''}
-        ${r.phone_ext?`<div class="rr"><span class="rk">Phone</span><span class="rv" style="font-size:12px">${x(r.phone_ext)}</span></div>`:''}
-        <div class="rr"><span class="rk">Email</span><span class="rv" style="font-size:11px;word-break:break-all">${x(r.email)}</span></div>
-        <div class="rr"><span class="rk">Confirm #</span><span class="rv" style="font-family:monospace;font-size:12px">${ref}</span></div>
-        <div class="rr"><span class="rk">UID</span><span class="rv" style="font-family:monospace;font-size:12px">${x(r.uid)}</span></div>
-        ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:11px">${x(r.notes)}</span></div>`:''}
+        <div class="rr"><span class="rk">Amount Due</span><span class="rv" style="font-weight:700;color:#4ade80;font-size:13px">$${(r.party*posRate).toFixed(2)}</span></div>
+        ${r.department?`<div class="rr"><span class="rk">Dept</span><span class="rv" style="font-size:11px">${x(r.department)}</span></div>`:''}
+        <div class="rr"><span class="rk">Ref</span><span class="rv" style="font-family:monospace;font-size:11px">${ref}</span></div>
+        ${r.notes?`<div class="rr"><span class="rk">Notes</span><span class="rv" style="font-size:10px;max-width:55%">${x(r.notes)}</span></div>`:''}
       </div>
-      ${seatSection}
-      ${paySection}
-      ${attSection}
+      ${seatHtml}${payHtml}${attHtml}
     </div>`;
   }).join('');
 }
 
-// ── Seating ────────────────────────────────────────────────────────────────
-async function saveSeating(id, val){
+// Seating
+async function saveSeating(id,val){
   await fetch(`/api/pos/table/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({table_number:val})});
   const r=allData.find(r=>r.id===id); if(r) r.table_number=val;
-  toast(`Seating set to ${val||'none'}`);
+  toast(`Seating: ${val||'none'}`);
 }
 
-// ── Payment chip functions ────────────────────────────────────────────────
-// toggleChip is called by onclick in the HTML chips
-// handleChip reads id and val from the element itself - no quote issues
-function handleChip(el){
-  const id  = el.getAttribute('data-rid');
-  const val = el.getAttribute('data-val');
-  if(!id || !val) return;
-
-  // Initialize from DB value if first tap
-  if(!posPaySel[id]){
-    const r = allData.find(r=>r.id===id);
-    posPaySel[id] = (r?.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean);
-  }
-
-  // Toggle
-  const idx = posPaySel[id].indexOf(val);
-  if(idx > -1) posPaySel[id].splice(idx,1);
-  else          posPaySel[id].push(val);
-
-  // Update ALL chips for this card
-  const container = document.getElementById('pchips-'+id);
-  if(container){
-    container.querySelectorAll('.pay-chip').forEach(chip => {
-      const v = chip.getAttribute('data-val');
-      chip.classList.toggle('on', posPaySel[id].includes(v));
-    });
-  }
-
-  // Show save button
-  const btn = document.getElementById('psave-'+id);
-  if(btn) btn.style.display = 'block';
-}
-
-// Keep toggleChip as alias in case called from old HTML
-function toggleChip(id, val){
-  const el = document.querySelector('#pchips-'+id+' [data-val="'+val+'"]');
-  if(el) { handleChip(el); return; }
-  // Fallback if element not found
+// Payment chips
+let dbModalResId = null;
+function chipTap(el){
+  const id=el.getAttribute('data-rid'), val=el.getAttribute('data-val');
+  if(!id||!val) return;
   if(!posPaySel[id]){ const r=allData.find(r=>r.id===id); posPaySel[id]=(r?.payment_method||'').split(',').map(s=>s.trim()).filter(Boolean); }
+  const wasDB = posPaySel[id].includes('Direct Bill');
   const idx=posPaySel[id].indexOf(val);
   if(idx>-1) posPaySel[id].splice(idx,1); else posPaySel[id].push(val);
-  const btn=document.getElementById('psave-'+id);
-  if(btn) btn.style.display='block';
+  document.getElementById('pchips-'+id)?.querySelectorAll('.pay-chip').forEach(c=>{
+    c.classList.toggle('on',posPaySel[id].includes(c.getAttribute('data-val')));
+  });
+  const btn=document.getElementById('psave-'+id); if(btn) btn.style.display='block';
+  // If Direct Bill just added, show billing details modal
+  if(val==='Direct Bill' && !wasDB && posPaySel[id].includes('Direct Bill')){
+    openDbModal(id);
+  }
+}
+
+// Direct Bill modal
+function openDbModal(resId){
+  dbModalResId = resId;
+  document.getElementById('db-modal-overlay').classList.add('open');
+  document.getElementById('db-inkind-acct').value = '';
+  document.getElementById('db-approver-email').value = '';
+  document.querySelector('input[name="db-type"]:checked') && (document.querySelector('input[name="db-type"]:checked').checked=false);
+  document.getElementById('dbs-inkind').classList.remove('show');
+  document.getElementById('dbs-pcard').classList.remove('show');
+  clearPosSig();
+  initPosSig();
+}
+function closeDbModal(){
+  document.getElementById('db-modal-overlay').classList.remove('open');
+  // If cancelled, remove Direct Bill from selection
+  if(dbModalResId){
+    const idx=posPaySel[dbModalResId]?.indexOf('Direct Bill');
+    if(idx>-1) posPaySel[dbModalResId].splice(idx,1);
+    document.getElementById('pchips-'+dbModalResId)?.querySelectorAll('.pay-chip').forEach(c=>{
+      c.classList.toggle('on',posPaySel[dbModalResId].includes(c.getAttribute('data-val')));
+    });
+  }
+  dbModalResId=null;
+}
+function dbTypeChange(type){
+  document.getElementById('dbs-inkind').classList.toggle('show', type==='inkind');
+  document.getElementById('dbs-pcard').classList.toggle('show', type==='pcard');
+}
+async function saveDbModal(){
+  const type = document.querySelector('input[name="db-type"]:checked')?.value;
+  if(!type){ toast('Please select P-Card or In-Kind'); return; }
+  if(type==='inkind'){
+    if(!document.getElementById('db-inkind-acct').value.trim()){ toast('Enter In-Kind account name'); return; }
+    if(!document.getElementById('db-approver-email').value.trim()){ toast('Enter approver email'); return; }
+  }
+  const sigPng = getPosSigPng();
+  const id = dbModalResId;
+  if(!id){ closeDbModal(); return; }
+  const r = allData.find(r=>r.id===id);
+  if(!r){ closeDbModal(); return; }
+
+  const billing = {
+    billing_type:    type,
+    attn_name:       r.name||'',
+    department:      r.department||'',
+    email:           r.email||'',
+    phone:           r.phone_ext||'',
+    guest_name:      r.name||'',
+    inkind_account:  type==='inkind' ? document.getElementById('db-inkind-acct').value.trim() : '',
+    approver_email:  type==='inkind' ? document.getElementById('db-approver-email').value.trim() : '',
+    signature_png:   sigPng
+  };
+
+  try {
+    const resp = await fetch(`/api/pos/directbill/${id}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(billing)
+    });
+    if(!resp.ok){ const e=await resp.json().catch(()=>({})); toast(e.error||'Save failed'); return; }
+    document.getElementById('db-modal-overlay').classList.remove('open');
+    dbModalResId=null;
+    toast('Direct Bill recorded ✓');
+    await load();
+  } catch(e){ toast('Save failed'); }
+}
+
+// Signature canvas
+let posSigDrawing=false, posSigCtx=null;
+function initPosSig(){
+  const canvas=document.getElementById('pos-sig-canvas');
+  if(!canvas) return;
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=(rect.width||340)*dpr;
+  canvas.style.width=(rect.width||340)+'px';
+  canvas.height=100*dpr;
+  canvas.style.height='100px';
+  posSigCtx=canvas.getContext('2d');
+  posSigCtx.scale(dpr,dpr);
+  posSigCtx.strokeStyle='#4ade80';
+  posSigCtx.lineWidth=2;
+  posSigCtx.lineCap='round';
+  posSigCtx.lineJoin='round';
+  const getP=(e)=>{
+    const r=canvas.getBoundingClientRect();
+    if(e.touches) return{x:e.touches[0].clientX-r.left,y:e.touches[0].clientY-r.top};
+    return{x:e.clientX-r.left,y:e.clientY-r.top};
+  };
+  canvas.onmousedown=canvas.ontouchstart=(e)=>{e.preventDefault();posSigDrawing=true;const p=getP(e);posSigCtx.beginPath();posSigCtx.moveTo(p.x,p.y);document.getElementById('pos-sig-wrap').classList.add('signed')};
+  canvas.onmousemove=canvas.ontouchmove=(e)=>{e.preventDefault();if(!posSigDrawing)return;const p=getP(e);posSigCtx.lineTo(p.x,p.y);posSigCtx.stroke()};
+  canvas.onmouseup=canvas.ontouchend=()=>{posSigDrawing=false};
+}
+function clearPosSig(){
+  const canvas=document.getElementById('pos-sig-canvas');
+  if(canvas&&posSigCtx) posSigCtx.clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById('pos-sig-wrap')?.classList.remove('signed');
+}
+function getPosSigPng(){
+  const canvas=document.getElementById('pos-sig-canvas');
+  if(!canvas) return '';
+  try{ return canvas.toDataURL('image/png'); }catch{ return ''; }
 }
 
 async function savePay(id){
-  const arr = posPaySel[id] || [];
-  const resp = await fetch('/api/pos/payment/'+id, {
-    method:'PATCH',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ payment_method: arr.join(', ') })
-  });
-  if(!resp.ok){ toast('Save failed — try again'); return; }
-  // Update local data so re-render shows new value
-  const r = allData.find(r=>r.id===id);
-  if(r) r.payment_method = arr.join(', ');
-  // Clear cache so next auto-reload syncs with DB
+  const arr=posPaySel[id]||[];
+  const resp=await fetch('/api/pos/payment/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_method:arr.join(', ')})});
+  if(!resp.ok){toast('Save failed');return;}
+  const r=allData.find(r=>r.id===id); if(r) r.payment_method=arr.join(', ');
   delete posPaySel[id];
-  const saveBtn = document.getElementById('psave-'+id);
-  if(saveBtn){ saveBtn.style.display='none'; }
+  const btn=document.getElementById('psave-'+id); if(btn) btn.style.display='none';
   toast('Payment saved ✓');
 }
 
-// ── Attendance ─────────────────────────────────────────────────────────────
-async function markAtt(id, att){
+// Party size editing
+function editParty(id){
+  document.getElementById('party-disp-'+id).style.display='none';
+  document.getElementById('party-edit-'+id).style.display='block';
+  document.getElementById('party-inp-'+id)?.focus();
+}
+function cancelParty(id,orig){
+  document.getElementById('party-edit-'+id).style.display='none';
+  document.getElementById('party-disp-'+id).style.display='';
+}
+async function saveParty(id){
+  const inp=document.getElementById('party-inp-'+id);
+  const val=parseInt(inp?.value);
+  if(isNaN(val)||val<1){toast('Invalid party size');return;}
+  const resp=await fetch(`/api/pos/party/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({party:val})});
+  if(!resp.ok){toast('Save failed');return;}
+  const r=allData.find(r=>r.id===id); if(r) r.party=val;
+  document.getElementById('party-edit-'+id).style.display='none';
+  const disp=document.getElementById('party-disp-'+id);
+  if(disp){disp.textContent=val;disp.style.display='';}
+  toast(`Party updated to ${val} ✓`);
+  // Refresh covers count
+  const cov=allData.filter(r=>r.attendance!=='no_show').reduce((s,r)=>s+r.party,0);
+  document.getElementById('cov').textContent=cov;
+}
+
+// Attendance
+async function markAtt(id,att){
   await fetch(`/api/reservations/${id}/attendance`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({attendance:att})});
   await load();
 }
 
-// ── Close dropdowns on outside click ──────────────────────────────────────
-document.addEventListener('click',e=>{
-  if(!e.target.closest('.pos-ms-wrap')) document.querySelectorAll('.pos-ms-dd.open').forEach(el=>el.classList.remove('open'));
-});
+async function doLogout(){ await fetch('/api/logout',{method:'POST'}); window.location.href='/login?type=pos'; }
 
-async function logout(){ await fetch('/api/logout',{method:'POST'}); window.location.href='/login?type=pos'; }
-
-function toast(m){let t=document.getElementById('_t');if(!t){t=document.createElement('div');t.id='_t';t.style.cssText='position:fixed;bottom:20px;right:20px;background:#111;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:opacity .25s';document.body.appendChild(t)}t.textContent=m;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',2500)}
-function fmtTime(i){return new Date(i).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}
-function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function toast(m){
+  const t=document.getElementById('_t');
+  t.textContent=m; t.style.opacity='1';
+  clearTimeout(t._tid); t._tid=setTimeout(()=>t.style.opacity='0',2400);
+}
+function fmtTime(i){ return new Date(i).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+function x(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function tick(){
   const n=new Date();
@@ -393,6 +663,17 @@ function tick(){
 }
 tick(); setInterval(tick,1000);
 load(); setInterval(load,30000);
+
+// Show install banner only in non-standalone browser
+if(!window.navigator.standalone && !window.matchMedia('(display-mode: standalone)').matches){
+  // Only show after a short delay to avoid flash
+  setTimeout(()=>{
+    const b=document.getElementById('install-banner');
+    if(b) b.classList.remove('hidden');
+  }, 3000);
+}
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
 </html>

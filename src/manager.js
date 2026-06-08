@@ -27,7 +27,7 @@ async function notifyManager(reservation) {
 
   await sgMail.send({
     to:   managerEmail,
-    from: { email: process.env.FROM_EMAIL || 'reservations@topofthepalms.usf.edu', name: 'Top of the Palms Reservations' },
+    from: { email: process.env.FROM_EMAIL, name: 'Top of the Palms Reservations' },
     subject: `Action required: Student reservation — ${reservation.name} (${partyLabel}, ${reservation.datetime})`,
     html: `<!DOCTYPE html>
 <html lang="en">

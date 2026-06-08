@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Revenue — Top of the Palms</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh;color:#111827}
+    .topbar{background:#006747;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .topbar h1{color:#fff;font-size:18px;font-weight:700}
+    .topbar a{color:rgba(255,255,255,.75);font-size:13px;text-decoration:none}
+    .topbar a:hover{color:#fff}
+    .page{max-width:1100px;margin:0 auto;padding:24px 20px}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px}
+    .kpi{background:#fff;border-radius:14px;padding:20px 20px 16px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+    .kpi-label{font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+    .kpi-val{font-size:26px;font-weight:800;color:#006747}
+    .kpi-sub{font-size:12px;color:#9ca3af;margin-top:3px}
+    .kpi.today .kpi-val{color:#0369a1}
+    .section{background:#fff;border-radius:14px;padding:20px 24px;box-shadow:0 1px 6px rgba(0,0,0,.06);margin-bottom:24px}
+    .section h2{font-size:15px;font-weight:700;color:#111827;margin-bottom:16px}
+    .method-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+    .method-card{border-radius:10px;padding:14px 16px;border:1.5px solid #e5e7eb}
+    .method-card .label{font-size:12px;color:#6b7280;margin-bottom:4px}
+    .method-card .val{font-size:20px;font-weight:700;color:#111827}
+    .method-card.cc{border-color:#bfdbfe;background:#eff6ff}
+    .method-card.cc .val{color:#1d4ed8}
+    .method-card.usf{border-color:#bbf7d0;background:#f0fdf4}
+    .method-card.usf .val{color:#15803d}
+    .method-card.db{border-color:#fde68a;background:#fffbeb}
+    .method-card.db .val{color:#b45309}
+    .method-card.oth{border-color:#e5e7eb;background:#f9fafb}
+    .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+    .filters input,.filters select{padding:7px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;outline:none}
+    .filters input:focus,.filters select:focus{border-color:#006747}
+    .btn-sm{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#006747;color:#fff}
+    .btn-sm:hover{background:#005538}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;border-bottom:2px solid #f3f4f6}
+    td{padding:9px 12px;border-bottom:1px solid #f3f4f6;color:#374151}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#f9fafb}
+    .money{font-weight:700;color:#006747}
+    .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+    .badge-cc{background:#eff6ff;color:#1d4ed8}
+    .badge-usf{background:#f0fdf4;color:#15803d}
+    .badge-db{background:#fffbeb;color:#b45309}
+    .empty{text-align:center;padding:32px;color:#9ca3af}
+    .bar-wrap{margin-top:4px}
+    .bar{height:6px;border-radius:3px;background:#006747;opacity:.7;min-width:2px}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <h1>💰 Revenue Dashboard</h1>
+  <div style="display:flex;gap:20px;align-items:center">
+    <a href="/manager/dashboard">← Manager Dashboard</a>
+    <span style="color:rgba(255,255,255,.5);font-size:12px" id="ts"></span>
+  </div>
+</div>
+
+<div class="page">
+  <!-- KPI cards -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Loading…</div><div class="kpi-val">—</div></div>
+  </div>
+
+  <!-- Payment method breakdown -->
+  <div class="section">
+    <h2>By Payment Method</h2>
+    <div class="method-grid" id="method-grid">—</div>
+  </div>
+
+  <!-- Department breakdown -->
+  <div class="section">
+    <h2>By Department</h2>
+    <div class="filters">
+      <input id="dept-search" placeholder="Search department…" oninput="filterDepts()" style="width:200px">
+    </div>
+    <table>
+      <thead><tr><th>Department</th><th>Reservations</th><th>Guests</th><th>Revenue</th><th>Share</th></tr></thead>
+      <tbody id="dept-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Monthly breakdown -->
+  <div class="section">
+    <h2>Monthly Breakdown</h2>
+    <table>
+      <thead><tr><th>Month</th><th>Bookings</th><th>Guests</th><th>Total Revenue</th><th>Credit Card</th><th>USF Card</th><th>Direct Bill</th></tr></thead>
+      <tbody id="monthly-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  let data = null;
+
+  async function load() {
+    try {
+      data = await fetch('/api/revenue').then(r=>r.json());
+      if (data.error) { alert(data.error); return; }
+      renderKPIs();
+      renderMethods();
+      renderDepts();
+      renderMonthly();
+      document.getElementById('ts').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch(e) { alert('Failed to load revenue data.'); }
+  }
+
+  function fmt(n) { return '$' + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+  function renderKPIs() {
+    document.getElementById('kpi-grid').innerHTML = `
+      <div class="kpi today">
+        <div class="kpi-label">Today's Revenue</div>
+        <div class="kpi-val">${fmt(data.today_revenue)}</div>
+        <div class="kpi-sub">${data.today_guests} guest${data.today_guests===1?'':'s'} today</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total Est. Revenue</div>
+        <div class="kpi-val">${fmt(data.estimated_revenue)}</div>
+        <div class="kpi-sub">All approved reservations</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Actual Revenue</div>
+        <div class="kpi-val">${fmt(data.actual_revenue)}</div>
+        <div class="kpi-sub">Checked-in guests only</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total Bookings</div>
+        <div class="kpi-val">${data.total_reservations}</div>
+        <div class="kpi-sub">${data.total_guests} total guests</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Rate per Guest</div>
+        <div class="kpi-val">$${Number(data.rate).toFixed(2)}</div>
+        <div class="kpi-sub">Per person per day</div>
+      </div>`;
+  }
+
+  function renderMethods() {
+    const m = data.by_method || {};
+    document.getElementById('method-grid').innerHTML = `
+      <div class="method-card cc"><div class="label">Credit Card</div><div class="val">${fmt(m['Credit Card']||0)}</div></div>
+      <div class="method-card usf"><div class="label">USF Card</div><div class="val">${fmt(m['USF Card']||0)}</div></div>
+      <div class="method-card db"><div class="label">Direct Bill</div><div class="val">${fmt(m['Direct Bill']||0)}</div></div>
+      <div class="method-card oth"><div class="label">Other</div><div class="val">${fmt(m['Other']||0)}</div></div>`;
+  }
+
+  let deptFilter = '';
+  function filterDepts() {
+    deptFilter = document.getElementById('dept-search').value.toLowerCase();
+    renderDepts();
+  }
+
+  function renderDepts() {
+    const depts = (data.by_dept||[]).filter(d=>!deptFilter||d.dept.toLowerCase().includes(deptFilter));
+    const maxRev = Math.max(...depts.map(d=>d.revenue), 1);
+    if (!depts.length) { document.getElementById('dept-tbody').innerHTML=`<tr><td colspan="5" class="empty">No departments found</td></tr>`; return; }
+    document.getElementById('dept-tbody').innerHTML = depts.map(d=>`
+      <tr>
+        <td><strong>${esc(d.dept)}</strong></td>
+        <td>${d.reservations}</td>
+        <td>${d.guests}</td>
+        <td class="money">${fmt(d.revenue)}</td>
+        <td style="min-width:80px"><div class="bar-wrap"><div class="bar" style="width:${Math.round(d.revenue/maxRev*100)}%"></div></div></td>
+      </tr>`).join('');
+  }
+
+  function renderMonthly() {
+    const rows = data.monthly || [];
+    if (!rows.length) { document.getElementById('monthly-tbody').innerHTML=`<tr><td colspan="7" class="empty">No data yet</td></tr>`; return; }
+    document.getElementById('monthly-tbody').innerHTML = rows.map(m=>`
+      <tr>
+        <td><strong>${m.month}</strong></td>
+        <td>${m.reservations}</td>
+        <td>${m.guests}</td>
+        <td class="money">${fmt(m.revenue)}</td>
+        <td>${fmt(m.credit_card||0)}</td>
+        <td>${fmt(m.usf_card||0)}</td>
+        <td>${fmt(m.direct_bill||0)}</td>
+      </tr>`).join('');
+  }
+
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  load();
+</script>
+</body>
+</html>

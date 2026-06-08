@@ -4,7 +4,8 @@ const directBill = require('./direct-bill');
 
 const DAILY_LIMIT = parseInt(process.env.DAILY_LIMIT || '60'); // 60 PEOPLE not reservations
 
-async function processReservation(session) {
+// options.suppressGuestEmail = true → skip guest pending email (used for multi-day batches)
+async function processReservation(session, options = {}) {
   const data    = session.collected;
   const channel = session.channel || 'form';
   const resDate = data.reservation_date || db.toDateStr(data.datetime) || new Date().toISOString().split('T')[0];
@@ -21,15 +22,17 @@ async function processReservation(session) {
     console.log(`[Reservation] ⚠️  Exceeds people limit — only ${remaining} spots left`);
     const rec = await db.createReservation({ ...data, guest_status:data.status, channel, reservation_date:resDate, status:'denied' });
     await db.updateReservation(rec.id, { processed_at:new Date().toISOString(), notes:`Auto-denied: only ${remaining} covers remaining for this date` });
-    await sendLimitEmail(data, remaining).catch(console.error);
+    if (!options.suppressGuestEmail) await sendLimitEmail(data, remaining).catch(console.error);
     return { success:false, reason:'daily_limit', remaining };
   }
 
-  // ALL reservations go to manager — no auto-approve (requirement 5)
+  // ALL reservations go to manager — no auto-approve
   const reservation = await db.createReservation({
     name:data.name, guest_status:data.status,
     department:data.department||'', phone_ext:data.phone_ext||'',
     uid:data.uid, email:data.email, party:partySize,
+    num_days:Math.max(1, parseInt(data.num_days||1, 10)),
+    group_id:data.group_id||null,
     datetime:data.datetime, reservation_date:resDate,
     reservation_time:data.reservation_time||'',
     seating_preference:data.seating_preference||'',
@@ -40,12 +43,18 @@ async function processReservation(session) {
 
   console.log(`[Reservation] Saved → ${reservation.id} (all go to manager for approval)`);
 
-  // Notify manager
-  await sendManagerApprovalEmail(reservation).catch(console.error);
-  // Tell guest it's under review
-  await sendEmail(reservation, 'pending').catch(console.error);
-  // Auto-send Direct Bill form immediately when reservation is created
-  if ((data.payment_method||'').includes('Direct Bill')) {
+  // Notify manager — suppressed for multi-day batches (caller sends one combined email)
+  if (!options.suppressManagerEmail) {
+    await sendManagerApprovalEmail(reservation).catch(console.error);
+  }
+
+  // Guest pending email — suppressed for multi-day batches (caller sends one combined email)
+  if (!options.suppressGuestEmail) {
+    await sendEmail(reservation, 'pending').catch(console.error);
+  }
+
+  // Auto-send Direct Bill form on first day only (caller controls this for multi-day)
+  if (!options.suppressDirectBill && (data.payment_method||'').includes('Direct Bill')) {
     setImmediate(async () => {
       try {
         await directBill.sendDirectBillForm(reservation);
@@ -58,7 +67,7 @@ async function processReservation(session) {
     console.log(`[Reservation] Direct Bill form will be sent to ${reservation.email}`);
   }
 
-  return { success:true, status:'pending' };
+  return { success:true, status:'pending', reservation };
 }
 
 async function sendLimitEmail(data, remaining) {

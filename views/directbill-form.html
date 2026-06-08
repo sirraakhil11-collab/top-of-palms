@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Direct Bill Form — On Top of the Palms</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh;display:flex;flex-direction:column}
+    header{background:#006747;padding:18px 24px;text-align:center}
+    header h1{color:#fff;font-size:20px;font-weight:800}
+    header p{color:#a7d9c2;font-size:12px;margin-top:3px}
+    .wrap{max-width:560px;margin:28px auto;padding:0 16px 60px;width:100%}
+    .card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:16px}
+    .badge{display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:16px;text-transform:uppercase;letter-spacing:.04em}
+    h2{font-size:19px;font-weight:700;color:#111827;margin-bottom:6px}
+    .subtitle{color:#6b7280;font-size:14px;margin-bottom:20px;line-height:1.6}
+    .info-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:4px 16px;margin-bottom:24px}
+    .info-box table{width:100%;border-collapse:collapse;font-size:13px}
+    .info-box td{padding:8px 0;border-bottom:1px solid #f3f4f6}
+    .info-box tr:last-child td{border-bottom:none}
+    .info-box td:first-child{color:#6b7280}
+    .info-box td:last-child{font-weight:600;text-align:right}
+    .sec-title{font-size:11px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin:22px 0 12px;padding-bottom:6px;border-bottom:1px solid #e5e7eb}
+    .form-group{margin-bottom:14px}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+    label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
+    label .req{color:#b91c1c;margin-left:2px}
+    label .opt{color:#9ca3af;font-weight:400;font-size:12px}
+    input,select,textarea{width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;outline:none;transition:border-color .15s}
+    input:focus,select:focus,textarea:focus{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
+    .hint{font-size:11px;color:#9ca3af;margin-top:3px}
+    /* Billing type selector */
+    .billing-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+    .billing-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+    .billing-opt label{display:flex;align-items:center;gap:10px;padding:14px 16px;border:2px solid #e5e7eb;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:#374151;transition:all .15s}
+    .billing-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
+    .billing-opt label .ico{font-size:22px}
+    .billing-section{display:none}
+    .billing-section.show{display:block}
+    .notice-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#92400e;line-height:1.55}
+    /* Total display */
+    .total-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .total-label{font-size:13px;color:#374151}
+    .total-label small{display:block;font-size:11px;color:#6b7280;margin-top:2px}
+    .total-amount{font-size:24px;font-weight:800;color:#006747}
+    .submit-btn{width:100%;padding:14px;background:#006747;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+    .submit-btn:hover:not(:disabled){background:#005538}
+    .submit-btn:disabled{background:#9ca3af;cursor:default}
+    .error-msg{display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;color:#b91c1c;font-size:13px;margin-top:12px}
+    .error-msg.show{display:block}
+    .success{display:none;text-align:center;padding:20px 0}
+    .success.show{display:block}
+    .success-icon{font-size:64px;margin-bottom:16px}
+    .success h2{font-size:22px;font-weight:800;color:#15803d;margin-bottom:8px}
+    .success p{color:#6b7280;font-size:14px;line-height:1.7}
+    .success.inkind h2{color:#1d4ed8}
+    .expired{text-align:center;padding:32px 0}
+    .expired-icon{font-size:56px;margin-bottom:14px}
+    .expired h2{font-size:20px;font-weight:700;color:#374151;margin-bottom:8px}
+    .expired p{color:#6b7280;font-size:14px;line-height:1.7}
+    /* Signature pad */
+    .sig-section{margin-bottom:18px}
+    .sig-section .sec-title{margin-top:0}
+    #sig-canvas{width:100%;height:110px;border:1.5px solid #d1d5db;border-radius:10px;cursor:crosshair;touch-action:none;background:#fafafa;display:block}
+    #sig-canvas.signed{border-color:#006747;background:#fff}
+    .sig-actions{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
+    .sig-clear{font-size:12px;color:#9ca3af;cursor:pointer;text-decoration:underline}
+    .sig-hint{font-size:11px;color:#9ca3af}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>On Top of the Palms</h1>
+    <p>USF Dining · Compass USA</p>
+  </header>
+
+  <div class="wrap">
+    <div class="card" id="main-card">
+      <p style="color:#9ca3af;text-align:center;padding:30px 0">Loading…</p>
+    </div>
+  </div>
+
+<script>
+const token = location.pathname.split('/').pop();
+let rData = null, billRate = 12.75;
+
+async function init() {
+  const card = document.getElementById('main-card');
+  try {
+    const [res, rateRes] = await Promise.all([
+      fetch(`/api/directbill/form-info/${token}`),
+      fetch('/api/public/rate')
+    ]);
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({error:'Invalid or expired link.'}));
+      card.innerHTML = `<div class="expired"><div class="expired-icon">🔒</div><h2>Link Not Valid</h2><p>${esc(e.error||'This form link is invalid or has already been completed.')}<br><br>Please contact us if you need assistance.</p></div>`;
+      return;
+    }
+    rData = await res.json();
+    const rateData = await rateRes.json().catch(()=>({rate:12.75}));
+    billRate = parseFloat(rateData.rate) || 12.75;
+    renderForm();
+    setTimeout(initSigPad, 50); // init sig pad after innerHTML is set
+  } catch(e) {
+    card.innerHTML = `<div class="expired"><div class="expired-icon">⚠️</div><h2>Something went wrong</h2><p>Please try again or contact us directly.</p></div>`;
+  }
+}
+
+function calcTotal() {
+  const party = parseInt(rData.party || 0);
+  const days  = Math.max(1, parseInt(rData.num_days || 1));
+  return (party * days * billRate).toFixed(2);
+}
+
+function renderForm() {
+  const total = calcTotal();
+  const party = parseInt(rData.party || 0);
+  const days  = Math.max(1, parseInt(rData.num_days || 1));
+
+  document.getElementById('main-card').innerHTML = `
+    <div class="badge">📋 Direct Bill Form</div>
+    <h2>Direct Bill Authorization</h2>
+    <p class="subtitle">Please complete this form to authorize billing for your upcoming reservation at On Top of the Palms.</p>
+
+    <div class="info-box">
+      <table>
+        <tr><td>Reservation Date</td><td>${esc(rData.reservation_date || rData.datetime)}</td></tr>
+        <tr><td>Reservation Time</td><td>${esc(rData.reservation_time || '—')}</td></tr>
+        <tr><td>Ref #</td><td style="font-family:monospace">${esc(rData.ref)}</td></tr>
+      </table>
+    </div>
+
+    <div id="form-area">
+      <div class="sec-title">Invoice To</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Attention of <span class="req">*</span></label>
+          <input type="text" id="f-attn" placeholder="Full name" value="${esc(rData.name||'')}">
+        </div>
+        <div class="form-group">
+          <label>Department <span class="opt">(optional)</span></label>
+          <input type="text" id="f-dept" placeholder="Department name" value="${esc(rData.department||'')}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email <span class="req">*</span></label>
+          <input type="email" id="f-email" placeholder="email@usf.edu" value="${esc(rData.email||'')}">
+        </div>
+        <div class="form-group">
+          <label>Phone <span class="opt">(optional)</span></label>
+          <input type="tel" id="f-phone" placeholder="(813) 555-0000" value="${esc(rData.phone_ext||'')}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Dining Guest Name <span class="req">*</span></label>
+        <input type="text" id="f-guest" placeholder="Name of guest dining" value="${esc(rData.name||'')}">
+      </div>
+
+      <div class="sec-title">Billing</div>
+      <div class="notice-box">P-card or In-Kind approval is required prior to your reservation.</div>
+
+      <div class="billing-opts">
+        <div class="billing-opt">
+          <input type="radio" name="billing_type" id="b-inkind" value="inkind" onchange="showBilling('inkind')">
+          <label for="b-inkind"><span class="ico">📁</span><div><div>In-Kind</div><div style="font-size:11px;font-weight:400;color:#6b7280">Account + approval</div></div></label>
+        </div>
+        <div class="billing-opt">
+          <input type="radio" name="billing_type" id="b-pcard" value="pcard" onchange="showBilling('pcard')">
+          <label for="b-pcard"><span class="ico">💳</span><div><div>P-Card</div><div style="font-size:11px;font-weight:400;color:#6b7280">Procurement card</div></div></label>
+        </div>
+      </div>
+
+      <div class="billing-section" id="sec-inkind">
+        <div class="form-group">
+          <label>In-Kind Account Name <span class="req">*</span></label>
+          <input type="text" id="f-inkind-acct" placeholder="Account name or number">
+        </div>
+        <div class="form-group">
+          <label>Approver Manager Email <span class="req">*</span></label>
+          <input type="email" id="f-approver-email" placeholder="manager@usf.edu">
+          <div class="hint">Your manager will receive an email to approve this charge before your reservation is confirmed.</div>
+        </div>
+      </div>
+
+      <div class="billing-section" id="sec-pcard">
+        <div class="notice-box" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
+          💳 P-Card selected. Your authorization will be recorded immediately upon form submission.
+        </div>
+      </div>
+
+      <div class="total-box">
+        <div class="total-label">
+          Total Amount Due
+          <small>${party} guest${party===1?'':'s'}${days>1?' × '+days+' days':''} @ $${billRate.toFixed(2)}/person</small>
+        </div>
+        <div class="total-amount">$${total}</div>
+      </div>
+
+      <div class="sig-section">
+        <div class="sec-title">Your Signature <span style="color:#b91c1c">*</span> <span style="font-size:11px;font-weight:400;color:#9ca3af;text-transform:none">(draw OR type your name below)</span></div>
+        <canvas id="sig-canvas" width="520" height="110"></canvas>
+        <div class="sig-actions">
+          <span class="sig-hint">Draw using mouse, finger, or stylus</span>
+          <span class="sig-clear" onclick="clearSig()">Clear drawing</span>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;color:#9ca3af;white-space:nowrap">— or type —</span>
+          <input type="text" id="f-typed-sig" placeholder="Type your full name as signature" style="flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:15px;font-style:italic;color:#006747;font-family:Georgia,serif" oninput="onTypedSig()">
+        </div>
+        <div class="hint" style="margin-top:4px">A typed name counts as your electronic signature</div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()" disabled>Select Billing Method to Continue</button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <div class="success" id="success-inkind" style="display:none">
+      <div class="success-icon">📧</div>
+      <h2 style="color:#1d4ed8">Approval Request Sent!</h2>
+      <p>Your In-Kind billing details have been saved. An approval email has been sent to your manager.<br><br>
+      Once approved, you will receive a confirmation email and your reservation will be fully authorized.<br><br>
+      <strong>Ref: ${esc(rData.ref)}</strong> · Questions? Call <strong>813-974-3573</strong></p>
+    </div>
+
+    <div class="success" id="success-pcard" style="display:none">
+      <div class="success-icon">✅</div>
+      <h2 style="color:#15803d">Authorization Complete!</h2>
+      <p>Your P-Card billing authorization has been recorded.<br><br>
+      You will receive a confirmation email shortly. We look forward to serving you!<br><br>
+      <strong>Ref: ${esc(rData.ref)}</strong> · Questions? Call <strong>813-974-3573</strong></p>
+    </div>
+  `;
+}
+
+function showBilling(type) {
+  document.getElementById('sec-inkind').classList.toggle('show', type === 'inkind');
+  document.getElementById('sec-pcard').classList.toggle('show', type === 'pcard');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  btn.textContent = type === 'inkind' ? '📧 Submit & Send for Approval' : '✓ Submit Authorization';
+}
+
+function showErr(msg) {
+  const el = document.getElementById('error-msg');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function submitForm() {
+  const billingType = document.querySelector('input[name="billing_type"]:checked')?.value;
+  if (!billingType) { showErr('Please select a billing method.'); return; }
+
+  const attn  = document.getElementById('f-attn')?.value?.trim();
+  const email = document.getElementById('f-email')?.value?.trim();
+  const guest = document.getElementById('f-guest')?.value?.trim();
+
+  if (!attn) { showErr('Please enter the attention name.'); return; }
+  if (!email) { showErr('Please enter an email address.'); return; }
+  if (!guest) { showErr('Please enter the dining guest name.'); return; }
+
+  if (billingType === 'inkind') {
+    const acct    = document.getElementById('f-inkind-acct')?.value?.trim();
+    const approver = document.getElementById('f-approver-email')?.value?.trim();
+    if (!acct)    { showErr('Please enter the In-Kind account name.'); return; }
+    if (!approver){ showErr('Please enter the approver manager email.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(approver)) { showErr('Please enter a valid approver email.'); return; }
+  }
+
+  const typedSig = (document.getElementById('f-typed-sig')?.value||'').trim();
+  if (!sigHasContent() && !typedSig) { showErr('Please draw your signature or type your name before submitting.'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  document.getElementById('error-msg').classList.remove('show');
+
+  const payload = {
+    billing_type: billingType,
+    attn_name:    attn,
+    department:   document.getElementById('f-dept')?.value?.trim() || '',
+    email:        email,
+    phone:        document.getElementById('f-phone')?.value?.trim() || '',
+    guest_name:   guest,
+    inkind_account:  billingType === 'inkind' ? document.getElementById('f-inkind-acct')?.value?.trim() : '',
+    approver_email:  billingType === 'inkind' ? document.getElementById('f-approver-email')?.value?.trim() : '',
+    signature_png:   getSigDataUrl(),
+    typed_name:      (document.getElementById('f-typed-sig')?.value||'').trim(),
+  };
+
+  try {
+    const res = await fetch(`/api/directbill/form/${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({error:'Submission failed.'}));
+      btn.disabled = false;
+      btn.textContent = billingType === 'inkind' ? '📧 Submit & Send for Approval' : '✓ Submit Authorization';
+      showErr(e.error || 'Submission failed. Please try again.');
+      return;
+    }
+    document.getElementById('form-area').style.display = 'none';
+    if (billingType === 'inkind') {
+      document.getElementById('success-inkind').style.display = 'block';
+    } else {
+      document.getElementById('success-pcard').style.display = 'block';
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = billingType === 'inkind' ? '📧 Submit & Send for Approval' : '✓ Submit Authorization';
+    showErr('Network error. Please check your connection and try again.');
+  }
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Signature pad ────────────────────────────────────────────────────────────
+let _sigDrawing = false, _sigPoints = [];
+function initSigPad() {
+  const c = document.getElementById('sig-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  function pos(e) {
+    const r = c.getBoundingClientRect(), s = c.width / r.width;
+    const src = e.touches ? e.touches[0] : e;
+    return { x:(src.clientX-r.left)*s, y:(src.clientY-r.top)*s };
+  }
+  function start(e){ e.preventDefault(); _sigDrawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); _sigPoints.push(p); }
+  function move(e) { e.preventDefault(); if(!_sigDrawing)return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); _sigPoints.push(p); c.classList.add('signed'); }
+  function end(e)  { e.preventDefault(); _sigDrawing=false; ctx.beginPath(); }
+  c.addEventListener('mousedown',start); c.addEventListener('mousemove',move); c.addEventListener('mouseup',end); c.addEventListener('mouseleave',end);
+  c.addEventListener('touchstart',start,{passive:false}); c.addEventListener('touchmove',move,{passive:false}); c.addEventListener('touchend',end);
+}
+function clearSig() {
+  const c = document.getElementById('sig-canvas');
+  if (!c) return;
+  c.getContext('2d').clearRect(0,0,c.width,c.height);
+  c.classList.remove('signed'); _sigPoints = [];
+}
+function sigHasContent() { return _sigPoints.length > 5; }
+function onTypedSig() {
+  // If user types, clear any drawn signature (use one or the other)
+  if ((document.getElementById('f-typed-sig')?.value||'').trim()) clearSig();
+}
+function getSigDataUrl() {
+  const c = document.getElementById('sig-canvas');
+  return c && sigHasContent() ? c.toDataURL('image/png') : '';
+}
+
+init();
+</script>
+</body>
+</html>
