@@ -120,8 +120,11 @@
     <div class="form-row">
       <div class="form-group">
         <label>Email Address <span class="req">*</span></label>
-        <input id="f-email" type="email" placeholder="your@usf.edu">
+        <input id="f-email" type="email" placeholder="your@usf.edu" onblur="checkEmailDomain(this.value)">
         <div class="hint">Confirmation will be sent here</div>
+        <div id="email-domain-warn" style="display:none;margin-top:6px;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:8px 12px;font-size:12px;color:#92400e;line-height:1.5">
+          ⚠️ <strong>Compass email detected.</strong> Corporate email filters may block our confirmation emails. Please use a personal or USF email address to ensure you receive updates.
+        </div>
       </div>
       <div class="form-group">
         <label>USF UID <span class="opt">(optional)</span></label>
@@ -390,6 +393,13 @@
   loadHours();
 
   const EMAIL_RX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  const BLOCKED_DOMAINS = ['compass-usa.com','compass-group.com','eurest.com','chartwells.com','canteen.com'];
+
+  function checkEmailDomain(val) {
+    const domain = (val||'').trim().toLowerCase().split('@')[1] || '';
+    const warn = document.getElementById('email-domain-warn');
+    if (warn) warn.style.display = BLOCKED_DOMAINS.includes(domain) ? 'block' : 'none';
+  }
 
   function safeRow(label, value) {
     const d = document.createElement('div');
@@ -425,6 +435,11 @@
     if (dept.length > 100)   return showErr('Department name is too long (max 100 characters).');
     if (uid && uid.length !== 9) return showErr('USF UID must be exactly 9 digits (or leave blank).');
     if (!EMAIL_RX.test(email)) return showErr('Please enter a valid email address (e.g. name@usf.edu).');
+    const emailDomain = email.split('@')[1] || '';
+    if (BLOCKED_DOMAINS.includes(emailDomain)) {
+      const proceed = confirm('⚠️ Compass/corporate email detected.\n\nOur confirmation emails may be blocked by your company\'s filters and never reach you.\n\nClick OK to continue anyway, or Cancel to use a different email (e.g. USF or personal).');
+      if (!proceed) return;
+    }
     if (!type)               return showErr('Please select Faculty or Student.');
     if (!date)               return showErr('Please select a date.');
     if (!time)               return showErr('Please select a time.');
