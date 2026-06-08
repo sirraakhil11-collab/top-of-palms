@@ -303,8 +303,10 @@ app.get('/api/reservations', auth.requireManager, async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 app.get('/api/reservations/:id', async (req, res) => {
-  try { const r=await db.getReservation(req.params.id); return r?res.json(r):res.status(404).json({error:'Not found'}); }
-  catch(err){ res.status(500).json({ error:err.message }); }
+  try {
+    const r = await db.getReservation(req.params.id);
+    return r ? res.json(r) : res.status(404).json({ error:`Reservation ${req.params.id.slice(0,8)} not found. It may have been created before the last deployment — please use the dashboard to manage existing reservations.` });
+  } catch(err) { res.status(500).json({ error:`Database error: ${err.message}` }); }
 });
 app.get('/api/stats', auth.requireManager, async (req, res) => {
   try { res.json(await db.getStats()); }
