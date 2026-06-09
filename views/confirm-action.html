@@ -59,8 +59,13 @@
 
   async function loadReservation() {
     try {
-      const r = await fetch(`/api/reservations/${id}`).then(x => x.json());
-      if (r.error) { showError('Reservation not found.'); return; }
+      const resp = await fetch(`/api/reservations/${id}`);
+      const r = await resp.json().catch(()=>({}));
+      if (!resp.ok || r.error) {
+        const msg = r.error || `Reservation not found (ID: ${id}, status: ${resp.status})`;
+        showError(msg);
+        return;
+      }
       if (r.status !== 'pending_approval') {
         document.getElementById('icon').textContent  = r.status === 'approved' ? '✅' : '✕';
         document.getElementById('title').textContent = r.status === 'approved' ? 'Already approved' : 'Already denied';

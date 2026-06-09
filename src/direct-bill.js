@@ -13,19 +13,16 @@ const FORWARD_TO = process.env.DIRECT_BILL_EMAIL || process.env.MANAGER_EMAIL;
 
 // Resolve the base URL for email links — must never return a Zscaler-blocked domain
 function getBaseUrl() {
-  // Priority 1: SAFE_URL env var — set this in Railway to the .up.railway.app URL
-  if (process.env.SAFE_URL) {
-    return process.env.SAFE_URL.trim().replace(/\/$/, '');
-  }
-  // Priority 2: BASE_URL only if it's a .railway.app URL (never the custom domain)
+  // Priority 1: SAFE_URL — set this in Railway Variables to your .up.railway.app URL
+  if (process.env.SAFE_URL) return process.env.SAFE_URL.trim().replace(/\/$/, '');
+  // Priority 2: RAILWAY_STATIC_URL — Railway auto-injects the *.up.railway.app domain here
+  if (process.env.RAILWAY_STATIC_URL) return process.env.RAILWAY_STATIC_URL.trim().replace(/\/$/, '');
+  // Priority 3: RAILWAY_PUBLIC_DOMAIN — may be custom domain; use only as last resort
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN.trim()}`;
+  // Priority 4: BASE_URL if it looks like a real URL
   const base = (process.env.BASE_URL || '').trim().replace(/\/$/, '');
-  if (base && base.includes('railway.app')) {
-    return base;
-  }
-  // NOTE: We intentionally SKIP RAILWAY_PUBLIC_DOMAIN — Railway sets it to the
-  // custom domain (e.g. staging.topofthepalmsusf-chartwells.com) which is Zscaler-blocked
-  // Hard fallback
-  return 'https://top-of-palms-staging.up.railway.app';
+  if (base) return base;
+  return 'http://localhost:3000';
 }
 
 // Fetch rate from settings, fall back to 12.75

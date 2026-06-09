@@ -138,6 +138,13 @@ app.post('/voice/collect',  upload.none(), handleVoiceCollect);
 app.post('/voice/status',   upload.none(), handleCallStatus);
 
 // ══════════════════════════════════════════════════════════════════════════
+//  HEALTH CHECK — required by railway.toml healthcheckPath
+// ══════════════════════════════════════════════════════════════════════════
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', db: process.env.DATABASE_URL ? 'postgres' : 'json-file', ts: new Date().toISOString() });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
 //  PUBLIC PAGES
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/',         (req, res) => res.redirect('/reserve'));
@@ -1173,7 +1180,10 @@ app.patch('/api/pos/payment/:id', auth.requirePos, async (req, res) => {
     if (!hadDB && hasDB) {
       updates.direct_bill_status = 'pending_send'; // newly added Direct Bill
     } else if (hadDB && !hasDB) {
-      updates.direct_bill_status = 'na';           // removed Direct Bill
+      // Only reset to 'na' if no document was collected yet — preserve completed docs for audit
+      const docSaved = ['received','pending_inkind_approval','sent'].includes(r.direct_bill_status);
+      if (!docSaved) updates.direct_bill_status = 'na';
+      // direct_bill_data is never deleted — kept in DB for records regardless of payment change
     }
     // If Direct Bill unchanged (or already sent/received), leave direct_bill_status alone
     res.json(await db.updateReservation(req.params.id, updates));

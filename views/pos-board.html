@@ -212,6 +212,54 @@
     #pos-sig-canvas{display:block;width:100%;cursor:crosshair;touch-action:none}
     .sig-clear{background:none;border:none;color:#6b7280;font-size:11px;cursor:pointer;margin-top:4px}
     .sig-clear:hover{color:#9ca3af}
+
+    /* ── Sign-at-Reception Modal ── */
+    #sign-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+    #sign-modal-overlay.open{display:flex}
+    #sign-modal{background:#1e2130;border:1px solid #3d4065;border-radius:16px;width:100%;max-width:500px;margin:auto;overflow:hidden}
+    #sign-modal .sm-hdr{background:linear-gradient(135deg,#006747,#004d34);padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+    #sign-modal .sm-hdr h3{color:#fff;font-size:15px;font-weight:700}
+    #sign-modal .sm-hdr button{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer}
+    #sign-modal .sm-body{padding:18px}
+    .sm-sec{margin-bottom:16px}
+    .sm-sec-lbl{font-size:10px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #2d3148}
+    .sm-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+    .sm-info-item{background:#252836;border-radius:7px;padding:8px 10px}
+    .sm-info-lbl{font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+    .sm-info-val{font-size:12px;font-weight:600;color:#e8e8e8}
+    .sm-info-val.big{font-size:20px;font-weight:800;color:#4ade80}
+    .sm-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .sm-field{display:flex;flex-direction:column;gap:4px}
+    .sm-field.full{grid-column:1/-1}
+    .sm-field label{font-size:11px;font-weight:600;color:#9ca3af}
+    .sm-field label .req{color:#f87171;margin-left:2px}
+    .sm-field input{padding:8px 10px;background:#252836;border:1px solid #3d4065;border-radius:7px;color:#fff;font-size:13px;font-family:inherit;outline:none}
+    .sm-field input:focus{border-color:#4ade80}
+    .sm-billing-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+    .sm-billing-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+    .sm-billing-opt label{display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid #3d4065;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:#9ca3af;transition:all .15s}
+    .sm-billing-opt input:checked+label{border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,.08)}
+    .sm-section{display:none}.sm-section.show{display:block}
+    .sm-notice{background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2);border-radius:7px;padding:9px 12px;font-size:12px;color:#4ade80;margin-bottom:10px}
+    .sm-total{background:#151821;border:1px solid #2d3148;border-radius:9px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin:12px 0}
+    .sm-total-lbl{font-size:12px;color:#9ca3af}
+    .sm-total-lbl small{display:block;font-size:10px;color:#4b5563;margin-top:2px}
+    .sm-total-amt{font-size:22px;font-weight:800;color:#4ade80}
+    /* Sig canvas in sign modal */
+    .sm-sig-wrap{border:2px dashed #3d4065;border-radius:9px;background:#0f1117;overflow:hidden;position:relative;touch-action:none;margin-bottom:6px}
+    .sm-sig-wrap.has-sig{border-color:#4ade80}
+    #sm-sig-canvas{display:block;width:100%;cursor:crosshair;touch-action:none}
+    .sm-sig-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:13px;pointer-events:none}
+    .sm-sig-ph.hidden{display:none}
+    .sm-err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:7px;padding:9px 12px;font-size:12px;color:#f87171;margin-bottom:10px;display:none}
+    .sm-err.show{display:block}
+    .sm-save-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:9px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
+    .sm-save-btn:hover:not(:disabled){background:#004d34}
+    .sm-save-btn:disabled{background:#2d3148;color:#4b5563;cursor:default}
+    .sm-success{text-align:center;padding:28px 20px}
+    .sm-success-icon{font-size:48px;margin-bottom:12px}
+    .sm-success h3{font-size:18px;font-weight:700;color:#4ade80;margin-bottom:6px}
+    .sm-success p{font-size:13px;color:#9ca3af;line-height:1.6;margin-bottom:16px}
   </style>
 </head>
 <body>
@@ -256,6 +304,19 @@
 </div>
 
 <div id="_t"></div>
+
+<!-- ── Sign at Reception Modal ── -->
+<div id="sign-modal-overlay">
+  <div id="sign-modal">
+    <div class="sm-hdr">
+      <h3>✍️ Direct Bill — Sign at Reception</h3>
+      <button onclick="closeSignModal()">✕ Close</button>
+    </div>
+    <div class="sm-body" id="sm-body">
+      <div style="text-align:center;padding:40px;color:#6b7280">Loading…</div>
+    </div>
+  </div>
+</div>
 
 <!-- ── Direct Bill Modal ── -->
 <div id="db-modal-overlay">
@@ -430,10 +491,10 @@ function renderAll(date){
         ${PAYMENT.map(pm=>`<span class="pay-chip${posPaySel[r.id].includes(pm)?' on':''}" data-rid="${r.id}" data-val="${pm}" onclick="chipTap(this)">${pm}</span>`).join('')}
       </div>
       <button class="save-sm" id="psave-${r.id}" style="display:none" onclick="savePay('${r.id}')">Save Payment</button>
-      ${dbStatus==='pending_send'||dbStatus==='sent'?`<div class="db-badge">📄 Direct Bill — ${dbStatus==='sent'?'form sent, awaiting return':'form not yet sent'}</div><a href="/directbill/sign?id=${r.id}" class="db-sign">✍️ Sign at Reception</a>`:''}
-      ${dbStatus==='pending_inkind_approval'?`<div class="db-badge" style="color:#fbbf24">⏳ In-Kind — awaiting manager approval</div>`:''}
+      ${dbStatus==='pending_send'||dbStatus==='sent'?`<div class="db-badge">📄 Direct Bill — ${dbStatus==='sent'?'form sent, awaiting return':'form not yet sent'}</div><button onclick="openSignModal('${r.id}')" class="db-sign">✍️ Sign at Reception</button>`:''}
+      ${dbStatus==='pending_inkind_approval'?`<div class="db-badge" style="color:#fbbf24">⏳ In-Kind — awaiting manager approval</div><button onclick="openSignModal('${r.id}')" class="db-sign" style="background:#78350f">✍️ Sign at Reception</button>`:''}
       ${dbStatus==='received'?`<div class="db-ok">✓ Direct Bill received</div>`:''}
-      ${(r.payment_method||'').includes('Direct Bill')&&(!dbStatus||dbStatus==='na')?`<a href="/directbill/sign?id=${r.id}" class="db-sign">✍️ Sign Direct Bill</a>`:''}
+      ${(r.payment_method||'').includes('Direct Bill')&&(!dbStatus||dbStatus==='na')?`<button onclick="openSignModal('${r.id}')" class="db-sign">✍️ Sign Direct Bill</button>`:''}
     </div>`;
 
     const attHtml = `<div class="att-section">
@@ -500,9 +561,17 @@ function chipTap(el){
     c.classList.toggle('on',posPaySel[id].includes(c.getAttribute('data-val')));
   });
   const btn=document.getElementById('psave-'+id); if(btn) btn.style.display='block';
-  // If Direct Bill just added, show billing details modal
+  // If Direct Bill just added, only open modal if no document already exists
   if(val==='Direct Bill' && !wasDB && posPaySel[id].includes('Direct Bill')){
-    openDbModal(id);
+    const res=allData.find(r=>r.id===id);
+    const existingStatus = res?.direct_bill_status;
+    // Skip modal if document is already completed, in-progress, or sent
+    const hasDoc = existingStatus && existingStatus !== 'na' && existingStatus !== 'pending_send';
+    if(hasDoc){
+      toast('✓ Using existing Direct Bill document');
+    } else {
+      openDbModal(id);
+    }
   }
 }
 
@@ -679,6 +748,182 @@ if(!window.navigator.standalone && !window.matchMedia('(display-mode: standalone
 }
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+// ── Sign at Reception Modal ─────────────────────────────────────────────────
+let smResId=null, smHasSig=false, smRate=posRate;
+
+async function openSignModal(resId){
+  smResId=resId; smHasSig=false;
+  document.getElementById('sm-body').innerHTML='<div style="text-align:center;padding:40px;color:#6b7280">Loading…</div>';
+  document.getElementById('sign-modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  try{
+    const [rr, rateR] = await Promise.all([
+      fetch(`/api/reservations/${resId}`),
+      fetch('/api/public/rate')
+    ]);
+    const r = await rr.json();
+    if(r.error){ document.getElementById('sm-body').innerHTML=`<div style="padding:30px;color:#f87171;text-align:center">❌ ${x(r.error)}</div>`; return; }
+    const rd = await rateR.json().catch(()=>({rate:posRate}));
+    smRate = parseFloat(rd.rate)||posRate;
+    let pre={};
+    if(r.direct_bill_data){ try{pre=JSON.parse(r.direct_bill_data);}catch{} }
+    renderSignModal(r, pre);
+  }catch(e){
+    document.getElementById('sm-body').innerHTML=`<div style="padding:30px;color:#f87171;text-align:center">❌ Failed to load</div>`;
+  }
+}
+
+function closeSignModal(){
+  document.getElementById('sign-modal-overlay').classList.remove('open');
+  document.body.style.overflow='';
+  smResId=null; smHasSig=false;
+}
+
+function renderSignModal(r, pre){
+  const ref=r.id.slice(0,8).toUpperCase();
+  const party=parseInt(r.party||0), days=Math.max(1,parseInt(r.num_days||1));
+  const total=(party*days*smRate).toFixed(2);
+  document.getElementById('sm-body').innerHTML=`
+    <div class="sm-sec">
+      <div class="sm-sec-lbl">Reservation Details</div>
+      <div class="sm-info-grid">
+        <div class="sm-info-item"><div class="sm-info-lbl">Guest</div><div class="sm-info-val">${x(r.name)}</div></div>
+        <div class="sm-info-item"><div class="sm-info-lbl">Date</div><div class="sm-info-val">${x(r.reservation_date||'')}</div></div>
+        <div class="sm-info-item"><div class="sm-info-lbl">Party</div><div class="sm-info-val">${party}${days>1?' × '+days+'d':''}</div></div>
+        <div class="sm-info-item"><div class="sm-info-lbl">Ref #</div><div class="sm-info-val" style="font-family:monospace;font-size:11px">${ref}</div></div>
+      </div>
+    </div>
+
+    <div class="sm-sec">
+      <div class="sm-sec-lbl">Invoice To</div>
+      <div class="sm-row">
+        <div class="sm-field"><label>Attention of <span class="req">*</span></label><input type="text" id="sm-attn" value="${x(pre.attn_name||r.name||'')}" placeholder="Full name"></div>
+        <div class="sm-field"><label>Department</label><input type="text" id="sm-dept" value="${x(pre.department||r.department||'')}" placeholder="Department"></div>
+      </div>
+      <div class="sm-row">
+        <div class="sm-field"><label>Email <span class="req">*</span></label><input type="email" id="sm-email" value="${x(pre.email||r.email||'')}" placeholder="email@usf.edu"></div>
+        <div class="sm-field"><label>Phone</label><input type="tel" id="sm-phone" value="${x(pre.phone||r.phone_ext||'')}" placeholder="(813) 555-0000"></div>
+      </div>
+      <div class="sm-field full"><label>Dining Guest Name <span class="req">*</span></label><input type="text" id="sm-guest" value="${x(pre.guest_name||r.name||'')}" placeholder="Name of guest dining"></div>
+    </div>
+
+    <div class="sm-sec">
+      <div class="sm-sec-lbl">Billing Method</div>
+      <div class="sm-billing-opts">
+        <div class="sm-billing-opt">
+          <input type="radio" name="sm-btype" id="sm-inkind" value="inkind" ${pre.billing_type==='inkind'?'checked':''} onchange="smShowBilling('inkind')">
+          <label for="sm-inkind">📁 In-Kind</label>
+        </div>
+        <div class="sm-billing-opt">
+          <input type="radio" name="sm-btype" id="sm-pcard" value="pcard" ${pre.billing_type==='pcard'?'checked':''} onchange="smShowBilling('pcard')">
+          <label for="sm-pcard">💳 P-Card</label>
+        </div>
+      </div>
+      <div class="sm-section${pre.billing_type==='inkind'?' show':''}" id="sm-sec-inkind">
+        <div class="sm-field full" style="margin-bottom:8px"><label>In-Kind Account <span class="req">*</span></label><input type="text" id="sm-inkind-acct" value="${x(pre.inkind_account||'')}" placeholder="Account name or number"></div>
+        <div class="sm-field full"><label>Approver Manager Email <span class="req">*</span></label><input type="email" id="sm-approver-email" value="${x(pre.approver_email||'')}" placeholder="manager@usf.edu"></div>
+      </div>
+      <div class="sm-section${pre.billing_type==='pcard'?' show':''}" id="sm-sec-pcard">
+        <div class="sm-notice">💳 P-Card — authorization will be recorded on save.</div>
+      </div>
+      <div class="sm-total">
+        <div class="sm-total-lbl">Total Amount Due<small>${party} guest${party===1?'':'s'}${days>1?' × '+days+' days':''} @ $${smRate.toFixed(2)}/person</small></div>
+        <div class="sm-total-amt">$${total}</div>
+      </div>
+    </div>
+
+    <div class="sm-sec">
+      <div class="sm-sec-lbl">Guest Signature <span style="color:#f87171">*</span></div>
+      <div class="sm-sig-wrap" id="sm-sig-wrap">
+        <canvas id="sm-sig-canvas" height="120"></canvas>
+        <div class="sm-sig-ph" id="sm-sig-ph">✍️ Sign here</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:4px">
+        <button onclick="smClearSig()" style="background:#252836;border:1px solid #3d4065;color:#6b7280;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer">✕ Clear</button>
+      </div>
+    </div>
+
+    <div class="sm-err" id="sm-err"></div>
+    <button class="sm-save-btn" id="sm-save-btn" onclick="smSave()">💾 Save & Complete Authorization</button>
+  `;
+  smInitCanvas();
+}
+
+function smShowBilling(type){
+  document.getElementById('sm-sec-inkind').classList.toggle('show',type==='inkind');
+  document.getElementById('sm-sec-pcard').classList.toggle('show',type==='pcard');
+}
+
+function smInitCanvas(){
+  const canvas=document.getElementById('sm-sig-canvas');
+  if(!canvas) return;
+  const dpr=window.devicePixelRatio||1;
+  const w=canvas.parentElement.clientWidth||340;
+  canvas.width=w*dpr; canvas.style.width=w+'px';
+  canvas.height=120*dpr; canvas.style.height='120px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round';
+  let drawing=false;
+  const getP=(e)=>{const r=canvas.getBoundingClientRect();const s=e.touches?e.touches[0]:e;return{x:s.clientX-r.left,y:s.clientY-r.top};};
+  canvas.onmousedown=canvas.ontouchstart=(e)=>{e.preventDefault();drawing=true;const p=getP(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};
+  canvas.onmousemove=canvas.ontouchmove=(e)=>{e.preventDefault();if(!drawing)return;const p=getP(e);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x,p.y);if(!smHasSig){smHasSig=true;document.getElementById('sm-sig-wrap').classList.add('has-sig');document.getElementById('sm-sig-ph').classList.add('hidden');}};
+  canvas.onmouseup=canvas.ontouchend=()=>{drawing=false;};
+}
+
+function smClearSig(){
+  const canvas=document.getElementById('sm-sig-canvas');
+  if(!canvas) return;
+  const dpr=window.devicePixelRatio||1;
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  smHasSig=false;
+  document.getElementById('sm-sig-wrap')?.classList.remove('has-sig');
+  document.getElementById('sm-sig-ph')?.classList.remove('hidden');
+}
+
+async function smSave(){
+  const errEl=document.getElementById('sm-err');
+  errEl.classList.remove('show');
+  const billingType=document.querySelector('input[name="sm-btype"]:checked')?.value;
+  if(!billingType){errEl.textContent='Please select P-Card or In-Kind.';errEl.classList.add('show');return;}
+  const attn=(document.getElementById('sm-attn')?.value||'').trim();
+  const email=(document.getElementById('sm-email')?.value||'').trim();
+  const guest=(document.getElementById('sm-guest')?.value||'').trim();
+  if(!attn){errEl.textContent='Attention name is required.';errEl.classList.add('show');return;}
+  if(!email){errEl.textContent='Email is required.';errEl.classList.add('show');return;}
+  if(!guest){errEl.textContent='Dining guest name is required.';errEl.classList.add('show');return;}
+  if(billingType==='inkind'){
+    if(!(document.getElementById('sm-inkind-acct')?.value||'').trim()){errEl.textContent='In-Kind account name is required.';errEl.classList.add('show');return;}
+    if(!(document.getElementById('sm-approver-email')?.value||'').trim()){errEl.textContent='Approver manager email is required.';errEl.classList.add('show');return;}
+  }
+  if(!smHasSig){errEl.textContent='Please have the guest sign before saving.';errEl.classList.add('show');return;}
+  const btn=document.getElementById('sm-save-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+  const payload={
+    billing_type:   billingType,
+    attn_name:      attn,
+    department:     (document.getElementById('sm-dept')?.value||'').trim(),
+    email,
+    phone:          (document.getElementById('sm-phone')?.value||'').trim(),
+    guest_name:     guest,
+    inkind_account: billingType==='inkind'?(document.getElementById('sm-inkind-acct')?.value||'').trim():'',
+    approver_email: billingType==='inkind'?(document.getElementById('sm-approver-email')?.value||'').trim():'',
+    signature_png:  document.getElementById('sm-sig-canvas')?.toDataURL('image/png')||''
+  };
+  try{
+    const resp=await fetch(`/api/reservations/${smResId}/directbill/sign-reception`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await resp.json();
+    if(!resp.ok){errEl.textContent=data.error||'Save failed — please try again.';errEl.classList.add('show');btn.disabled=false;btn.textContent='💾 Save & Complete Authorization';return;}
+    document.getElementById('sm-body').innerHTML=`
+      <div class="sm-success">
+        <div class="sm-success-icon">✅</div>
+        <h3>Authorization Saved!</h3>
+        <p>The Direct Bill authorization has been recorded.<br>Reservation is marked as received.</p>
+        <button class="sm-save-btn" onclick="closeSignModal();load()">← Back to Board</button>
+      </div>`;
+  }catch(e){errEl.textContent='Network error — please try again.';errEl.classList.add('show');btn.disabled=false;btn.textContent='💾 Save & Complete Authorization';}
+}
 </script>
 </body>
 </html>
