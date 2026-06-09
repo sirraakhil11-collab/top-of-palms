@@ -138,6 +138,13 @@ app.post('/voice/collect',  upload.none(), handleVoiceCollect);
 app.post('/voice/status',   upload.none(), handleCallStatus);
 
 // ══════════════════════════════════════════════════════════════════════════
+//  HEALTH CHECK — required by railway.toml healthcheckPath
+// ══════════════════════════════════════════════════════════════════════════
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', db: process.env.DATABASE_URL ? 'postgres' : 'json-file', ts: new Date().toISOString() });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
 //  PUBLIC PAGES
 // ══════════════════════════════════════════════════════════════════════════
 app.get('/',         (req, res) => res.redirect('/reserve'));

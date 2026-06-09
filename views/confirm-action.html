@@ -60,8 +60,12 @@
   async function loadReservation() {
     try {
       const resp = await fetch(`/api/reservations/${id}`);
-      const r = await resp.json();
-      if (r.error || !resp.ok) { showError(r.error || 'Reservation not found.'); return; }
+      const r = await resp.json().catch(()=>({}));
+      if (!resp.ok || r.error) {
+        const msg = r.error || `Reservation not found (ID: ${id}, status: ${resp.status})`;
+        showError(msg);
+        return;
+      }
       if (r.status !== 'pending_approval') {
         document.getElementById('icon').textContent  = r.status === 'approved' ? '✅' : '✕';
         document.getElementById('title').textContent = r.status === 'approved' ? 'Already approved' : 'Already denied';
