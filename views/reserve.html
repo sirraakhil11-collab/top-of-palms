@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Top of Palms">
+  <meta name="theme-color" content="#006747">
+  <link rel="manifest" href="/manifest.json">
   <title>Make a Reservation — On Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -14,12 +19,10 @@
     .card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
     .card h2{font-size:20px;font-weight:700;color:#111827;margin-bottom:6px}
     .card>p{color:#6b7280;font-size:14px;margin-bottom:16px}
-    /* Policy box */
     .policy-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#374151;line-height:1.65}
     .policy-box strong{color:#006747;display:block;margin-bottom:6px}
     .policy-box ul{margin:6px 0 0 14px}
     .policy-box li{margin-bottom:3px}
-    /* Sections */
     .sec-title{font-size:11px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #e5e7eb}
     .form-group{margin-bottom:14px}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
@@ -30,34 +33,28 @@
     input:focus,select:focus,textarea:focus{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
     textarea{resize:vertical;min-height:72px}
     .hint{font-size:11px;color:#9ca3af;margin-top:3px}
-    /* Radio cards */
     .radio-group{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .radio-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
     .radio-opt label{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:#374151;transition:all .15s}
     .radio-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
-    /* Multi-select dropdown */
-    .ms-wrap{position:relative}
-    .ms-trigger{width:100%;padding:10px 36px 10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;cursor:pointer;text-align:left;background:#fff;position:relative;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s;min-height:42px}
-    .ms-trigger:hover,.ms-trigger.open{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
-    .ms-trigger-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111827}
-    .ms-trigger-text.placeholder{color:#9ca3af}
-    .ms-arrow{color:#9ca3af;font-size:12px;flex-shrink:0}
-    .ms-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #006747;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;overflow:hidden}
-    .ms-dropdown.open{display:block}
-    .ms-option{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:14px;color:#374151;transition:background .12s}
-    .ms-option:hover{background:#f0fdf4}
-    .ms-option input[type="checkbox"]{width:16px;height:16px;accent-color:#006747;flex-shrink:0;cursor:pointer}
-    .ms-option.selected{background:#f0fdf4;color:#006747;font-weight:500}
-    /* Direct bill notice */
+    /* Days selector */
+    .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:6px}
+    .day-opt{position:relative}
+    .day-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+    .day-opt label{display:flex;align-items:center;justify-content:center;padding:10px 4px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:#374151;transition:all .15s;text-align:center}
+    .day-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
+    /* Payment chips */
+    .pay-chips-guest{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .pchip{padding:10px 16px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid #e5e7eb;color:#374151;background:#fff;transition:all .15s;user-select:none}
+    .pchip:hover{border-color:#006747;background:#f0fdf4}
+    .pchip.on{background:#f0fdf4;color:#006747;border-color:#006747;font-weight:600}
     .db-notice{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;color:#b45309;margin-top:8px;display:none}
     .db-notice.show{display:block}
-    /* Submit */
     .submit-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px;transition:background .15s}
     .submit-btn:hover{background:#004d34}
     .submit-btn:disabled{background:#d1d5db;cursor:default}
     .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
     .err-msg.show{display:block}
-    /* Success */
     .success-screen{display:none;text-align:center;padding:16px 0}
     .success-screen.show{display:block}
     .success-icon{font-size:52px;margin-bottom:14px}
@@ -65,6 +62,23 @@
     .success-badge{display:inline-block;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:16px;background:#fef3c7;color:#b45309}
     .success-detail{font-size:13px;color:#374151;line-height:1.7;margin-bottom:20px;text-align:left;background:#f9fafb;border-radius:8px;padding:14px}
     .new-btn{background:#006747;color:#fff;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer}
+    @media(max-width:600px){
+      header{padding:16px}
+      header h1{font-size:18px}
+      .container{padding:0 10px 40px;margin:16px auto}
+      .card{padding:20px 16px;border-radius:12px}
+      .form-row{grid-template-columns:1fr}
+      .radio-group{grid-template-columns:1fr 1fr}
+      .submit-btn{font-size:16px;padding:16px}
+      .sec-title{margin-top:16px}
+      .days-grid{grid-template-columns:repeat(4,1fr)}
+    }
+    @media(max-width:380px){
+      .radio-group{grid-template-columns:1fr}
+      .card{padding:16px 12px}
+      header h1{font-size:16px}
+      .days-grid{grid-template-columns:repeat(4,1fr)}
+    }
   </style>
 </head>
 <body>
@@ -77,14 +91,14 @@
 
   <div id="form-section">
     <h2>Make a Reservation</h2>
-    <p>Open Monday–Friday, 11:00 AM – 2:00 PM. All reservations require manager approval.</p>
+    <p id="hours-desc">Open Monday–Friday, 11:00 AM – 2:00 PM. All reservations require manager approval.</p>
 
     <div class="policy-box">
       <strong>📋 Reservation Policy</strong>
       <ul>
         <li>Reservations available for parties of <strong>2–15 guests</strong></li>
         <li>Must be requested at least <strong>24 hours in advance</strong></li>
-        <li>PCard/Credit card preferred — Direct Bill accepted (payment due within 30 days)</li>
+        <li>Credit card preferred — Direct Bill accepted (payment due within 30 days)</li>
         <li>Limited daily reservations — additional guests accommodated as walk-ups</li>
         <li>Same-day requests welcome as walk-ups based on availability</li>
       </ul>
@@ -105,18 +119,17 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Phone / Ext <span class="opt">(optional)</span></label>
-        <input id="f-phone" type="text" placeholder="e.g. 813-555-0100">
+        <label>Email Address <span class="req">*</span></label>
+        <input id="f-email" type="email" placeholder="your@usf.edu" onblur="checkEmailDomain(this.value)">
+        <div class="hint">Confirmation will be sent here</div>
+        <div id="email-domain-warn" style="display:none;margin-top:6px;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:8px 12px;font-size:12px;color:#92400e;line-height:1.5">
+          ⚠️ <strong>Compass email detected.</strong> Corporate email filters may block our confirmation emails. Please use a personal or USF email address to ensure you receive updates.
+        </div>
       </div>
       <div class="form-group">
-        <label>USF UID <span class="req">*</span></label>
+        <label>USF UID <span class="opt">(optional)</span></label>
         <input id="f-uid" type="text" placeholder="9-digit ID" maxlength="9" inputmode="numeric">
       </div>
-    </div>
-    <div class="form-group">
-      <label>Email Address <span class="req">*</span></label>
-      <input id="f-email" type="email" placeholder="your@usf.edu">
-      <div class="hint">Confirmation will be sent here</div>
     </div>
     <div class="form-group">
       <label>I am a <span class="req">*</span></label>
@@ -135,7 +148,7 @@
     <div class="sec-title">Reservation Details</div>
     <div class="form-row">
       <div class="form-group">
-        <label>Date <span class="req">*</span></label>
+        <label>Start Date <span class="req">*</span></label>
         <input id="f-date" type="date">
         <div class="hint">At least 24 hours from now</div>
       </div>
@@ -144,48 +157,56 @@
         <select id="f-time">
           <option value="">Select a time</option>
         </select>
-        <div class="hint">11:00 AM – 1:45 PM</div>
+        <div class="hint" id="time-hint">11:00 AM – 1:45 PM</div>
       </div>
     </div>
     <div class="form-group">
-      <label>Number of Guests <span class="req">*</span></label>
-      <select id="f-party">
-        <option value="">Select party size (2–15)</option>
-        <option value="2">2 guests</option>
-        <option value="3">3 guests</option>
-        <option value="4">4 guests</option>
-        <option value="5">5 guests</option>
-        <option value="6">6 guests</option>
-        <option value="7">7 guests</option>
-        <option value="8">8 guests</option>
-        <option value="9">9 guests</option>
-        <option value="10">10 guests</option>
-        <option value="11">11 guests</option>
-        <option value="12">12 guests</option>
-        <option value="13">13 guests</option>
-        <option value="14">14 guests</option>
-        <option value="15">15 guests</option>
-      </select>
-      <div class="hint">Minimum 2, maximum 15 guests per reservation</div>
+      <label>Number of Days <span class="req">*</span></label>
+      <div class="days-grid" id="days-grid">
+        <div class="day-opt"><input type="radio" name="num_days" id="days-1" value="1" checked><label for="days-1">1</label></div>
+        <div class="day-opt"><input type="radio" name="num_days" id="days-2" value="2"><label for="days-2">2</label></div>
+        <div class="day-opt"><input type="radio" name="num_days" id="days-3" value="3"><label for="days-3">3</label></div>
+        <div class="day-opt"><input type="radio" name="num_days" id="days-4" value="4"><label for="days-4">4</label></div>
+        <div class="day-opt"><input type="radio" name="num_days" id="days-5" value="5"><label for="days-5">5</label></div>
+        <div class="day-opt"><input type="radio" name="num_days" id="days-6" value="6"><label for="days-6">6</label></div>
+        <div class="day-opt"><input type="radio" name="num_days" id="days-7" value="7"><label for="days-7">7</label></div>
+      </div>
+      <div class="hint" id="days-hint" style="margin-top:6px">Select up to 7 days · amount calculated per day</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Number of Guests <span class="req">*</span></label>
+        <select id="f-party" onchange="updateAmount()">
+          <option value="">Select party size</option>
+          <option value="2">2 guests</option>
+          <option value="3">3 guests</option>
+          <option value="4">4 guests</option>
+          <option value="5">5 guests</option>
+          <option value="6">6 guests</option>
+          <option value="7">7 guests</option>
+          <option value="8">8 guests</option>
+          <option value="9">9 guests</option>
+          <option value="10">10 guests</option>
+          <option value="11">11 guests</option>
+          <option value="12">12 guests</option>
+          <option value="13">13 guests</option>
+          <option value="14">14 guests</option>
+          <option value="15">15 guests</option>
+        </select>
+        <div class="hint">Min 2 · Max 15 per reservation</div>
+      </div>
+      <div class="form-group" id="amount-display-wrap" style="display:none">
+        <label>Estimated Total</label>
+        <div id="amount-display" style="padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:18px;font-weight:700;color:#006747;background:#f0fdf4"></div>
+        <div class="hint rate-hint">@ $12.75 per guest per day</div>
+      </div>
     </div>
 
     <div class="sec-title">Method of Payment <span class="req" style="font-size:13px">*</span></div>
-    <div class="ms-wrap" id="pay-wrap">
-      <div class="ms-trigger" id="pay-trigger" onclick="toggleDropdown('pay')">
-        <span class="ms-trigger-text placeholder" id="pay-display">Select payment method(s)</span>
-        <span class="ms-arrow">▼</span>
-      </div>
-      <div class="ms-dropdown" id="pay-dropdown">
-        <label class="ms-option" onclick="togglePayment('CC/Cash')">
-          <input type="checkbox" id="pay-cc"> CC / Cash
-        </label>
-        <label class="ms-option" onclick="togglePayment('USF Card')">
-          <input type="checkbox" id="pay-usf"> USF Card
-        </label>
-        <label class="ms-option" onclick="togglePayment('Direct Bill')">
-          <input type="checkbox" id="pay-db"> Direct Bill
-        </label>
-      </div>
+    <div class="pay-chips-guest" id="pay-chips">
+      <span class="pchip" data-val="Credit Card" onclick="togglePay('Credit Card')">💳 Credit Card</span>
+      <span class="pchip" data-val="USF Card" onclick="togglePay('USF Card')">🎓 USF Card</span>
+      <span class="pchip" data-val="Direct Bill" onclick="togglePay('Direct Bill')">📄 Direct Bill</span>
     </div>
     <div class="db-notice" id="db-notice">
       📄 <strong>Direct Bill selected:</strong> An authorization form will be emailed to you. It must be completed and returned before your reservation is confirmed. Payment is due within 30 days of dining.
@@ -210,169 +231,709 @@
 </div>
 
 <script>
-  const PAYMENT_OPTIONS = ['CC/Cash','USF Card','Direct Bill'];
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // CONFIGURABLE CONSTANTS — easy to adjust
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  let RATE       = 12.75;   // $/person — overridden by server setting
+  let openHour   = 11;      // default open hour (overridden by server)
+  let openMin    = 30;      // default open minute — reservations start 11:30 AM
+  let closeHour  = 14;      // default close hour
+  let closeMin   = 0;       // default close minute
+  const MIN_PARTY = 2;      // minimum guests
+  const MAX_PARTY = 15;     // maximum guests
+  const MAX_DAYS  = 7;      // maximum consecutive days
+  const MIN_ADVANCE_HRS = 24; // hours advance booking required
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
   let selectedPayments = [];
 
-  function showErr(msg){const el=document.getElementById('err-msg');if(!el)return;el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});const b=document.getElementById('submit-btn');if(b){b.disabled=false;b.textContent='Submit Reservation Request';}}
+  // Load configurable rate from server
+  (async function loadRate(){
+    try {
+      const d = await fetch('/api/public/rate').then(r=>r.json());
+      RATE = parseFloat(d.rate) || 12.75;
+      // Update any visible rate hints
+      document.querySelectorAll('.rate-hint').forEach(el => { el.textContent = `@ $${RATE.toFixed(2)} per guest per day`; });
+    } catch(e){}
+  })();
 
-  // Weekday-only date picker (Mon-Fri, min tomorrow, block holidays)
+  // Load operating hours from server then build time picker
+  async function loadHours() {
+    try {
+      const h = await fetch('/api/reserve/hours').then(r => r.json());
+      if (h.open_time)  { const [hr,mn] = h.open_time.split(':').map(Number);  openHour = hr; openMin = mn; }
+      if (h.close_time) { const [hr,mn] = h.close_time.split(':').map(Number); closeHour = hr; closeMin = mn; }
+      const fmt = t => { const h = t % 12 || 12; const ampm = t >= 12 ? 'PM' : 'AM'; return h + ':' + (openMin === 0 ? '00' : String(openMin).padStart(2,'0')) + ' ' + ampm; };
+      document.getElementById('hours-desc').textContent =
+        `Open Monday–Friday, ${formatHM(openHour, openMin)} – ${formatHM(closeHour, closeMin)}. All reservations require manager approval.`;
+      document.getElementById('time-hint').textContent = `${formatHM(openHour, openMin)} – ${formatHM(closeHour - 1, 45)}`;
+    } catch(e) {}
+    buildTimeSlots();
+    loadBlocked();
+  }
+
+  function formatHM(h, m) {
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hh = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    return `${hh}:${String(m).padStart(2,'0')} ${ampm}`;
+  }
+
+  function buildTimeSlots() {
+    const sel = document.getElementById('f-time');
+    sel.innerHTML = '<option value="">Select a time</option>';
+    // Last slot is 15 min before close
+    const endH = closeHour, endM = closeMin - 15 < 0 ? (closeMin + 45) : (closeMin - 15);
+    const adjustedEndH = closeMin === 0 ? closeHour - 1 : closeHour;
+    for (let h = openHour; h <= adjustedEndH; h++) {
+      const startM = h === openHour ? openMin : 0;
+      const maxM   = h === adjustedEndH ? (closeMin === 0 ? 45 : closeMin - 15) : 45;
+      for (let m = startM; m <= maxM; m += 15) {
+        const label = formatHM(h, m);
+        const o = document.createElement('option');
+        o.value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        o.textContent = label;
+        sel.appendChild(o);
+      }
+    }
+  }
+
+  // Days radio — update amount on change
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('input[name="num_days"]').forEach(r => r.addEventListener('change', updateAmount));
+  });
+
+  function updateAmount() {
+    const party = parseInt(document.getElementById('f-party').value || '0');
+    const days  = parseInt(document.querySelector('input[name="num_days"]:checked')?.value || '1');
+    const wrap  = document.getElementById('amount-display-wrap');
+    if (party >= 2) {
+      const amt = (party * days * RATE).toFixed(2);
+      document.getElementById('amount-display').textContent = `$${amt}`;
+      wrap.style.display = 'block';
+      document.getElementById('days-hint').textContent = days === 1
+        ? `@ $${RATE.toFixed(2)} per guest per day`
+        : `${days} days × ${party} guests × $${RATE.toFixed(2)} = $${amt}`;
+    } else {
+      wrap.style.display = 'none';
+      document.getElementById('days-hint').textContent = 'Select up to 7 days · amount calculated per day';
+    }
+  }
+
+  // Payment chips
+  function togglePay(val) {
+    const idx = selectedPayments.indexOf(val);
+    if (idx > -1) selectedPayments.splice(idx, 1); else selectedPayments.push(val);
+    document.querySelectorAll('#pay-chips .pchip').forEach(c => {
+      c.classList.toggle('on', selectedPayments.includes(c.dataset.val));
+    });
+    document.getElementById('db-notice').classList.toggle('show', selectedPayments.includes('Direct Bill'));
+  }
+
+  function showErr(msg) {
+    const el = document.getElementById('err-msg');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    el.scrollIntoView({ behavior:'smooth', block:'center' });
+    const b = document.getElementById('submit-btn');
+    if (b) { b.disabled = false; b.textContent = 'Submit Reservation Request'; }
+  }
+
+  // Blocked dates
   let blockedSet = new Set();
-  async function loadBlocked(){
-    try{
+  async function loadBlocked() {
+    try {
       const r = await fetch('/api/blocked-dates');
       const data = await r.json();
-      blockedSet = new Set(data.map(d=>d.date));
-    }catch(e){}
+      blockedSet = new Set(data.map(d => d.date));
+    } catch(e) {}
     setupDatePicker();
   }
 
-  function setupDatePicker(){
+  function setupDatePicker() {
     const inp = document.getElementById('f-date');
     const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate()+1);
-    // Find next valid weekday as min
-    while(tomorrow.getDay()===0||tomorrow.getDay()===6||blockedSet.has(tomorrow.toISOString().split('T')[0])){
-      tomorrow.setDate(tomorrow.getDate()+1);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    while (tomorrow.getDay() === 0 || tomorrow.getDay() === 6 || blockedSet.has(tomorrow.toISOString().split('T')[0])) {
+      tomorrow.setDate(tomorrow.getDate() + 1);
     }
     inp.min = tomorrow.toISOString().split('T')[0];
     inp.addEventListener('change', validateDate);
   }
 
-  function validateDate(){
-    const inp  = document.getElementById('f-date');
-    const val  = inp.value;
-    if(!val) return;
-    const d = new Date(val+'T12:00:00');
+  function validateDate() {
+    const inp = document.getElementById('f-date');
+    const val = inp.value;
+    if (!val) return;
+    const d = new Date(val + 'T12:00:00');
     const day = d.getDay();
-    if(day===0||day===6){
-      showErr('We are only open Monday–Friday. Please select a weekday.');
-      inp.value='';
-      return;
-    }
-    if(blockedSet.has(val)){
-      showErr('This date is not available (holiday or closure). Please choose another date.');
-      inp.value='';
-      return;
-    }
+    if (day === 0 || day === 6) { showErr('We are only open Monday–Friday. Please select a weekday.'); inp.value = ''; return; }
+    if (blockedSet.has(val)) { showErr('This date is not available (holiday or closure). Please choose another date.'); inp.value = ''; return; }
     document.getElementById('err-msg').classList.remove('show');
   }
 
-  loadBlocked();
+  // Check form status
+  (async function checkFormStatus() {
+    try {
+      const s = await fetch('/api/reserve/status').then(r => r.json());
+      if (!s.web_form_enabled) {
+        document.getElementById('form-section').innerHTML = `
+          <div style="text-align:center;padding:40px 20px">
+            <div style="font-size:48px;margin-bottom:16px">🔒</div>
+            <h2 style="color:#111827;font-size:20px;margin-bottom:8px">Online Reservations Unavailable</h2>
+            <p style="color:#6b7280;font-size:15px;margin-bottom:0">
+              Online reservations are temporarily unavailable.<br>
+              Please visit us in person.
+            </p>
+          </div>`;
+      }
+    } catch(e) {}
+  })();
 
-  // Time slots 11:00AM - 1:45PM in 15min increments
-  const sel = document.getElementById('f-time');
-  for(let h=11;h<=13;h++){
-    const maxM = h===13?45:45;
-    for(let m=0;m<=maxM;m+=15){
-      const label=`${h>12?h-12:h}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
-      const o=document.createElement('option');
-      o.value=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-      o.textContent=label;
-      sel.appendChild(o);
-    }
+  loadHours();
+
+  const EMAIL_RX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  const BLOCKED_DOMAINS = ['compass-usa.com','compass-group.com','eurest.com','chartwells.com','canteen.com'];
+
+  function checkEmailDomain(val) {
+    const domain = (val||'').trim().toLowerCase().split('@')[1] || '';
+    const warn = document.getElementById('email-domain-warn');
+    if (warn) warn.style.display = BLOCKED_DOMAINS.includes(domain) ? 'block' : 'none';
   }
 
-  // Multi-select payment
-  function toggleDropdown(id){
-    document.getElementById(id+'-dropdown').classList.toggle('open');
-    document.getElementById(id+'-trigger').classList.toggle('open');
-  }
-  function togglePayment(val){
-    event.stopPropagation();
-    const idx=selectedPayments.indexOf(val);
-    if(idx>-1) selectedPayments.splice(idx,1); else selectedPayments.push(val);
-    updatePaymentDisplay();
-  }
-  function updatePaymentDisplay(){
-    const disp=document.getElementById('pay-display');
-    const cbs={'CC/Cash':'pay-cc','USF Card':'pay-usf','Direct Bill':'pay-db'};
-    Object.entries(cbs).forEach(([v,id])=>{
-      document.getElementById(id).checked=selectedPayments.includes(v);
-      const opt=document.getElementById(id).closest('.ms-option');
-      opt.classList.toggle('selected',selectedPayments.includes(v));
-    });
-    if(selectedPayments.length===0){disp.textContent='Select payment method(s)';disp.className='ms-trigger-text placeholder';}
-    else{disp.textContent=selectedPayments.join(', ');disp.className='ms-trigger-text';}
-    document.getElementById('db-notice').classList.toggle('show',selectedPayments.includes('Direct Bill'));
+  function safeRow(label, value) {
+    const d = document.createElement('div');
+    d.style.cssText = 'padding:3px 0;font-size:13px;color:#374151;line-height:1.6';
+    const s = document.createElement('strong'); s.textContent = label + ': '; d.appendChild(s);
+    d.appendChild(document.createTextNode(value));
+    return d;
   }
 
-  // Close dropdown on outside click
-  document.addEventListener('click',e=>{
-    if(!document.getElementById('pay-wrap').contains(e.target)){
-      document.getElementById('pay-dropdown').classList.remove('open');
-      document.getElementById('pay-trigger').classList.remove('open');
-    }
-  });
-
-  async function submitForm(){
+  async function submitForm() {
     const name  = document.getElementById('f-name').value.trim();
     const dept  = document.getElementById('f-dept').value.trim();
-    const phone = document.getElementById('f-phone').value.trim();
-    const uid   = document.getElementById('f-uid').value.trim().replace(/\D/g,'');
-    const email = document.getElementById('f-email').value.trim();
+    const uid   = document.getElementById('f-uid').value.trim().replace(/\D/g, '');
+    const email = document.getElementById('f-email').value.trim().toLowerCase();
     const type  = document.querySelector('input[name="guest_type"]:checked')?.value;
     const date  = document.getElementById('f-date').value;
     const time  = document.getElementById('f-time').value;
-    const party = parseInt(document.getElementById('f-party').value||'0');
+    const party = parseInt(document.getElementById('f-party').value || '0');
+    const days  = parseInt(document.querySelector('input[name="num_days"]:checked')?.value || '1');
     const notes = document.getElementById('f-notes').value.trim();
 
-    const showErr=msg=>{const el=document.getElementById('err-msg');el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});const b=document.getElementById('submit-btn');b.disabled=false;b.textContent='Submit Reservation Request';};
+    const showErr = msg => {
+      const el = document.getElementById('err-msg');
+      el.textContent = msg; el.classList.add('show');
+      el.scrollIntoView({ behavior:'smooth', block:'center' });
+      const b = document.getElementById('submit-btn');
+      b.disabled = false; b.textContent = 'Submit Reservation Request';
+    };
 
-    if(!name)  return showErr('Please enter your full name.');
-    if(!dept)  return showErr('Please enter your department.');
-    if(uid.length!==9) return showErr('USF UID must be exactly 9 digits.');
-    if(!email||!email.includes('@')) return showErr('Please enter a valid email address.');
-    if(!type)  return showErr('Please select Faculty or Student.');
-    if(!date)  return showErr('Please select a date.');
-    if(!time)  return showErr('Please select a time.');
-    if(!party||party<2) return showErr('Minimum party size is 2 guests.');
-    if(party>15) return showErr('Maximum party size is 15 guests.');
-    if(selectedPayments.length===0) return showErr('Please select at least one payment method.');
+    if (!name)               return showErr('Please enter your full name.');
+    if (name.length > 100)   return showErr('Name is too long (max 100 characters).');
+    if (!dept)               return showErr('Please enter your department.');
+    if (dept.length > 100)   return showErr('Department name is too long (max 100 characters).');
+    if (uid && uid.length !== 9) return showErr('USF UID must be exactly 9 digits (or leave blank).');
+    if (!EMAIL_RX.test(email)) return showErr('Please enter a valid email address (e.g. name@usf.edu).');
+    const emailDomain = email.split('@')[1] || '';
+    if (BLOCKED_DOMAINS.includes(emailDomain)) {
+      const proceed = confirm('⚠️ Compass/corporate email detected.\n\nOur confirmation emails may be blocked by your company\'s filters and never reach you.\n\nClick OK to continue anyway, or Cancel to use a different email (e.g. USF or personal).');
+      if (!proceed) return;
+    }
+    if (!type)               return showErr('Please select Faculty or Student.');
+    if (!date)               return showErr('Please select a date.');
+    if (!time)               return showErr('Please select a time.');
+    if (!party || party < 2) return showErr('Minimum party size is 2 guests.');
+    if (party > 15)          return showErr('Maximum party size is 15 guests.');
+    if (selectedPayments.length === 0) return showErr('Please select at least one payment method.');
+    if (notes.length > 500)  return showErr('Notes are too long (max 500 characters).');
 
     const reservationDT = new Date(`${date}T${time}:00`);
-    if(reservationDT < new Date(Date.now()+24*60*60*1000)) return showErr('Reservations must be made at least 24 hours in advance. Walk-ups are welcome on the day.');
+    if (reservationDT < new Date(Date.now() + 24 * 60 * 60 * 1000))
+      return showErr('Reservations must be made at least 24 hours in advance. Walk-ups are welcome on the day.');
 
     document.getElementById('err-msg').classList.remove('show');
-    const btn=document.getElementById('submit-btn');
-    btn.disabled=true;btn.textContent='Submitting…';
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true; btn.textContent = 'Submitting…';
 
-    const displayTime=new Date(`${date}T${time}:00`).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    const displayTime = new Date(`${date}T${time}:00`).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
 
-    try{
-      const resp=await fetch('/api/reserve',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          name,department:dept,phone_ext:phone,guest_type:type,uid,email,
-          party,datetime_iso:`${date}T${time}`,datetime_display:displayTime,
-          reservation_time:displayTime.split(',')[1]?.trim()||time,
-          seating_preference:'',
-          payment_method:selectedPayments.join(', '),
+    try {
+      const resp = await fetch('/api/reserve', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, department: dept, phone_ext: '', guest_type: type, uid, email,
+          party, num_days: days,
+          datetime_iso: `${date}T${time}`, datetime_display: displayTime,
+          reservation_time: new Date(`${date}T${time}:00`).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }),
+          seating_preference: '',
+          payment_method: selectedPayments.join(', '),
           notes
         })
       });
-      const data=await resp.json();
-      if(!resp.ok) return showErr(data.error||'Submission failed. Please try again.');
-      document.getElementById('form-section').style.display='none';
+      const data = await resp.json();
+      if (!resp.ok) return showErr(data.error || 'Submission failed. Please try again.');
+
+      document.getElementById('form-section').style.display = 'none';
       document.getElementById('success-screen').classList.add('show');
-      document.getElementById('success-detail').innerHTML=`
-        <strong>Name:</strong> ${name}<br>
-        <strong>Department:</strong> ${dept}<br>
-        <strong>Date & time:</strong> ${displayTime}<br>
-        <strong>Party size:</strong> ${party} guest${party===1?'':'s'}<br>
-        <strong>Payment:</strong> ${selectedPayments.join(', ')}<br>
-        ${selectedPayments.includes('Direct Bill')?'<br>⚠️ A Direct Bill authorization form has been emailed to you. Please complete and return it within 30 days of dining.':''}`;
-    }catch(e){showErr('Could not reach server. Please try again.');}
+
+      const detail = document.getElementById('success-detail');
+      detail.innerHTML = '';
+      const totalAmt = (party * days * RATE).toFixed(2);
+      [
+        ['Name', name],
+        ['Department', dept],
+        ['Start date & time', displayTime],
+        days > 1 ? ['Number of days', `${days} days`] : null,
+        ['Party size', `${party} guest${party === 1 ? '' : 's'}`],
+        days > 1 ? ['Estimated total', `$${totalAmt}`] : null,
+        ['Payment', selectedPayments.join(', ')],
+      ].filter(Boolean).forEach(([k, v]) => detail.appendChild(safeRow(k, v)));
+
+      if (selectedPayments.includes('Direct Bill')) {
+        const note = document.createElement('div');
+        note.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#b45309';
+        note.textContent = '⚠️ A Direct Bill authorization form has been emailed to you. Please complete and return it within 30 days of dining.';
+        detail.appendChild(note);
+      }
+    } catch(e) { showErr('Could not reach server. Please try again.'); }
   }
 
-  function resetForm(){
-    document.getElementById('form-section').style.display='block';
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+  // ── Chatbot ──────────────────────────────────────────────────────────────────
+  // Floating chat widget — collects reservation fields conversationally then submits
+  (function initBot() {
+    // Inject styles
+    const style = document.createElement('style');
+    style.textContent = `
+      #cb-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:#006747;color:#fff;border:none;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(0,103,71,.4);z-index:200;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+      #cb-fab:hover{transform:scale(1.08)}
+      #cb-greeting{position:fixed;bottom:90px;right:24px;background:#fff;border:1.5px solid #e5e7eb;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:13px;color:#111827;box-shadow:0 4px 16px rgba(0,0,0,.10);z-index:198;max-width:220px;line-height:1.4;cursor:pointer;transition:opacity .2s}
+      #cb-greeting strong{color:#006747}
+      #cb-greeting:hover{border-color:#006747}
+      #cb-panel{position:fixed;bottom:92px;right:24px;width:340px;max-width:calc(100vw - 32px);background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:199;display:none;flex-direction:column;overflow:hidden;max-height:560px}
+      #cb-panel.open{display:flex}
+      #cb-hdr{background:#006747;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+      #cb-hdr span{color:#fff;font-weight:700;font-size:15px}
+      #cb-close{background:none;border:none;color:rgba(255,255,255,.75);font-size:20px;cursor:pointer;line-height:1}
+      #cb-msgs{flex:1;overflow-y:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:8px;min-height:200px}
+      .cb-bot,.cb-user{max-width:88%;padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
+      .cb-bot{background:#f0fdf4;color:#111827;align-self:flex-start;border-bottom-left-radius:4px}
+      .cb-user{background:#006747;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+      .cb-opts{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;flex-shrink:0}
+      .cb-opt{padding:7px 13px;border-radius:20px;border:1.5px solid #006747;color:#006747;background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
+      .cb-opt:hover{background:#f0fdf4}
+      #cb-input-row{border-top:1px solid #f3f4f6;padding:10px 12px;display:flex;gap:8px;flex-shrink:0}
+      #cb-inp{flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;font-family:inherit;outline:none;color:#111827}
+      #cb-inp:focus{border-color:#006747}
+      #cb-send{background:#006747;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer}
+      #cb-send:disabled{background:#9ca3af;cursor:default}
+      .cb-typing{align-self:flex-start;padding:8px 14px;background:#f0fdf4;border-radius:14px;border-bottom-left-radius:4px;font-size:20px;letter-spacing:2px;color:#006747}
+      /* Calendar widget */
+      .cb-cal{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px;width:100%;font-size:12px;user-select:none;align-self:flex-start;max-width:290px}
+      .cb-cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+      .cb-cal-hdr span{font-weight:700;color:#111827;font-size:13px}
+      .cb-cal-nav{background:none;border:none;cursor:pointer;color:#006747;font-size:16px;padding:2px 6px;border-radius:4px}
+      .cb-cal-nav:hover{background:#f0fdf4}
+      .cb-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+      .cb-cal-dow{font-size:10px;font-weight:600;color:#9ca3af;padding:3px 0}
+      .cb-cal-day{padding:5px 2px;border-radius:6px;cursor:pointer;color:#374151;transition:background .1s}
+      .cb-cal-day:hover:not(.disabled):not(.empty){background:#dcfce7;color:#006747}
+      .cb-cal-day.disabled{color:#d1d5db;cursor:default;pointer-events:none}
+      .cb-cal-day.empty{pointer-events:none}
+      .cb-cal-day.today{font-weight:700;color:#006747}
+      .cb-cal-day.selected{background:#006747;color:#fff;font-weight:700}
+    `;
+    document.head.appendChild(style);
+
+    // Inject HTML
+    const fab = document.createElement('button');
+    fab.id = 'cb-fab'; fab.title = 'Chat to reserve'; fab.innerHTML = '💬';
+    fab.onclick = () => {
+      const p = document.getElementById('cb-panel');
+      p.classList.toggle('open');
+      if (p.classList.contains('open') && !botStarted) startBot();
+    };
+    document.body.appendChild(fab);
+
+    const greeting = document.createElement('div');
+    greeting.id = 'cb-greeting';
+    greeting.innerHTML = '👋 <strong>Hi there!</strong> Looking to make a reservation?';
+    greeting.onclick = () => {
+      greeting.style.display = 'none';
+      const p = document.getElementById('cb-panel');
+      p.classList.add('open');
+      if (!botStarted) startBot();
+    };
+    document.body.appendChild(greeting);
+
+    // Hide greeting once chat is opened
+    fab.addEventListener('click', () => { greeting.style.display = 'none'; });
+
+    const panel = document.createElement('div');
+    panel.id = 'cb-panel';
+    panel.innerHTML = `
+      <div id="cb-hdr"><span>🌴 Quick Reservation</span><button id="cb-close" onclick="document.getElementById('cb-panel').classList.remove('open')">×</button></div>
+      <div id="cb-msgs"></div>
+      <div id="cb-opts-row" class="cb-opts"></div>
+      <div id="cb-input-row">
+        <input id="cb-inp" placeholder="Type here…" autocomplete="off" onkeydown="if(event.key==='Enter')cbSend()">
+        <button id="cb-send" onclick="cbSend()">→</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    let botStarted = false;
+    const ans = {};
+    let step = 0;
+    let blockedDatesBot = new Set();
+    let calMonth = null, calYear = null; // current calendar view
+
+    // Generate 15-min time slot options as HH:MM strings within open hours
+    function buildTimeOpts() {
+      const lastSlotH = closeMin===0 ? closeHour-1 : closeHour;
+      const lastSlotM = closeMin===0 ? 45 : closeMin-15;
+      const slots = [];
+      for (let h = openHour; h <= lastSlotH; h++) {
+        const startM = (h === openHour) ? openMin : 0;
+        const endM   = (h === lastSlotH) ? lastSlotM : 45;
+        for (let m = startM; m <= endM; m += 15) {
+          slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+        }
+      }
+      return slots;
+    }
+
+    // Build steps dynamically so time message uses live openHour/openMin
+    function buildSteps() {
+      const closeLabel = formatHM(closeHour - (closeMin===0?1:0), closeMin===0?45:closeMin-15);
+      const openLabel  = formatHM(openHour, openMin);
+      return [
+        { key:'name',    q:"Hi! I'm your reservation assistant. 👋\n\nWhat's your **full name**?",
+          validate: v => v.length>=2?null:'Please enter your full name.' },
+        { key:'dept',    q:"What **department** are you with?",
+          validate: v => v.length>=2?null:'Please enter your department.' },
+        { key:'uid',     q:"What's your **USF UID**? (9 digits)\nType *skip* to skip.",
+          validate: v => { if(v.toLowerCase()==='skip'||v==='')return null; if(/^\d{9}$/.test(v))return null; return 'UID must be 9 digits, or type "skip".'; } },
+        { key:'email',   q:"What's your **email address**?",
+          validate: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?null:'Please enter a valid email address.' },
+        { key:'type',    q:"Are you **Faculty** or **Student**?", opts:['Faculty','Student'],
+          validate: v => ['faculty','student'].includes(v.toLowerCase())?null:'Please choose Faculty or Student.' },
+        { key:'date',    q:"What **date** would you like to dine?\nChoose from the calendar below or type YYYY-MM-DD.",
+          validate: validateBotDate, showCal: true },
+        { key:'time',    q:`What **time** would you prefer?\nWe're open **${openLabel} – ${closeLabel}**.`,
+          opts: buildTimeOpts(), validate: validateBotTime },
+        { key:'party',   q:`How many **guests** in your party?\n(Min ${MIN_PARTY}, max ${MAX_PARTY})`,
+          opts:['2','3','4','5','6','7','8','10','12','15'],
+          validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=MIN_PARTY&&n<=MAX_PARTY)?null:`Please enter ${MIN_PARTY}–${MAX_PARTY}.`; } },
+        { key:'days',
+          q: (() => {
+            if (!ans.date) return `Will you be dining **just this one day**, or across **multiple consecutive weekdays**?`;
+            const d = new Date(ans.date+'T12:00:00');
+            const label = d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+            return `Will you be dining **just on ${label}**, or across **multiple consecutive weekdays** starting then?`;
+          })(),
+          buildOpts: () => {
+            const slots = ['1 day (just this date)'];
+            if (!ans.date) { for(let i=2;i<=MAX_DAYS;i++) slots.push(`${i} days`); return slots; }
+            let cur = new Date(ans.date+'T12:00:00');
+            for (let i = 2; i <= MAX_DAYS; i++) {
+              cur.setDate(cur.getDate()+1);
+              while (cur.getDay()===0||cur.getDay()===6) cur.setDate(cur.getDate()+1);
+              const lbl = cur.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+              slots.push(`${i} days (through ${lbl})`);
+            }
+            return slots;
+          },
+          validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=1&&n<=MAX_DAYS)?null:`Please enter 1–${MAX_DAYS}.`; },
+          normalize: v => String(parseInt(v)) },
+        { key:'payment', q:"How will you be **paying**?", opts:['Credit Card','USF Card','Direct Bill'],
+          validate: v => ['credit card','usf card','direct bill'].includes(v.toLowerCase())?null:'Please choose a payment method.' },
+        { key:'notes',   q:"Any **special requests**? (dietary, accessibility, occasion…)",
+          opts:['Skip'], validate: () => null },
+      ];
+    }
+
+    function validateBotDate(v) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Please use YYYY-MM-DD (e.g. 2026-06-15) or tap a date above.';
+      const d = new Date(v+'T12:00:00'); if(isNaN(d)) return 'Invalid date.';
+      const day = d.getDay();
+      if (day===0||day===6) return 'We\'re open Mon–Fri only. Please pick a weekday.';
+      if (blockedDatesBot.has(v)) return 'That date is unavailable. Please choose another.';
+      const minDate = new Date(); minDate.setDate(minDate.getDate()+1); minDate.setHours(0,0,0,0);
+      if (d < minDate) return `Please book at least 1 day in advance.`;
+      return null;
+    }
+
+    function validateBotTime(v) {
+      const m = v.match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return `Please use HH:MM format (e.g. ${openHour}:${String(openMin).padStart(2,'0')}).`;
+      const h=parseInt(m[1]), mn=parseInt(m[2]);
+      const afterOpen  = h>openHour || (h===openHour && mn>=openMin);
+      const lastSlotH  = closeMin===0 ? closeHour-1 : closeHour;
+      const lastSlotM  = closeMin===0 ? 45 : closeMin-15;
+      const beforeClose = h<lastSlotH || (h===lastSlotH && mn<=lastSlotM);
+      if (!afterOpen || !beforeClose) return `Please choose a time between ${formatHM(openHour,openMin)} and ${formatHM(lastSlotH,lastSlotM)}.`;
+      return null;
+    }
+
+    // ── Calendar widget ──────────────────────────────────────────────────────
+    function renderCal(year, month) {
+      calYear=year; calMonth=month;
+      const msgs = document.getElementById('cb-msgs');
+      // Remove old calendar if any
+      document.getElementById('cb-calendar')?.remove();
+      const cal = document.createElement('div');
+      cal.className='cb-cal'; cal.id='cb-calendar';
+      const now = new Date();
+      const minDate = new Date(); minDate.setDate(minDate.getDate()+1); minDate.setHours(0,0,0,0);
+      const monthLabel = new Date(year,month,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      const firstDay = new Date(year,month,1).getDay();
+      const daysInMonth = new Date(year,month+1,0).getDate();
+      let html = `<div class="cb-cal-hdr">
+        <button class="cb-cal-nav" onclick="calPrev()">‹</button>
+        <span>${monthLabel}</span>
+        <button class="cb-cal-nav" onclick="calNext()">›</button>
+      </div>
+      <div class="cb-cal-grid">
+        ${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cb-cal-dow">${d}</div>`).join('')}
+        ${Array(firstDay).fill('<div class="cb-cal-day empty"></div>').join('')}`;
+      for(let d=1; d<=daysInMonth; d++){
+        const dt = new Date(year,month,d);
+        const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dow = dt.getDay();
+        const isWeekend = dow===0||dow===6;
+        const isBlocked = blockedDatesBot.has(iso);
+        const isPast    = dt < minDate;
+        const isToday   = dt.toDateString()===now.toDateString();
+        const disabled  = isWeekend||isBlocked||isPast;
+        const sel       = ans.date===iso;
+        html += `<div class="cb-cal-day${disabled?' disabled':''}${isToday?' today':''}${sel?' selected':''}" onclick="calPickDate('${iso}')">${d}</div>`;
+      }
+      html += '</div>';
+      cal.innerHTML = html;
+      msgs.appendChild(cal);
+      msgs.scrollTop=msgs.scrollHeight;
+    }
+    // Exposed globally so inline onclick in rendered calendar HTML can call them
+    window.calPrev     = function(){ renderCal(calMonth===0?calYear-1:calYear, calMonth===0?11:calMonth-1); };
+    window.calNext     = function(){ renderCal(calMonth===11?calYear+1:calYear, calMonth===11?0:calMonth+1); };
+    window.calPickDate = function(iso){
+      const err = validateBotDate(iso);
+      if(err){ addMsg('⚠️ '+err,'bot'); return; }
+      document.getElementById('cb-inp').value = iso;
+      cbSend();
+    };
+
+    function addMsg(text, who) {
+      const msgs = document.getElementById('cb-msgs');
+      const el = document.createElement('div');
+      el.className = who === 'bot' ? 'cb-bot' : 'cb-user';
+      el.innerHTML = text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>').replace(/\*(skip|none)\*/g,'<em>$1</em>');
+      msgs.appendChild(el);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function showOpts(opts) {
+      const row = document.getElementById('cb-opts-row');
+      row.innerHTML = '';
+      opts.forEach(o => {
+        const b = document.createElement('button');
+        b.className = 'cb-opt'; b.textContent = o;
+        b.onclick = () => { document.getElementById('cb-inp').value = o; cbSend(); };
+        row.appendChild(b);
+      });
+    }
+
+    function clearOpts() { document.getElementById('cb-opts-row').innerHTML = ''; }
+
+    function typing() {
+      const msgs = document.getElementById('cb-msgs');
+      const el = document.createElement('div');
+      el.className = 'cb-typing'; el.id = 'cb-typing'; el.textContent = '···';
+      msgs.appendChild(el); msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function clearTyping() { document.getElementById('cb-typing')?.remove(); }
+
+    function askStep(i) {
+      const steps = buildSteps();
+      if (i >= steps.length) { doConfirm(); return; }
+      const s = steps[i];
+      setTimeout(() => {
+        clearTyping();
+        addMsg(s.q, 'bot');
+        const opts = s.buildOpts ? s.buildOpts() : s.opts;
+        if (opts) showOpts(opts); else clearOpts();
+        if (s.showCal) {
+          const now = new Date();
+          renderCal(now.getFullYear(), now.getMonth());
+        } else {
+          document.getElementById('cb-calendar')?.remove();
+        }
+        document.getElementById('cb-inp').focus();
+      }, 400);
+    }
+
+    function startBot() {
+      botStarted = true;
+      fetch('/api/blocked-dates').then(r=>r.json()).then(d=>{ blockedDatesBot=new Set(d.map(x=>x.date)); }).catch(()=>{});
+      step = 0;
+      typing();
+      askStep(0);
+    }
+
+    window.cbSend = function() {
+      const inp = document.getElementById('cb-inp');
+      const raw = inp.value.trim();
+      const steps = buildSteps();
+      if (step >= steps.length) return;
+      const s = steps[step];
+      // Notes step: allow empty submit or "Skip" button to bypass
+      if (s.key === 'notes' && (!raw || raw.toLowerCase() === 'skip')) {
+        inp.value = ''; clearOpts();
+        if (raw) addMsg(raw, 'user');
+        ans.notes = '';
+        step++; typing(); askStep(step);
+        return;
+      }
+      if (!raw) return;
+      inp.value = '';
+      clearOpts();
+      addMsg(raw, 'user');
+
+      const err = s.validate(raw);
+      if (err) {
+        typing();
+        setTimeout(() => {
+          clearTyping(); addMsg('⚠️ ' + err, 'bot');
+          const opts = s.buildOpts ? s.buildOpts() : s.opts;
+          if (opts) showOpts(opts);
+        }, 300);
+        return;
+      }
+      // Normalize
+      let val = s.normalize ? s.normalize(raw) : raw;
+      if (s.key==='uid' && raw.toLowerCase()==='skip') val = '';
+      if (s.key==='type') val = raw.charAt(0).toUpperCase()+raw.slice(1).toLowerCase();
+      ans[s.key] = val;
+      step++;
+      typing();
+      askStep(step);
+    };
+
+    function buildDiningDates(startIso, numDays) {
+      const dates = [];
+      let cur = new Date(startIso+'T12:00:00');
+      for (let i = 0; i < numDays; i++) {
+        if (i > 0) {
+          cur.setDate(cur.getDate()+1);
+          while (cur.getDay()===0||cur.getDay()===6) cur.setDate(cur.getDate()+1);
+        }
+        dates.push(cur.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}));
+      }
+      return dates;
+    }
+
+    function doConfirm() {
+      const party = parseInt(ans.party);
+      const days  = parseInt(ans.days||'1');
+      const total = (party * days * RATE).toFixed(2);
+      const diningDates = buildDiningDates(ans.date, days);
+      const datesLine = days === 1
+        ? `**Date:** ${diningDates[0]} at ${ans.time}`
+        : `**Dates:** ${diningDates.map((d,i) => `\n  Day ${i+1}: ${d}`).join('')} at ${ans.time}`;
+      const summary = `Here's your reservation summary:\n\n**Name:** ${ans.name}\n**Dept:** ${ans.dept}\n**Email:** ${ans.email}\n${datesLine}\n**Party:** ${ans.party} guest${party===1?'':'s'}${days>1?' × '+days+' days':''}\n**Payment:** ${ans.payment}\n**Total:** $${total}${ans.notes?'\n**Notes:** '+ans.notes:''}\n\nShall I submit this?`;
+      addMsg(summary, 'bot');
+      showOpts(['Yes, submit!','No, start over']);
+      step = 99; // hold
+      window.cbSend = function() {
+        const inp = document.getElementById('cb-inp');
+        const raw = inp.value.trim().toLowerCase();
+        inp.value = ''; clearOpts();
+        addMsg(inp.value || (raw.includes('yes')?'Yes, submit!':'No, start over'), 'user');
+        if (raw.includes('yes') || raw.includes('submit')) {
+          addMsg('Submitting your reservation…', 'bot');
+          submitBot();
+        } else {
+          step = 0; botStarted = false;
+          addMsg('No problem! Let\'s start over.', 'bot');
+          typing(); askStep(0);
+          window.cbSend = originalCbSend;
+        }
+      };
+    }
+
+    const originalCbSend = window.cbSend;
+
+    async function submitBot() {
+      try {
+        const dateISO = ans.date+'T'+ans.time;
+        const displayTime = new Date(dateISO+':00').toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+        const resp = await fetch('/api/reserve', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            name: ans.name, department: ans.dept, phone_ext:'',
+            guest_type: ans.type.toLowerCase(),
+            uid: ans.uid||'', email: ans.email,
+            party: parseInt(ans.party), num_days: parseInt(ans.days||'1'),
+            datetime_iso: dateISO, datetime_display: displayTime,
+            reservation_time: new Date(dateISO+':00').toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+            seating_preference:'', payment_method: ans.payment, notes: ans.notes||''
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) { addMsg('❌ ' + (data.error||'Submission failed. Please try the form above.'), 'bot'); return; }
+        const submittedName = ans.name;
+        addMsg('✅ **Reservation submitted!** You\'ll receive a confirmation email shortly. Thank you, ' + submittedName + '! 🌴', 'bot');
+        clearOpts();
+        // Reset state fully
+        step = 0; botStarted = false;
+        Object.keys(ans).forEach(k => delete ans[k]);
+        // Ask if they want another reservation — keep cbSend locked until they answer
+        window.cbSend = function() { /* block input while waiting */ };
+        setTimeout(() => {
+          typing();
+          setTimeout(() => {
+            clearTyping();
+            addMsg('Would you like to make **another reservation**?', 'bot');
+            showOpts(['Yes, new reservation', 'No, thanks']);
+            // Now wire up the answer handler
+            window.cbSend = function() {
+              const inp = document.getElementById('cb-inp');
+              const raw = (inp.value||'').trim().toLowerCase();
+              if (!raw) return;
+              inp.value = ''; clearOpts();
+              addMsg(raw.includes('yes') || raw.includes('new') || raw.includes('reserv') ? 'Yes, new reservation' : 'No, thanks', 'user');
+              if (raw.includes('yes') || raw.includes('new') || raw.includes('reserv')) {
+                // Fully restart — startBot resets step and botStarted
+                window.cbSend = originalCbSend;
+                typing(); startBot();
+              } else {
+                window.cbSend = originalCbSend;
+                addMsg('No problem! Feel free to chat again anytime. 😊', 'bot');
+              }
+            };
+          }, 400);
+        }, 1500);
+      } catch(e) { addMsg('❌ Could not reach the server. Please use the form above.', 'bot'); }
+    }
+  })();
+
+  function resetForm() {
+    document.getElementById('form-section').style.display = 'block';
     document.getElementById('success-screen').classList.remove('show');
-    ['f-name','f-dept','f-phone','f-uid','f-email','f-notes'].forEach(id=>document.getElementById(id).value='');
-    ['f-date','f-time','f-party'].forEach(id=>document.getElementById(id).value='');
-    document.querySelectorAll('input[name="guest_type"]').forEach(i=>i.checked=false);
-    selectedPayments=[];updatePaymentDisplay();
+    ['f-name','f-dept','f-uid','f-email','f-notes'].forEach(id => document.getElementById(id).value = '');
+    ['f-date','f-time','f-party'].forEach(id => document.getElementById(id).value = '');
+    document.querySelectorAll('input[name="guest_type"]').forEach(i => i.checked = false);
+    document.getElementById('days-1').checked = true;
+    selectedPayments = [];
+    document.querySelectorAll('#pay-chips .pchip').forEach(c => c.classList.remove('on'));
+    document.getElementById('db-notice').classList.remove('show');
+    document.getElementById('amount-display-wrap').style.display = 'none';
     document.getElementById('err-msg').classList.remove('show');
-    const btn=document.getElementById('submit-btn');btn.disabled=false;btn.textContent='Submit Reservation Request';
+    const btn = document.getElementById('submit-btn'); btn.disabled = false; btn.textContent = 'Submit Reservation Request';
   }
 </script>
 </body>

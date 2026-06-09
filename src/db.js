@@ -15,6 +15,29 @@ if (USE_PG) {
 
   // Use explicit CREATE TABLE with all columns defined upfront
   pool.query(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    );
+
+    -- Default service toggles (insert only if not already present)
+    INSERT INTO settings (key, value, updated_at) VALUES ('web_form_enabled',   'true',  NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('email_intake_enabled','false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('sms_intake_enabled',  'false', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('direct_bill_rate',    '12.75', NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+    INSERT INTO settings (key, value, updated_at) VALUES ('daily_limit',         '60',    NOW()::TEXT) ON CONFLICT (key) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS documents (
+      id             TEXT PRIMARY KEY,
+      reservation_id TEXT NOT NULL,
+      filename       TEXT NOT NULL DEFAULT '',
+      mimetype       TEXT NOT NULL DEFAULT 'application/pdf',
+      size_bytes     INTEGER DEFAULT 0,
+      data_base64    TEXT NOT NULL DEFAULT '',
+      uploaded_at    TEXT NOT NULL DEFAULT ''
+    );
+
     CREATE TABLE IF NOT EXISTS reservations (
       id                  TEXT PRIMARY KEY,
       name                TEXT NOT NULL DEFAULT '',
@@ -36,6 +59,8 @@ if (USE_PG) {
       attendance          TEXT DEFAULT 'pending',
       checked_in_at       TEXT,
       channel             TEXT DEFAULT 'form',
+      num_days            INTEGER DEFAULT 1,
+      group_id            TEXT DEFAULT NULL,
       created_at          TEXT NOT NULL DEFAULT '',
       processed_at        TEXT
     );
@@ -47,12 +72,19 @@ if (USE_PG) {
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS seating_preference TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS payment_method     TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_status TEXT DEFAULT 'na';
+    UPDATE reservations SET direct_bill_status='pending_send' WHERE direct_bill_status='pending_document';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS attendance         TEXT DEFAULT 'pending';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS checked_in_at      TEXT;
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS notes              TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS table_number       TEXT DEFAULT '';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS channel            TEXT DEFAULT 'form';
     ALTER TABLE reservations ADD COLUMN IF NOT EXISTS reservation_date   TEXT DEFAULT '';
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS num_days           INTEGER DEFAULT 1;
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS group_id           TEXT DEFAULT NULL;
+
+    -- Direct Bill form submission data
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_data             TEXT DEFAULT '';
+    ALTER TABLE reservations ADD COLUMN IF NOT EXISTS direct_bill_approval_token   TEXT DEFAULT '';
 
     -- Fix any rows that have NULL in important fields
     UPDATE reservations SET department        = '' WHERE department IS NULL;
@@ -98,7 +130,7 @@ function toDateStr(val) {
 // ── JSON migration ─────────────────────────────────────────────────────────
 if (!USE_PG) {
   const rows = readJSON(); let ch = 0;
-  const defs = { reservation_date:'', reservation_time:'', department:'', phone_ext:'', seating_preference:'', payment_method:'', direct_bill_status:'na', attendance:'pending', checked_in_at:null, notes:'', table_number:'', channel:'form' };
+  const defs = { reservation_date:'', reservation_time:'', department:'', phone_ext:'', seating_preference:'', payment_method:'', direct_bill_status:'na', attendance:'pending', checked_in_at:null, notes:'', table_number:'', channel:'form', direct_bill_data:'', direct_bill_approval_token:'' };
   rows.forEach(r => {
     if (!r.reservation_date && r.datetime) { const d=toDateStr(r.datetime); if(d){r.reservation_date=d;ch++;} }
     Object.entries(defs).forEach(([k,v]) => { if(r[k]===undefined){r[k]=v;ch++;} });
@@ -128,13 +160,15 @@ async function createReservation(data) {
     reservation_time:   data.reservation_time  || '',
     seating_preference: data.seating_preference|| '',
     payment_method:     data.payment_method    || '',
-    direct_bill_status: hasDB ? 'pending_document' : 'na',
+    direct_bill_status: hasDB ? 'pending_send' : 'na',  // pending_send = chosen but form not sent yet
     notes:              data.notes             || '',
     table_number:       data.table_number      || '',
     status:             data.status            || 'pending_approval',
     attendance:         'pending',
     checked_in_at:      null,
     channel:            data.channel           || 'form',
+    num_days:           Math.max(1, parseInt(data.num_days || 1, 10)),
+    group_id:           data.group_id          || null,
     created_at:         now,
     processed_at:       null
   };
@@ -146,15 +180,16 @@ async function createReservation(data) {
         (id, name, guest_status, department, phone_ext, uid, email, party,
          datetime, reservation_date, reservation_time, seating_preference,
          payment_method, direct_bill_status, notes, table_number, status,
-         attendance, checked_in_at, channel, created_at, processed_at)
+         attendance, checked_in_at, channel, num_days, group_id, created_at, processed_at)
       VALUES
-        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
     `, [
       record.id, record.name, record.guest_status, record.department, record.phone_ext,
       record.uid, record.email, record.party, record.datetime, record.reservation_date,
       record.reservation_time, record.seating_preference, record.payment_method,
       record.direct_bill_status, record.notes, record.table_number, record.status,
-      record.attendance, record.checked_in_at, record.channel, record.created_at, record.processed_at
+      record.attendance, record.checked_in_at, record.channel, record.num_days,
+      record.group_id, record.created_at, record.processed_at
     ]);
   } else {
     const rows = readJSON(); rows.unshift(record); writeJSON(rows);
@@ -177,13 +212,13 @@ async function getReservationsByStatus(status) {
   return readJSON().filter(r=>r.status===status);
 }
 
+async function getReservationsByGroup(groupId) {
+  if (USE_PG) { const {rows}=await pool.query('SELECT * FROM reservations WHERE group_id=$1 ORDER BY reservation_date ASC',[groupId]); return rows; }
+  return readJSON().filter(r=>r.group_id===groupId).sort((a,b)=>a.reservation_date.localeCompare(b.reservation_date));
+}
+
 async function updateReservation(id, updates) {
   if (updates.datetime) updates.reservation_date = toDateStr(updates.datetime);
-  // Auto-set direct_bill_status when payment_method changes
-  if (updates.payment_method !== undefined) {
-    const hasDB = (updates.payment_method||'').includes('Direct Bill');
-    if (!updates.direct_bill_status) updates.direct_bill_status = hasDB ? 'pending_document' : 'na';
-  }
   if (USE_PG) {
     const keys = Object.keys(updates);
     const sets = keys.map((k,i)=>`${k}=$${i+2}`).join(', ');
@@ -212,7 +247,8 @@ async function getDailyPeopleCount(date) {
 
 async function getStats() {
   const today = new Date().toISOString().split('T')[0];
-  const limit = parseInt(process.env.DAILY_LIMIT||'60');
+  const s = await getAllSettings().catch(()=>({}));
+  const limit = parseInt(s.daily_limit || process.env.DAILY_LIMIT || '60');
 
   if (USE_PG) {
     const {rows}=await pool.query(`
@@ -225,7 +261,7 @@ async function getStats() {
         COALESCE(SUM(party) FILTER (WHERE reservation_date=$1 AND status IN ('pending_approval','approved')),0) AS people_today,
         COUNT(*) FILTER (WHERE attendance='checked_in'  AND reservation_date=$1)                    AS checked_in_today,
         COUNT(*) FILTER (WHERE attendance='no_show'     AND reservation_date=$1)                    AS no_show_today,
-        COUNT(*) FILTER (WHERE direct_bill_status='pending_document')                               AS direct_bill_pending
+        COUNT(*) FILTER (WHERE direct_bill_status IN ('pending_send','sent'))                       AS direct_bill_pending
       FROM reservations
     `,[today]);
     const s=rows[0];
@@ -251,9 +287,120 @@ async function getStats() {
     total_today:active.length, total_all:rows.length, people_today:pc,
     checked_in_today:forToday.filter(r=>r.attendance==='checked_in').length,
     no_show_today:forToday.filter(r=>r.attendance==='no_show').length,
-    direct_bill_pending:rows.filter(r=>r.direct_bill_status==='pending_document').length,
+    direct_bill_pending:rows.filter(r=>['pending_send','sent'].includes(r.direct_bill_status)).length,
     daily_count:pc,daily_limit:limit,slots_left:Math.max(0,limit-pc)
   };
 }
 
-module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr};
+// ── Document storage ─────────────────────────────────────────────────────
+// Stores received Direct Bill forms as base64 in PostgreSQL
+// To switch to S3/Cloudinary later: only change these functions
+
+async function storeDocument(reservationId, filename, mimeType, dataBase64, sizeBytes) {
+  const { randomUUID } = require('crypto');
+  const id  = randomUUID();
+  const now = new Date().toISOString();
+
+  if (USE_PG) {
+    await pool.query(
+      `INSERT INTO documents (id,reservation_id,filename,mimetype,size_bytes,data_base64,uploaded_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [id, reservationId, filename, mimeType, sizeBytes, dataBase64, now]
+    );
+  } else {
+    const docFile = require('path').join(__dirname,'..','data','documents.json');
+    const fs = require('fs');
+    const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+    docs.unshift({ id, reservation_id:reservationId, filename, mimetype:mimeType, size_bytes:sizeBytes, data_base64:dataBase64, uploaded_at:now });
+    fs.writeFileSync(docFile, JSON.stringify(docs, null, 2));
+  }
+  return { id, reservation_id:reservationId, filename, uploaded_at:now };
+}
+
+async function getDocuments(reservationId) {
+  if (USE_PG) {
+    const { rows } = await pool.query(
+      `SELECT id,reservation_id,filename,mimetype,size_bytes,uploaded_at FROM documents WHERE reservation_id=$1 ORDER BY uploaded_at DESC`,
+      [reservationId]
+    );
+    return rows;
+  }
+  const docFile = require('path').join(__dirname,'..','data','documents.json');
+  const fs = require('fs');
+  const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+  return docs.filter(d=>d.reservation_id===reservationId).map(({data_base64,...rest})=>rest);
+}
+
+async function getDocumentById(docId) {
+  if (USE_PG) {
+    const { rows } = await pool.query('SELECT * FROM documents WHERE id=$1', [docId]);
+    return rows[0] || null;
+  }
+  const docFile = require('path').join(__dirname,'..','data','documents.json');
+  const fs = require('fs');
+  const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+  return docs.find(d=>d.id===docId) || null;
+}
+
+// Get all received docs in a date range, joined with reservation info
+// includeBase64=true only when needed (batch send) — omit for dashboard listing
+async function getDocumentsByDateRange(fromDate, toDate, includeBase64 = false) {
+  const b64col = includeBase64 ? ', d.data_base64' : '';
+  if (USE_PG) {
+    const { rows } = await pool.query(`
+      SELECT d.id, d.reservation_id, d.filename, d.mimetype, d.size_bytes, d.uploaded_at${b64col},
+             r.name, r.department, r.email, r.datetime, r.reservation_date, r.party
+      FROM documents d
+      JOIN reservations r ON d.reservation_id = r.id
+      WHERE r.reservation_date >= $1 AND r.reservation_date <= $2
+        AND r.direct_bill_status = 'received'
+      ORDER BY r.reservation_date ASC, d.uploaded_at ASC
+    `, [fromDate, toDate]);
+    return rows;
+  }
+  const docFile = path.join(__dirname,'..','data','documents.json');
+  const docs = fs.existsSync(docFile) ? JSON.parse(fs.readFileSync(docFile,'utf8')) : [];
+  const reservations = readJSON();
+  return docs
+    .filter(d => {
+      const r = reservations.find(r => r.id === d.reservation_id);
+      return r && r.reservation_date >= fromDate && r.reservation_date <= toDate && r.direct_bill_status === 'received';
+    })
+    .map(d => {
+      const r = reservations.find(r => r.id === d.reservation_id) || {};
+      const out = { id:d.id, reservation_id:d.reservation_id, filename:d.filename, mimetype:d.mimetype, size_bytes:d.size_bytes, uploaded_at:d.uploaded_at,
+        name:r.name, department:r.department, email:r.email, datetime:r.datetime, reservation_date:r.reservation_date, party:r.party };
+      if (includeBase64) out.data_base64 = d.data_base64;
+      return out;
+    });
+}
+
+// ── Service settings (feature flags) ────────────────────────────────────────
+// JSON fallback: persist in a settings.json file in the data directory
+const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
+const DEFAULT_SETTINGS = { web_form_enabled:'true', email_intake_enabled:'false', sms_intake_enabled:'false', batch_recipient_email:'', open_time:'11:30', close_time:'14:00', direct_bill_rate:'12.75', daily_limit:'60' };
+
+async function getAllSettings() {
+  if (USE_PG) {
+    const { rows } = await pool.query('SELECT key, value, updated_at FROM settings');
+    const out = { ...DEFAULT_SETTINGS };
+    rows.forEach(r => { out[r.key] = r.value; });
+    return out;
+  }
+  if (!fs.existsSync(SETTINGS_FILE)) return { ...DEFAULT_SETTINGS };
+  try { return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')) }; }
+  catch { return { ...DEFAULT_SETTINGS }; }
+}
+
+async function updateSetting(key, value) {
+  const now = new Date().toISOString();
+  if (USE_PG) {
+    await pool.query(`INSERT INTO settings (key,value,updated_at) VALUES ($1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=$3`, [key, value, now]);
+    return;
+  }
+  if (!fs.existsSync(path.dirname(SETTINGS_FILE))) fs.mkdirSync(path.dirname(SETTINGS_FILE),{recursive:true});
+  const s = await getAllSettings();
+  s[key] = value;
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+}
+
+module.exports = {createReservation,getReservation,getAllReservations,getReservationsByStatus,getReservationsByGroup,updateReservation,deleteReservation,getDailyPeopleCount,getStats,toDateStr,storeDocument,getDocuments,getDocumentById,getDocumentsByDateRange,getAllSettings,updateSetting};

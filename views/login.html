@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Top of Palms">
+  <meta name="theme-color" content="#006747">
+  <link rel="manifest" href="/manifest.json">
   <title>Sign In — Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -48,12 +53,15 @@
   <h2>Enter your PIN</h2>
   <p id="desc">Select your role and enter your PIN to continue.</p>
 
-  <div class="tabs">
+  <div class="tabs" style="grid-template-columns:1fr 1fr 1fr">
     <button class="tab-btn active" id="tab-pos" onclick="setRole('pos')">
       <span class="tab-icon">🖥️</span>POS / Floor
     </button>
     <button class="tab-btn" id="tab-manager" onclick="setRole('manager')">
       <span class="tab-icon">📊</span>Manager
+    </button>
+    <button class="tab-btn" id="tab-admin" onclick="setRole('admin')">
+      <span class="tab-icon">🔐</span>Admin
     </button>
   </div>
 
@@ -93,32 +101,34 @@
   const next   = params.get('next') || '/pos';
   const type   = params.get('type') || 'pos';
 
-  // Auto-select role based on where they were going
-  if (type === 'manager') setRole('manager');
+  // (role auto-selected above inside setRole definition)
 
   function setRole(r) {
     role = r;
     document.getElementById('tab-pos').classList.toggle('active', r==='pos');
     document.getElementById('tab-manager').classList.toggle('active', r==='manager');
-    document.getElementById('desc').textContent = r==='pos'
-      ? 'Floor staff and POS access.'
-      : 'Manager access — approve reservations and view all data.';
+    document.getElementById('tab-admin').classList.toggle('active', r==='admin');
+    const desc = { pos:'Floor staff and POS access.', manager:'Manager access — approve reservations, view and edit records.', admin:'Admin access — full control including delete and service settings.' };
+    document.getElementById('desc').textContent = desc[r] || '';
     clearPin();
   }
 
+  // Auto-select role from URL param
+  if (type === 'manager') setRole('manager');
+  else if (type === 'admin') setRole('admin');
+
   function addDigit(d) {
-    if (pin.length >= 6) return;
+    if (pin.length >= 4) return;
     pin += d;
     updateDots();
-    if (pin.length >= 4) document.getElementById('signin-btn').disabled = false;
-    // Auto submit when pin reaches max expected length (6 digits)
-    if (pin.length === 6) submit();
+    // Auto-submit as soon as 4 digits entered
+    if (pin.length === 4) submit();
   }
 
   function delDigit() {
     pin = pin.slice(0, -1);
     updateDots();
-    if (pin.length < 4) document.getElementById('signin-btn').disabled = true;
+    document.getElementById('signin-btn').disabled = pin.length < 4;
   }
 
   function clearPin() {
@@ -129,23 +139,19 @@
   }
 
   function updateDots() {
-    // Show up to 6 dots
     const container = document.getElementById('dots');
-    // Adjust dots to show current pin length (up to 6)
-    const maxDots = 6;
     container.innerHTML = '';
-    for (let i = 0; i < maxDots; i++) {
+    for (let i = 0; i < 4; i++) {
       const d = document.createElement('div');
       d.className = 'dot' + (i < pin.length ? ' filled' : '');
       container.appendChild(d);
     }
   }
 
-  // Also support keyboard
+  // Keyboard support
   document.addEventListener('keydown', e => {
     if (e.key >= '0' && e.key <= '9') addDigit(e.key);
     else if (e.key === 'Backspace') delDigit();
-    else if (e.key === 'Enter' && pin.length >= 4) submit();
   });
 
   async function submit() {
@@ -172,6 +178,8 @@
       btn.textContent = 'Sign In';
     }
   }
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
 </html>

@@ -1,0 +1,44 @@
+{
+  "name": "On Top of the Palms — USF Dining",
+  "short_name": "Top of Palms",
+  "description": "Reservation management for On Top of the Palms at USF",
+  "start_url": "/pos",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#006747",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "POS Board",
+      "short_name": "POS",
+      "url": "/pos",
+      "description": "Check in guests"
+    },
+    {
+      "name": "Manager Dashboard",
+      "short_name": "Manager",
+      "url": "/manager/dashboard",
+      "description": "Approve reservations"
+    },
+    {
+      "name": "Guest Reservation",
+      "short_name": "Reserve",
+      "url": "/reserve",
+      "description": "Make a reservation"
+    }
+  ]
+}

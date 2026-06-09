@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Top of Palms Manager">
+  <meta name="theme-color" content="#006747">
+  <link rel="manifest" href="/manifest.json">
   <title>Manager Dashboard — Top of the Palms</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -127,8 +132,28 @@
     .pin-err.show{display:block}
     .pdel{width:100%;background:#b91c1c;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px}
 
+    .db-status{font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;display:inline-block}
+    .db-s-pending{background:#ede9fe;color:#6d28d9}
+    .db-s-sent{background:#dbeafe;color:#1d4ed8}
+    .db-s-received{background:#dcfce7;color:#15803d}
     @media(max-width:1000px){.stats-r1,.stats-r2{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:640px){.stats-r1,.stats-r2{grid-template-columns:1fr 1fr}.frow{flex-direction:column}.mg{grid-template-columns:1fr}}
+    @media(max-width:768px){
+      .stats-r1,.stats-r2{grid-template-columns:repeat(2,1fr)}
+      main{padding:16px 12px 40px}
+      header{padding:0 12px}
+      .brand small{display:none}
+      .tscroll{font-size:11px}
+      th,td{padding:7px 8px}
+      .frow{flex-direction:column}
+      .mg{grid-template-columns:1fr}
+    }
+    @media(max-width:640px){.stats-r1,.stats-r2{grid-template-columns:1fr 1fr}}
+    @media(max-width:480px){
+      .stats-r1,.stats-r2{grid-template-columns:1fr}
+      .hnav a{padding:5px 8px;font-size:12px}
+      .stat{padding:12px 14px}
+      .stat-val{font-size:22px}
+    }
   </style>
 </head>
 <body>
@@ -136,7 +161,8 @@
   <div class="brand">🌴 Manager Dashboard <small>Top of the Palms · USF Dining</small></div>
   <div class="hnav">
     <a href="/reserve">Guest Form</a>
-    <a href="/pos">POS Board →</a>
+    <a href="/pos">POS Board</a>
+    <a href="/manager/revenue">💰 Revenue</a>
     <span class="upd" id="upd">Loading…</span>
     <button class="rbtn" onclick="loadAll()">↻ Refresh</button>
     <button class="rbtn" onclick="logout()" style="background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4)">Sign out</button>
@@ -226,8 +252,11 @@
   <!-- Search filters -->
   <div class="frow">
     <div class="fg grow"><label>Search</label><input id="fs" placeholder="Name or email…" oninput="applyF()"></div>
-    <div class="fg"><label>Reservation date</label><input type="date" id="fd" onchange="applyF()"></div>
+    <div class="fg"><label>Dept</label><input id="fdept" placeholder="Department…" oninput="applyF()"></div>
+    <div class="fg"><label>Date from</label><input type="date" id="fd" onchange="applyF()"></div>
+    <div class="fg"><label>Date to</label><input type="date" id="fd2" onchange="applyF()"></div>
     <div class="fg"><label>Type</label><select id="ft" onchange="applyF()"><option value="">All types</option><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
+    <div class="fg"><label>Payment</label><select id="fpay" onchange="applyF()"><option value="">All payments</option><option value="CC/Cash">CC / Cash</option><option value="USF Card">USF Card</option><option value="Direct Bill">Direct Bill</option></select></div>
     <button class="clr-btn" onclick="clearF()">✕ Clear</button>
   </div>
 
@@ -245,7 +274,7 @@
       <table>
         <thead><tr>
           <th>Name / Type</th><th>Status</th><th>Reservation Date & Time</th>
-          <th>Party</th><th>Department</th><th>Payment</th>
+          <th>Party</th><th>Days</th><th>Ref #</th><th>Department</th><th>Payment</th>
           <th>Seating</th><th>Table</th><th>UID</th><th>Email</th>
           <th>Submitted</th><th>Actions</th>
         </tr></thead>
@@ -253,6 +282,139 @@
       </table>
     </div>
   </div>
+  <!-- Direct Bill — Batch Send -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">📋 Direct Bill Documents — Send Batch
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Select docs by date range, check the ones to send, enter a recipient and send</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+
+      <!-- Recipient email row -->
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #f3f4f6">
+        <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Send to email</label>
+          <input type="email" id="batch-email" placeholder="accounting@usf.edu" style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit" oninput="document.getElementById('batch-send-btn').style.display='block'">
+        </div>
+        <div style="display:flex;gap:8px;align-self:flex-end">
+          <button onclick="saveBatchEmail()" style="padding:9px 14px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">💾 Save email</button>
+          <span style="font-size:11px;color:#9ca3af;align-self:center" id="batch-saved-lbl"></span>
+        </div>
+      </div>
+
+      <!-- Date range row -->
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">From date</label>
+          <input type="date" id="batch-from" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">To date</label>
+          <input type="date" id="batch-to" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+        </div>
+        <button onclick="loadBatchDocs()" style="padding:9px 18px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;align-self:flex-end">🔍 Load Docs</button>
+      </div>
+
+      <!-- Doc list -->
+      <div id="batch-docs-list"></div>
+
+      <!-- Send row -->
+      <div id="batch-send-row" style="display:none;margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <span id="batch-sel-count" style="font-size:13px;color:#6b7280"></span>
+        <button id="batch-send-btn" onclick="sendBatch()" style="padding:10px 22px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">📨 Send Selected to Email</button>
+        <button onclick="selectAllBatch(true)" style="padding:8px 12px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;color:#374151;cursor:pointer">Select all</button>
+        <button onclick="selectAllBatch(false)" style="padding:8px 12px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;color:#374151;cursor:pointer">Deselect all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Management -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">💰 Pricing Management
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Set per-person rate for Direct Bill reservations — updates all forms in real time</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Per-Person Rate ($)</label>
+          <input type="number" id="pr-rate" step="0.01" min="0" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:16px;font-weight:700;outline:none;font-family:inherit;width:140px" placeholder="12.75">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Daily Cover Limit</label>
+          <input type="number" id="pr-limit" step="1" min="1" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:16px;font-weight:700;outline:none;font-family:inherit;width:140px" placeholder="60">
+        </div>
+        <button onclick="savePricing()" style="padding:9px 20px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">💾 Save Pricing</button>
+        <span id="pr-saved" style="font-size:12px;color:#15803d;display:none">✓ Saved — forms updated immediately</span>
+      </div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:12px">Rate applies to: Direct Bill forms, POS calculations, and revenue reports. Changes take effect immediately for all new forms.</p>
+    </div>
+  </div>
+
+  <!-- Scheduled Direct Bill Sending -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">⏰ Scheduled Direct Bill Sending
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Auto-send all processed Direct Bills on a recurring schedule</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Schedule</label>
+          <select id="sched-type" onchange="schedTypeChange()" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+            <option value="off">Off (manual only)</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px" id="sched-time-wrap">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Send Time</label>
+          <input type="time" id="sched-time" value="08:00" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;min-width:120px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px" id="sched-day-wrap">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Day of Week</label>
+          <select id="sched-day" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+            <option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option>
+            <option value="4">Thursday</option><option value="5">Friday</option>
+          </select>
+        </div>
+        <button onclick="saveSchedule()" style="padding:9px 20px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">💾 Save Schedule</button>
+        <span id="sched-saved" style="font-size:12px;color:#15803d;display:none">✓ Saved</span>
+      </div>
+      <div id="sched-status" style="font-size:12px;color:#6b7280;padding:8px 12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb"></div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:10px">The scheduler runs server-side. "Daily" sends docs from the previous day; "Weekly" sends docs from the past 7 days. Sent to the <strong>batch recipient email</strong> configured above.</p>
+    </div>
+  </div>
+
+  <!-- Service Controls (admin only) -->
+  <div style="margin-top:28px" id="service-controls-section">
+    <div class="sec-hd">⚙️ Reservation Channels
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Enable or disable how guests can make reservations</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px" id="service-controls">
+      <div style="text-align:center;color:#9ca3af;padding:16px">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Operating Hours -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">🕐 Operating Hours
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Controls the time slots shown on the guest reservation form</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Open Time</label>
+          <input type="time" id="oh-open" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;font-family:inherit;min-width:130px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Close Time</label>
+          <input type="time" id="oh-close" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;font-family:inherit;min-width:130px">
+        </div>
+        <button onclick="saveHours()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save Hours</button>
+        <span id="oh-saved" style="font-size:12px;color:#15803d;display:none">✓ Saved</span>
+      </div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:10px">Last booking slot is 15 minutes before close. Mon–Fri only.</p>
+    </div>
+  </div>
+
   <!-- Blocked Dates / Holidays -->
   <div style="margin-top:28px">
     <div class="sec-hd">
@@ -290,7 +452,7 @@
       <div><label>Guest Type</label><select id="et"><option value="faculty">Faculty</option><option value="student">Student</option></select></div>
       <div><label>Status</label><select id="es"><option value="pending_approval">Pending</option><option value="approved">Approved</option><option value="denied">Denied</option></select></div>
       <div><label>USF UID</label><input id="eu" type="text" maxlength="9"></div>
-      <div><label>Party Size</label><input id="ep" type="number" min="1" max="50"></div>
+      <div><label>Party Size</label><input id="ep" type="number" min="1" max="15"></div>
       <div class="full"><label>Email</label><input id="ee" type="email"></div>
     </div>
 
@@ -327,6 +489,59 @@
   </div>
 </div>
 
+<!-- ── DIRECT BILL DOCUMENT MODAL ───────────────────────────────────────── -->
+<div class="ovl" id="db-ovl">
+  <div class="modal" style="max-width:480px">
+    <h3>📄 Direct Bill — <span id="db-res-name"></span></h3>
+    <input type="hidden" id="db-res-id">
+
+    <!-- Status -->
+    <div id="db-status-section" style="margin-bottom:16px"></div>
+
+    <!-- Send form button -->
+    <div id="db-send-section" style="margin-bottom:12px">
+      <p style="font-size:13px;color:#374151;margin-bottom:10px">Send the pre-filled authorization PDF to the guest. They'll reply with the signed form.</p>
+      <button class="msave" onclick="sendDBForm2()" id="db-send-btn">📨 Send Authorization Form to Guest</button>
+    </div>
+
+    <!-- Resend In-Kind approval (shown only when pending_inkind_approval) -->
+    <div id="db-resend-section" style="display:none;background:#fef9ec;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:6px">⏳ Waiting for In-Kind Manager Approval</div>
+      <p style="font-size:12px;color:#78350f;margin-bottom:8px">The approval email was sent to the guest's manager. You can resend it if they haven't received it.</p>
+      <button id="db-resend-btn" onclick="resendInKindApproval()" style="padding:7px 14px;background:#d97706;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">📧 Resend Approval Email</button>
+    </div>
+
+    <!-- Upload received document -->
+    <div style="border-top:1px solid #f3f4f6;padding-top:16px;margin-top:4px">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Upload Received Document</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:10px">Once guest sends back the signed form, upload it here to mark the reservation complete.</p>
+      <input type="file" id="db-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleFileSelect(this)">
+      <div id="db-file-display" onclick="document.getElementById('db-file').click()" style="border:2px dashed #e5e7eb;border-radius:8px;padding:20px;text-align:center;cursor:pointer;font-size:13px;color:#9ca3af;transition:border-color .15s">
+        <div style="font-size:24px;margin-bottom:6px">📎</div>
+        Click to select PDF or image of signed form
+      </div>
+      <div id="db-file-name" style="display:none;font-size:12px;color:#006747;margin-top:6px;padding:6px 10px;background:#f0fdf4;border-radius:6px"></div>
+      <button class="msave" id="db-upload-btn" style="margin-top:10px;display:none" onclick="uploadDBDoc()">Upload Document</button>
+    </div>
+
+    <!-- Existing documents -->
+    <div id="db-docs-section" style="margin-top:16px"></div>
+
+    <!-- Sign at Reception -->
+    <div id="db-sign-section" style="border-top:1px solid #f3f4f6;padding-top:14px;margin-top:8px">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sign at Reception</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:10px">Guest is here? Open the prefilled form on screen, fill billing details, and capture their signature — saves directly to this record.</p>
+      <button class="msave" style="background:#7c3aed;width:100%" onclick="openSignPage()">✍️ Open Signing Screen</button>
+    </div>
+
+    <!-- Manual override -->
+    <div style="border-top:1px solid #f3f4f6;padding-top:12px;margin-top:12px;display:flex;gap:8px">
+      <button class="mcancel" onclick="closeDB()" style="flex:1">Close</button>
+      <button class="msave" style="background:#15803d" onclick="manualDBReceived()">✓ Mark Doc Received (no upload)</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── PIN DELETE MODAL ───────────────────────────────────────────────────── -->
 <div class="ovl" id="povl">
   <div class="pin-box">
@@ -340,7 +555,8 @@
 </div>
 
 <script>
-let allData=[], atab='all', activeStat=null, delId='';
+let allData=[], atab='all', activeStat=null, delId='', currentUserRole='manager', currentPage=1;
+const PAGE_SIZE=10;
 const todayISO = new Date().toISOString().split('T')[0];
 const todayFmt = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
@@ -349,11 +565,177 @@ async function checkSlots(){
   try{
     const resp = await fetch(`/api/slots?date=${d}`);
     const data = await resp.json();
-    document.getElementById('v-slots').textContent = data.slots_left;
-    document.getElementById('v-slots-sub').textContent = `of ${data.daily_limit} covers`;
     const isToday = d===todayISO;
-    document.getElementById('slots-lbl').textContent = isToday?'Covers left today':'Covers left for '+new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dateLabel = isToday ? 'today' : new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+    if(data.is_weekend){
+      document.getElementById('v-slots').textContent = '—';
+      document.getElementById('v-slots-sub').textContent = 'Closed (weekend)';
+      document.getElementById('slots-lbl').textContent = dateLabel;
+    } else if(data.blocked){
+      document.getElementById('v-slots').textContent = '🚫';
+      document.getElementById('v-slots-sub').textContent = data.blocked_reason||'Closed';
+      document.getElementById('slots-lbl').textContent = dateLabel;
+    } else {
+      document.getElementById('v-slots').textContent = data.slots_left;
+      document.getElementById('v-slots-sub').textContent = `of ${data.daily_limit} covers (${data.people_booked} booked)`;
+      document.getElementById('slots-lbl').textContent = 'Covers left for '+dateLabel;
+    }
   }catch(e){console.error(e);}
+}
+
+// ── Service Controls ──────────────────────────────────────────────────────
+const SERVICES = [
+  { key:'web_form_enabled',    icon:'🌐', label:'Web Reservation Form',    desc:'Guests visit the website to submit a reservation request.',          setupNote:'' },
+  { key:'email_intake_enabled',icon:'📧', label:'Email Reservations (AI)', desc:'Guests email the restaurant. AI collects info and creates request.', setupNote:'Requires SendGrid Inbound Parse + MX record setup.' },
+  { key:'sms_intake_enabled',  icon:'💬', label:'SMS / Text Reservations', desc:'Guests text the Twilio number. AI guides them through the process.', setupNote:'Requires Twilio phone number with webhook configured.' }
+];
+let svcSettings = {};
+
+async function loadServiceControls(){
+  try{
+    svcSettings = await fetch('/api/settings').then(r=>r.json());
+    renderServiceControls();
+  }catch(e){ document.getElementById('service-controls').innerHTML=`<p style="color:#b91c1c;font-size:13px">Error loading settings: ${e.message}</p>`; }
+}
+
+function renderServiceControls(){
+  const el = document.getElementById('service-controls');
+  el.innerHTML = SERVICES.map(s => {
+    const on = svcSettings[s.key] === 'true';
+    return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #f3f4f6;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:3px">${s.icon} ${s.label}</div>
+        <div style="font-size:12px;color:#6b7280">${s.desc}</div>
+        ${s.setupNote&&!on?`<div style="font-size:11px;color:#f59e0b;margin-top:3px;font-weight:600">⚠️ ${s.setupNote}</div>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding-top:4px">
+        <span style="font-size:12px;font-weight:600;color:${on?'#15803d':'#9ca3af'}">${on?'ON':'OFF'}</span>
+        <button onclick="toggleService('${s.key}',${!on})" style="
+          width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;
+          background:${on?'#006747':'#d1d5db'};position:relative;transition:background .2s;flex-shrink:0">
+          <div style="
+            width:22px;height:22px;background:#fff;border-radius:50%;position:absolute;
+            top:3px;${on?'right:3px':'left:3px'};transition:all .2s;
+            box-shadow:0 1px 4px rgba(0,0,0,.2)"></div>
+        </button>
+      </div>
+    </div>`;
+  }).join('') + `<p style="font-size:11px;color:#9ca3af;margin-top:12px">Changes take effect immediately. No restart needed.</p>`;
+}
+
+async function toggleService(key, newValue){
+  try{
+    const r = await fetch(`/api/settings/${key}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(newValue)})});
+    if(!r.ok){const e=await r.json();alert('Failed: '+(e.error||r.status));return;}
+    svcSettings[key] = String(newValue);
+    renderServiceControls();
+    toast(`${key.replace(/_/g,' ')} ${newValue?'enabled':'disabled'} ✓`);
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ── Direct Bill batch ─────────────────────────────────────────────────────
+async function loadBatchDocs(){
+  const from = document.getElementById('batch-from').value;
+  const to   = document.getElementById('batch-to').value;
+  const list = document.getElementById('batch-docs-list');
+  const row  = document.getElementById('batch-send-row');
+  if(!from||!to){ list.innerHTML='<p style="font-size:13px;color:#9ca3af">Select both dates then click Load Docs.</p>'; row.style.display='none'; return; }
+  list.innerHTML='<p style="font-size:13px;color:#9ca3af">Loading…</p>';
+  row.style.display='none';
+  try{
+    const docs=await fetch(`/api/directbill/documents?from=${from}&to=${to}`).then(r=>r.json());
+    if(!Array.isArray(docs)||!docs.length){
+      list.innerHTML='<p style="font-size:13px;color:#9ca3af">No received Direct Bill documents found for this date range.</p>';
+      return;
+    }
+    // Auto-select only the LAST (most recently uploaded) document per reservation
+    const latestPerRes = {};
+    docs.forEach(d => {
+      const rid = d.reservation_id || d.id;
+      if (!latestPerRes[rid] || d.uploaded_at > latestPerRes[rid]) latestPerRes[rid] = d.uploaded_at;
+    });
+    const isLatest = d => (latestPerRes[d.reservation_id||d.id] === d.uploaded_at);
+
+    list.innerHTML=`<div style="font-size:12px;color:#6b7280;margin-bottom:8px">${docs.length} document${docs.length===1?'':'s'} found — only the latest processed file per reservation is pre-selected for sending</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+      <thead><tr style="background:#f9fafb">
+        <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:#9ca3af"><input type="checkbox" onchange="selectAllBatch(this.checked)" title="Select all"></th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Guest</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Department</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Dining Date</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Amount</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">File</th>
+        <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase">Received</th>
+        <th style="padding:8px 12px;background:#f9fafb"></th>
+      </tr></thead>
+      <tbody>${docs.map(d=>{
+        const latest = isLatest(d);
+        return `<tr style="${latest?'':'opacity:.55;background:#fafafa'}">
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;text-align:center"><input type="checkbox" class="batch-chk" data-id="${d.id}" onchange="updateBatchCount()" ${latest?'checked':''}></td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6"><strong>${x(d.name||'—')}</strong></td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px">${x(d.department||'—')}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;white-space:nowrap">${x(d.reservation_date||'—')}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;color:#006747">${d.party?'$'+(d.party*(d.rate||12.75)).toFixed(2):'—'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280">📎 ${x(d.filename)}${latest?'<span style="margin-left:6px;background:#dcfce7;color:#15803d;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px">Latest</span>':'<span style="margin-left:6px;font-size:10px;color:#9ca3af">(tracked)</span>'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#9ca3af;white-space:nowrap">${new Date(d.uploaded_at).toLocaleDateString()}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;display:flex;gap:8px"><a href="/api/documents/${d.id}/preview" target="_blank" style="color:#2563eb;font-weight:600;font-size:12px;text-decoration:none">Preview</a><a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;font-size:12px;text-decoration:none">Download</a></td>
+        </tr>`;}).join('')}</tbody>
+    </table>`;
+    row.style.display='flex';
+    updateBatchCount();
+  }catch(e){list.innerHTML=`<p style="font-size:13px;color:#b91c1c">Error loading documents: ${e.message}</p>`;}
+}
+
+function updateBatchCount(){
+  const total=document.querySelectorAll('.batch-chk').length;
+  const sel=document.querySelectorAll('.batch-chk:checked').length;
+  document.getElementById('batch-sel-count').textContent=`${sel} of ${total} selected`;
+}
+
+function selectAllBatch(check){
+  document.querySelectorAll('.batch-chk').forEach(c=>c.checked=check);
+  updateBatchCount();
+}
+
+async function saveBatchEmail(){
+  const email=document.getElementById('batch-email').value.trim();
+  if(!email){alert('Enter an email address first.');return;}
+  try{
+    await fetch('/api/directbill/send-batch',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({save_email:true,recipient_email:email,doc_ids:[]})
+    }).catch(()=>{});
+    document.getElementById('batch-saved-lbl').textContent='✓ Saved';
+    setTimeout(()=>document.getElementById('batch-saved-lbl').textContent='',3000);
+  }catch(e){}
+}
+
+async function loadSavedBatchEmail(){
+  try{
+    const s=await fetch('/api/settings').then(r=>r.json());
+    const saved=(s.batch_recipient_email||'').trim();
+    if(saved) document.getElementById('batch-email').value=saved;
+  }catch(e){}
+}
+
+async function sendBatch(){
+  const email=document.getElementById('batch-email').value.trim();
+  if(!email){alert('Enter a recipient email address first.');return;}
+  const ids=[...document.querySelectorAll('.batch-chk:checked')].map(c=>c.dataset.id);
+  if(!ids.length){alert('No documents selected.');return;}
+  const btn=document.getElementById('batch-send-btn');
+  if(!confirm(`Send ${ids.length} document${ids.length===1?'':'s'} to ${email}?`))return;
+  btn.disabled=true; btn.textContent='Sending…';
+  try{
+    const from=document.getElementById('batch-from').value;
+    const to  =document.getElementById('batch-to').value;
+    const r=await fetch('/api/directbill/send-batch',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({doc_ids:ids,recipient_email:email,from_date:from,to_date:to})});
+    const data=await r.json();
+    if(r.ok) toast(`✓ Sent — ${data.count} document${data.count===1?'':'s'} emailed to ${data.sent_to}`);
+    else alert('Send failed: '+(data.error||r.status));
+  }catch(e){alert('Send failed: '+e.message);}
+  btn.disabled=false; btn.textContent='📨 Send Selected to Email';
 }
 
 // ── Blocked dates ─────────────────────────────────────────────────────────
@@ -404,6 +786,7 @@ async function removeBlockedDate(date){
 async function loadAll(){
   try{
     const[s,d]=await Promise.all([fetch('/api/stats').then(r=>r.json()),fetch('/api/reservations').then(r=>r.json())]);
+    if(!Array.isArray(d)){console.error('[Dashboard] reservations not array:',d);return;}
     allData=d;
 
     // Row 1
@@ -411,11 +794,14 @@ async function loadAll(){
     document.getElementById('v-today').textContent   = s.total_today;
     document.getElementById('v-today-sub').textContent = 'for '+todayFmt;
     document.getElementById('v-denied').textContent  = s.denied_all;
-    // Set today as default for slots picker if not already set
+    // Only update slots card if it's showing today (don't stomp a custom date lookup)
     const sp=document.getElementById('slots-date');
     if(!sp.value) sp.value=todayISO;
-    document.getElementById('v-slots').textContent   = s.slots_left;
-    document.getElementById('v-slots-sub').textContent = `of ${s.daily_limit} covers`;
+    if(!sp.value || sp.value===todayISO){
+      document.getElementById('v-slots').textContent    = s.slots_left;
+      document.getElementById('v-slots-sub').textContent= `of ${s.daily_limit} covers`;
+      document.getElementById('slots-lbl').textContent  = 'Covers left today';
+    }
     document.getElementById('v-all').textContent     = s.total_all;
     // Row 2
     document.getElementById('v-checkin').textContent   = s.checked_in_today ?? 0;
@@ -430,10 +816,28 @@ async function loadAll(){
     f.className='cap-fill'+(pct>=100?' full':pct>=80?' warn':'');
     document.getElementById('cap-num').textContent=`${s.daily_count} / ${s.daily_limit} covers today`;
 
-    renderPending(d.filter(r=>r.status==='pending_approval'));
-    renderTable(filtered());
+    try{renderPending(d.filter(r=>r.status==='pending_approval'));}catch(re){console.error('[Dashboard] renderPending error:',re);document.getElementById('pgrid').innerHTML='<div class="empty"><div class="ei">⚠️</div><p>Error rendering cards — check console</p></div>';}
+    try{_filteredCache=filtered();renderTable(_filteredCache);}catch(re){console.error('[Dashboard] renderTable error:',re);}
     document.getElementById('upd').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   }catch(e){console.error(e)}
+}
+
+// Collapse multi-day group records into one entry per group_id
+function groupReservations(data){
+  const seen=new Set(), out=[];
+  for(const r of data){
+    if(r.group_id){
+      if(seen.has(r.group_id)) continue;
+      seen.add(r.group_id);
+      // Gather all records in this group from the full dataset
+      const group=allData.filter(g=>g.group_id===r.group_id).sort((a,b)=>a.reservation_date.localeCompare(b.reservation_date));
+      const last=group[group.length-1];
+      out.push({...r, _group:group, _groupDays:group.length, _dateRange:group.length>1?`${group[0].reservation_date} → ${last.reservation_date}`:null});
+    } else {
+      out.push(r);
+    }
+  }
+  return out;
 }
 
 function filtered(){
@@ -441,13 +845,19 @@ function filtered(){
   if(activeStat==='pending')    d=allData.filter(r=>r.status==='pending_approval');
   else if(activeStat==='today') d=allData.filter(r=>r.reservation_date===todayISO&&r.status!=='denied');
   else if(activeStat==='denied')d=allData.filter(r=>r.status==='denied');
-  else if(activeStat==='directbill')d=allData.filter(r=>r.direct_bill_status==='pending_document');
-  const s=document.getElementById('fs').value.toLowerCase();
-  const dt=document.getElementById('fd').value;
-  const tp=document.getElementById('ft').value;
-  if(s)  d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
-  if(dt) d=d.filter(r=>r.reservation_date===dt);
-  if(tp) d=d.filter(r=>r.guest_status===tp);
+  else if(activeStat==='directbill')d=allData.filter(r=>['pending_send','sent','pending_inkind_approval'].includes(r.direct_bill_status));
+  const s    = document.getElementById('fs').value.toLowerCase();
+  const dept = document.getElementById('fdept').value.toLowerCase();
+  const dt   = document.getElementById('fd').value;
+  const dt2  = document.getElementById('fd2').value;
+  const tp   = document.getElementById('ft').value;
+  const pay  = document.getElementById('fpay').value;
+  if(s)    d=d.filter(r=>r.name.toLowerCase().includes(s)||(r.email||'').toLowerCase().includes(s));
+  if(dept) d=d.filter(r=>(r.department||'').toLowerCase().includes(dept));
+  if(dt)   d=d.filter(r=>r.reservation_date>=dt);
+  if(dt2)  d=d.filter(r=>r.reservation_date<=dt2);
+  if(tp)   d=d.filter(r=>r.guest_status===tp);
+  if(pay)  d=d.filter(r=>(r.payment_method||'').includes(pay));
   return d;
 }
 
@@ -460,50 +870,85 @@ function clickStat(type){
   const lbl={pending:'All pending approvals',today:'Today\'s reservations ('+todayFmt+')',denied:'All denied reservations',all:'All reservations',directbill:'Direct Bill — awaiting document'};
   document.getElementById('fbanner-txt').textContent='🔍 '+lbl[type];
   document.getElementById('fbanner').classList.add('show');
-  renderTable(filtered());
+  _filteredCache=filtered(); renderTable(_filteredCache,true);
 }
-function clearStat(){activeStat=null;document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));document.getElementById('fbanner').classList.remove('show');renderTable(filtered())}
-function applyF(){clearStat();renderTable(filtered())}
-function clearF(){document.getElementById('fs').value='';document.getElementById('fd').value='';document.getElementById('ft').value='';clearStat();renderTable(filtered())}
-function swTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTable(filtered())}
+function clearStat(){activeStat=null;document.querySelectorAll('.stat').forEach(c=>c.classList.remove('active'));document.getElementById('fbanner').classList.remove('show');_filteredCache=filtered();renderTable(_filteredCache,true);}
+function clearF(){['fs','fdept','fd','fd2','ft','fpay'].forEach(id=>document.getElementById(id).value='');clearStat();}
+function swTab(t,el){atab=t;document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));el.classList.add('active');_filteredCache=filtered();renderTable(_filteredCache,true);}
 
 function renderPending(p){
+  const grouped=groupReservations(p);
   const g=document.getElementById('pgrid'),b=document.getElementById('pcnt');
-  b.textContent=p.length;b.className='cbadge'+(p.length?'':' z');
-  if(!p.length){g.innerHTML='<div class="empty"><div class="ei">✓</div><p>No pending approvals!</p></div>';return}
-  g.innerHTML=p.map(r=>`<div class="pcard">
+  b.textContent=grouped.length;b.className='cbadge'+(grouped.length?'':' z');
+  if(!grouped.length){g.innerHTML='<div class="empty"><div class="ei">✓</div><p>No pending approvals!</p></div>';return}
+  g.innerHTML=grouped.map(r=>{
+    const dateLabel=r._dateRange?r._dateRange:x(r.datetime);
+    const daysLabel=r._groupDays>1?`<div class="pc-row"><span class="pc-k">Days</span><span class="pc-v" style="color:#2563eb;font-weight:700">📅 ${r._groupDays} days (${r._dateRange})</span></div>`:'';
+    const approveId=r.id; // approve first day → manager can approve all
+    return `<div class="pcard">
     <div class="pc-top"><div><div class="pc-name">${x(r.name)}</div><div class="pc-ago">${ago(r.created_at)}</div></div><span class="pill pp">Pending</span></div>
     <div class="pc-body">
-      <div class="pc-row"><span class="pc-k">Date & time</span><span class="pc-v">${x(r.datetime)}</span></div>
+      <div class="pc-row"><span class="pc-k">Date & time</span><span class="pc-v">${dateLabel}</span></div>
+      ${daysLabel}
       <div class="pc-row"><span class="pc-k">Party</span><span class="pc-v">${r.party} guest${r.party===1?'':'s'}</span></div>
       <div class="pc-row"><span class="pc-k">Department</span><span class="pc-v">${x(r.department||'—')}</span></div>
       <div class="pc-row"><span class="pc-k">UID</span><span class="pc-v" style="font-family:monospace">${x(r.uid)}</span></div>
       <div class="pc-row"><span class="pc-k">Email</span><span class="pc-v">${x(r.email)}</span></div>
       <div class="pc-row"><span class="pc-k">Payment</span><span class="pc-v">${x(r.payment_method||'—')}</span></div>
       ${r.notes?`<div class="pc-row"><span class="pc-k">Notes</span><span class="pc-v">${x(r.notes)}</span></div>`:''}
-      ${r.direct_bill_status==='pending_document'?'<div style="background:#ede9fe;border-radius:6px;padding:5px 8px;font-size:11px;color:#6d28d9;margin-top:5px">📄 Direct Bill — document pending</div>':''}
+      ${dbPendingBadge(r.direct_bill_status)}
     </div>
     <div class="pc-acts">
-      <a class="b-ap" href="/manager/approve/${r.id}">✓ Approve</a>
-      <a class="b-dn" href="/manager/deny/${r.id}">✕ Deny</a>
-      <button class="b-ed" onclick="openEdit('${r.id}')">✏️</button>
+      <a class="b-ap" href="/manager/approve/${approveId}">✓ Approve</a>
+      <a class="b-dn" href="/manager/deny/${approveId}">✕ Deny</a>
+      <button class="b-ed" onclick="openEdit('${approveId}')">✏️</button>
     </div>
-  </div>`).join('');
+  </div>`;
+  }).join('');
 }
 
-function renderTable(data){
+function renderTable(data, resetPage=false){
+  if(resetPage) currentPage=1;
   const tb=document.getElementById('tbody');
-  document.getElementById('trec').textContent=data.length+' record'+(data.length!==1?'s':'');
-  if(!data.length){tb.innerHTML='<tr><td colspan="12"><div class="empty"><div class="ei">📋</div><p>No reservations found.</p></div></td></tr>';return}
+  const total=data.length;
+
+  // Group multi-day reservations first, then paginate on grouped count
+  const grouped=groupReservations(data);
+  const gtotal=grouped.length;
+
+  // Ensure pagination element exists
+  let pgEl=document.getElementById('tpagination');
+  if(!pgEl){
+    pgEl=document.createElement('div');
+    pgEl.id='tpagination';
+    pgEl.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid #e5e7eb;background:#f9fafb;flex-wrap:wrap';
+    document.querySelector('.twrap').appendChild(pgEl);
+  }
+  const gtotalPages=Math.max(1,Math.ceil(gtotal/PAGE_SIZE));
+  if(currentPage>gtotalPages) currentPage=gtotalPages;
+  document.getElementById('trec').textContent=gtotal+' record'+(gtotal!==1?'s':'')+(gtotal<total?` (${total} incl. multi-day dates)`:'');
+  // Re-render pagination with grouped count
+  if(gtotal<=PAGE_SIZE){ pgEl.style.display='none'; }
+  else { pgEl.style.display='flex'; pgEl.innerHTML=`<button onclick="changePage(-1)" style="padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;${currentPage===1?'opacity:.4;cursor:default':''}" ${currentPage===1?'disabled':''}>← Prev</button><span style="font-size:12px;color:#6b7280">Page <strong>${currentPage}</strong> of <strong>${gtotalPages}</strong></span><button onclick="changePage(1)" style="padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;${currentPage===gtotalPages?'opacity:.4;cursor:default':''}" ${currentPage===gtotalPages?'disabled':''}>Next →</button><span style="font-size:12px;color:#9ca3af;margin-left:4px">Showing ${(currentPage-1)*PAGE_SIZE+1}–${Math.min(currentPage*PAGE_SIZE,gtotal)} of ${gtotal}</span>`; }
+
+  if(!gtotal){tb.innerHTML='<tr><td colspan="12"><div class="empty"><div class="ei">📋</div><p>No reservations found.</p></div></td></tr>';return}
+  const page=grouped.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
   const pm={pending_approval:'<span class="pill pp">Pending</span>',approved:'<span class="pill pa">Approved</span>',auto_approved:'<span class="pill pau">Auto</span>',denied:'<span class="pill pd">Denied</span>'};
   const te=t=>t==='faculty'?'<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px">Faculty</span>':'<span style="background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px">Student</span>';
-  tb.innerHTML=data.map(r=>`<tr>
-    <td><strong>${x(r.name)}</strong><br>${te(r.guest_status)}</td>
+  tb.innerHTML=page.map(r=>{
+    const multiDay=r._groupDays>1?`<br><span style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:4px">📅 ${r._groupDays} days</span>`:'';
+    const dateDisplay=r._dateRange?`<span style="font-size:11px;color:#6b7280">${x(r._dateRange)}</span>`:x(r.datetime);
+    const days=parseInt(r._groupDays||r.num_days||1);
+    const ref=r.id.slice(0,8).toUpperCase();
+    return `<tr>
+    <td><strong>${x(r.name)}</strong>${multiDay}<br>${te(r.guest_status)}</td>
     <td>${pm[r.status]||r.status}</td>
-    <td style="white-space:nowrap">${x(r.datetime)}</td>
+    <td style="white-space:nowrap">${dateDisplay}</td>
     <td>${r.party}</td>
+    <td style="font-size:12px;text-align:center">${days>1?`<span style="background:#dbeafe;color:#1d4ed8;font-weight:600;padding:2px 7px;border-radius:5px">${days}</span>`:'<span style="color:#d1d5db">1</span>'}</td>
+    <td style="font-family:monospace;font-size:11px;color:#6b7280">${ref}</td>
     <td style="font-size:11px">${x(r.department||'—')}</td>
-    <td style="font-size:11px">${x(r.payment_method||'—')}<br>${r.direct_bill_status==='pending_document'?'<span class="db-badge db-pending">Doc pending</span>':r.direct_bill_status==='document_received'?'<span class="db-badge db-received">Doc received</span>':''}</td>
+    <td style="font-size:11px">${x(r.payment_method||'—')}<br>${dbBadge(r.direct_bill_status)}</td>
     <td style="font-size:11px">${x(r.seating_preference||'—')}</td>
     <td style="font-weight:700;color:#006747;font-size:13px">${r.table_number?x(r.table_number):'<span style="color:#d1d5db">—</span>'}</td>
     <td style="font-family:monospace;font-size:11px">${x(r.uid)}</td>
@@ -512,11 +957,19 @@ function renderTable(data){
     <td><div class="acts">
       ${r.status==='pending_approval'?`<a class="tb tap" href="/manager/approve/${r.id}">Approve</a><a class="tb tdn" href="/manager/deny/${r.id}">Deny</a>`:''}
       <button class="tb ted" onclick="openEdit('${r.id}')">Edit</button>
-      ${r.direct_bill_status==='pending_document'?`<button class="tb tdb" onclick="markDocReceived('${r.id}')">Doc ✓</button><button class="tb trs" onclick="resendDB('${r.id}')">Resend</button>`:''}
-      <button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>
+      ${r.direct_bill_status&&r.direct_bill_status!=='na'?dbActions(r):''}
+      ${currentUserRole==='admin'?`<button class="tb tde" onclick="openPin('${r.id}','${x(r.name)}')">Delete</button>`:''}
     </div></td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
+
+let _filteredCache=[];
+function changePage(dir){
+  currentPage=Math.max(1,currentPage+dir);
+  renderTable(_filteredCache);
+}
+function applyF(){clearStat();_filteredCache=filtered();renderTable(_filteredCache,true);}
 
 // ── Multi-select helpers ──────────────────────────────────────────────────
 let editPayments = [];
@@ -602,13 +1055,154 @@ async function saveEdit(){
 }
 
 // ── Direct bill ────────────────────────────────────────────────────────────
-async function markDocReceived(id){
-  await fetch(`/api/reservations/${id}/directbill`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({direct_bill_status:'document_received'})});
-  await loadAll();toast('Document marked as received ✓');
+// ── Direct Bill helper functions ──────────────────────────────────────────
+// Safe helper — no nested template literals, avoids renderPending errors
+function dbPendingBadge(s){
+  if(!s||s==='na') return '';
+  const cfg={
+    pending_send:           {bg:'#ede9fe',color:'#6d28d9',txt:'📄 Direct Bill — form not sent yet'},
+    sent:                   {bg:'#dbeafe',color:'#1d4ed8',txt:'📨 Direct Bill — form sent, awaiting reply'},
+    pending_inkind_approval:{bg:'#fef3c7',color:'#b45309',txt:'⏳ In-Kind — awaiting manager approval'},
+    received:               {bg:'#dcfce7',color:'#15803d',txt:'✓ Direct Bill — document received'}
+  };
+  const t=cfg[s]||cfg['pending_send'];
+  return '<div style="background:'+t.bg+';color:'+t.color+';border-radius:6px;padding:5px 8px;font-size:11px;margin-top:5px">'+t.txt+'</div>';
 }
-async function resendDB(id){
-  await fetch(`/api/reservations/${id}/resend-directbill`,{method:'POST',headers:{'Content-Type':'application/json'}});
-  toast('Direct bill form resent ✓');
+
+// ── Direct Bill functions ──────────────────────────────────────────────────
+function dbColor(s){return{pending_send:'#ede9fe',sent:'#dbeafe',received:'#dcfce7'}[s]||'#f3f4f6';}
+function dbBadge(status){
+  if(!status||status==='na') return '';
+  const map={
+    pending_send:           '<span class="db-badge db-pending">📄 Form not sent</span>',
+    sent:                   '<span class="db-badge" style="background:#dbeafe;color:#1d4ed8">📨 Form sent</span>',
+    pending_inkind_approval:'<span class="db-badge" style="background:#fef3c7;color:#b45309">⏳ Awaiting In-Kind Approval</span>',
+    received:               '<span class="db-badge db-received">✓ Doc received</span>'
+  };
+  return map[status]||'';
+}
+function dbText(s){return{pending_send:'📄 Direct Bill — form not sent yet',sent:'📨 Direct Bill — form sent, awaiting reply',pending_inkind_approval:'⏳ In-Kind approval email sent — awaiting manager approval',received:'✓ Direct Bill — document received'}[s]||'';}
+function dbActions(r){
+  if(!r.direct_bill_status||r.direct_bill_status==='na') return '';
+  return `<button class="tb tdb" onclick="openDB('${r.id}','${x(r.name)}')" title="Manage Direct Bill">📄 Direct Bill</button>`;
+}
+
+// Open Direct Bill modal
+let dbSelectedFile = null;
+async function openDB(id, name){
+  document.getElementById('db-res-id').value=id;
+  document.getElementById('db-res-name').textContent=name;
+  dbSelectedFile=null;
+  document.getElementById('db-file').value='';
+  document.getElementById('db-file-name').style.display='none';
+  document.getElementById('db-upload-btn').style.display='none';
+  document.getElementById('db-file-display').innerHTML='<div style="font-size:24px;margin-bottom:6px">📎</div>Click to select PDF or image of signed form';
+  document.getElementById('db-ovl').classList.add('show');
+  await refreshDBModal(id);
+}
+function closeDB(){ document.getElementById('db-ovl').classList.remove('show'); }
+
+async function refreshDBModal(id){
+  const r = allData.find(r=>r.id===id);
+  if(!r) return;
+
+  // Status section
+  const statusMap={
+    pending_send:           {cls:'db-s-pending',text:'📄 Form not yet sent to guest'},
+    sent:                   {cls:'db-s-sent',text:'📨 Form sent — awaiting guest reply'},
+    pending_inkind_approval:{cls:'',text:'⏳ In-Kind approval email sent — awaiting manager approval',style:'background:#fef3c7;color:#b45309'},
+    received:               {cls:'db-s-received',text:'✓ Document received — complete'}
+  };
+  const sm=statusMap[r.direct_bill_status]||{cls:'db-s-pending',text:'Unknown'};
+  const styleAttr=sm.style?`style="${sm.style}"`:`class="db-status ${sm.cls}"`;
+  document.getElementById('db-status-section').innerHTML=`<div ${styleAttr} style="font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;display:inline-block">${sm.text}</div>`;
+
+  // Resend In-Kind approval button
+  const resendSec = document.getElementById('db-resend-section');
+  if(resendSec){
+    if(r.direct_bill_status==='pending_inkind_approval'){
+      resendSec.style.display='block';
+    } else {
+      resendSec.style.display='none';
+    }
+  }
+
+  // Send button label
+  const btn=document.getElementById('db-send-btn');
+  if(r.direct_bill_status==='received'){ btn.textContent='📨 Resend Form to Guest'; btn.style.background='#6b7280'; }
+  else if(r.direct_bill_status==='sent'){ btn.textContent='📨 Resend Form to Guest'; btn.style.background='#2563eb'; }
+  else if(r.direct_bill_status==='pending_inkind_approval'){ btn.textContent='📨 Resend Form to Guest'; btn.style.background='#6b7280'; }
+  else{ btn.textContent='📨 Send Authorization Form to Guest'; btn.style.background='#006747'; }
+
+  // Existing documents
+  const docs = await fetch(`/api/reservations/${id}/documents`).then(r=>r.json()).catch(()=>[]);
+  const docSec=document.getElementById('db-docs-section');
+  if(docs.length){
+    docSec.innerHTML=`<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Received Documents (${docs.length})</div>`+
+      docs.map(d=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;font-size:13px">
+        <span>📎 ${x(d.filename)}<span style="color:#9ca3af;margin-left:8px;font-size:11px">${new Date(d.uploaded_at).toLocaleDateString()}</span></span>
+        <span style="display:flex;gap:8px">
+          <a href="/api/documents/${d.id}/preview" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:none;font-size:12px">Preview</a>
+          <a href="/api/documents/${d.id}/download" style="color:#006747;font-weight:600;text-decoration:none;font-size:12px">Download</a>
+        </span>
+      </div>`).join('');
+  } else {
+    docSec.innerHTML='';
+  }
+}
+
+async function resendInKindApproval(){
+  const id=document.getElementById('db-res-id').value;
+  if(!confirm('Resend the In-Kind approval email to the approver manager?')) return;
+  const btn=document.getElementById('db-resend-btn');
+  btn.disabled=true; btn.textContent='Sending…';
+  const r=await fetch(`/api/reservations/${id}/directbill/resend-approval`,{method:'POST',headers:{'Content-Type':'application/json'}});
+  btn.disabled=false; btn.textContent='📧 Resend Approval Email';
+  if(r.ok){ toast('Approval email resent ✓'); }
+  else{ const e=await r.json(); alert('Failed: '+(e.error||'Unknown error')); }
+}
+
+async function sendDBForm2(){
+  const id=document.getElementById('db-res-id').value;
+  const btn=document.getElementById('db-send-btn');
+  btn.disabled=true; btn.textContent='Sending…';
+  const r=await fetch(`/api/reservations/${id}/directbill/send`,{method:'POST',headers:{'Content-Type':'application/json'}});
+  btn.disabled=false;
+  if(r.ok){ await loadAll(); await refreshDBModal(id); toast('Authorization form + PDF sent to guest ✓'); }
+  else{ const e=await r.json(); alert('Failed: '+(e.error||'Unknown error')); btn.textContent='📨 Send Authorization Form to Guest'; }
+}
+
+function handleFileSelect(input){
+  if(!input.files[0]) return;
+  dbSelectedFile=input.files[0];
+  const d=document.getElementById('db-file-name');
+  d.style.display='block';
+  d.textContent=`Selected: ${dbSelectedFile.name} (${(dbSelectedFile.size/1024).toFixed(1)} KB)`;
+  document.getElementById('db-upload-btn').style.display='block';
+}
+
+async function uploadDBDoc(){
+  if(!dbSelectedFile) return;
+  const id=document.getElementById('db-res-id').value;
+  const fd=new FormData(); fd.append('document',dbSelectedFile);
+  const btn=document.getElementById('db-upload-btn'); btn.disabled=true; btn.textContent='Uploading…';
+  const r=await fetch(`/api/reservations/${id}/directbill/upload`,{method:'POST',body:fd});
+  btn.disabled=false;
+  if(r.ok){ dbSelectedFile=null; document.getElementById('db-file').value=''; document.getElementById('db-file-name').style.display='none'; btn.style.display='none'; await loadAll(); await refreshDBModal(id); toast('Document uploaded — guest notified ✓'); }
+  else{ const e=await r.json(); alert('Upload failed: '+(e.error||'Unknown')); btn.textContent='Upload Document'; }
+}
+
+function openSignPage(){
+  const id=document.getElementById('db-res-id').value;
+  if(!id){alert('No reservation selected');return;}
+  window.open(`/directbill/sign?id=${id}`,'_blank');
+}
+
+async function manualDBReceived(){
+  const id=document.getElementById('db-res-id').value;
+  if(!confirm('Mark as received without uploading a file?')) return;
+  const r=await fetch(`/api/reservations/${id}/directbill/received`,{method:'POST',headers:{'Content-Type':'application/json'}});
+  if(r.ok){ await loadAll(); await refreshDBModal(id); toast('Marked as received ✓'); }
 }
 
 // ── PIN delete ─────────────────────────────────────────────────────────────
@@ -623,6 +1217,7 @@ async function doDel(){
 }
 
 document.getElementById('eovl').addEventListener('click',e=>{if(e.target===document.getElementById('eovl'))closeEdit()});
+document.getElementById('db-ovl').addEventListener('click',e=>{if(e.target===document.getElementById('db-ovl'))closeDB()});
 document.getElementById('povl').addEventListener('click',e=>{if(e.target===document.getElementById('povl'))closePin()});
 document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')doDel()});
 
@@ -632,7 +1227,113 @@ function fmt(i){return new Date(i).toLocaleDateString('en-US',{month:'short',day
 function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 async function logout(){await fetch('/api/logout',{method:'POST'});window.location.href='/login?type=manager';}
 
-loadAll();loadBlockedDates();setInterval(loadAll,30000);
+// Load current user role — gates delete button and service controls
+fetch('/api/me').then(r=>r.json()).then(d=>{ currentUserRole=d.role||'manager'; applyRoleUI(); }).catch(()=>{});
+function applyRoleUI(){
+  // Service controls: admin only
+  const sc=document.getElementById('service-controls-section');
+  if(sc) sc.style.display = currentUserRole==='admin' ? 'block' : 'none';
+  // Re-render table so delete buttons show/hide correctly
+  _filteredCache=filtered(); renderTable(_filteredCache);
+}
+
+async function loadHoursUI(){
+  try{
+    const s=await fetch('/api/settings').then(r=>r.json());
+    if(s.open_time)  document.getElementById('oh-open').value=s.open_time;
+    if(s.close_time) document.getElementById('oh-close').value=s.close_time;
+  }catch(e){}
+}
+
+async function saveHours(){
+  const open=document.getElementById('oh-open').value;
+  const close=document.getElementById('oh-close').value;
+  if(!open||!close){alert('Please set both open and close times.');return;}
+  try{
+    await Promise.all([
+      fetch('/api/settings/open_time', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:open})}),
+      fetch('/api/settings/close_time',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:close})})
+    ]);
+    const lbl=document.getElementById('oh-saved');
+    lbl.style.display='inline';
+    setTimeout(()=>lbl.style.display='none',3000);
+    toast('Operating hours saved ✓');
+  }catch(e){alert('Error saving hours: '+e.message);}
+}
+
+// ── Pricing ───────────────────────────────────────────────────────────────
+async function loadPricingUI(){
+  try{
+    const s=await fetch('/api/settings').then(r=>r.json());
+    if(s.direct_bill_rate) document.getElementById('pr-rate').value=s.direct_bill_rate;
+    if(s.daily_limit)      document.getElementById('pr-limit').value=s.daily_limit;
+  }catch(e){}
+}
+
+async function savePricing(){
+  const rate =parseFloat(document.getElementById('pr-rate').value);
+  const limit=parseInt(document.getElementById('pr-limit').value);
+  if(isNaN(rate)||rate<=0){alert('Enter a valid rate greater than 0.');return;}
+  if(isNaN(limit)||limit<1){alert('Enter a valid cover limit >= 1.');return;}
+  try{
+    await Promise.all([
+      fetch('/api/settings/direct_bill_rate',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(rate.toFixed(2))})}),
+      fetch('/api/settings/daily_limit',     {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(limit)})})
+    ]);
+    const lbl=document.getElementById('pr-saved');
+    lbl.style.display='inline';
+    setTimeout(()=>lbl.style.display='none',4000);
+    toast('Pricing saved ✓ — all forms updated immediately');
+  }catch(e){alert('Error saving pricing: '+e.message);}
+}
+
+// ── Scheduler ─────────────────────────────────────────────────────────────
+function schedTypeChange(){
+  const t=document.getElementById('sched-type').value;
+  const timeWrap=document.getElementById('sched-time-wrap');
+  const dayWrap=document.getElementById('sched-day-wrap');
+  timeWrap.style.display = t==='off' ? 'none' : 'flex';
+  dayWrap.style.display  = t==='weekly' ? 'flex' : 'none';
+}
+
+async function loadScheduleUI(){
+  try{
+    const s=await fetch('/api/settings').then(r=>r.json());
+    const t=s.batch_schedule||'off';
+    document.getElementById('sched-type').value=t;
+    if(s.batch_schedule_time) document.getElementById('sched-time').value=s.batch_schedule_time;
+    if(s.batch_schedule_weekday) document.getElementById('sched-day').value=s.batch_schedule_weekday;
+    schedTypeChange();
+    const lastRun=s.batch_last_run;
+    const statusEl=document.getElementById('sched-status');
+    if(t==='off'){
+      statusEl.textContent='Scheduler is off — use the manual batch send above.';
+    } else {
+      statusEl.textContent=`Schedule: ${t} at ${s.batch_schedule_time||'08:00'}${t==='weekly'?' on '+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseInt(s.batch_schedule_weekday||1)]:''}. Last run: ${lastRun?new Date(lastRun).toLocaleString():'never'}`;
+    }
+  }catch(e){}
+}
+
+async function saveSchedule(){
+  const type=document.getElementById('sched-type').value;
+  const time=document.getElementById('sched-time').value||'08:00';
+  const day =document.getElementById('sched-day').value||'1';
+  try{
+    await Promise.all([
+      fetch('/api/settings/batch_schedule',        {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:type})}),
+      fetch('/api/settings/batch_schedule_time',   {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:time})}),
+      fetch('/api/settings/batch_schedule_weekday',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:day})})
+    ]);
+    const lbl=document.getElementById('sched-saved');
+    lbl.style.display='inline';
+    setTimeout(()=>lbl.style.display='none',3000);
+    toast('Schedule saved ✓');
+    await loadScheduleUI();
+  }catch(e){alert('Error saving schedule: '+e.message);}
+}
+
+loadAll();loadBlockedDates();loadServiceControls();loadSavedBatchEmail();loadHoursUI();loadPricingUI();loadScheduleUI();setInterval(loadAll,30000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
 </html>
