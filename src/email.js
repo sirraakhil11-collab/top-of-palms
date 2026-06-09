@@ -199,7 +199,11 @@ async function sendTestEmail(toEmail) {
 }
 
 function getSafeBase() {
+  // Priority 1: SAFE_URL — set this in Railway Variables to your .up.railway.app URL
   if (process.env.SAFE_URL) return process.env.SAFE_URL.trim().replace(/\/$/,'');
+  // Priority 2: RAILWAY_STATIC_URL — Railway auto-injects the *.up.railway.app domain here
+  if (process.env.RAILWAY_STATIC_URL) return process.env.RAILWAY_STATIC_URL.trim().replace(/\/$/,'');
+  // Priority 3: RAILWAY_PUBLIC_DOMAIN — may be custom domain (Zscaler-blocked on campus)
   if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN.trim()}`;
   const base = (process.env.BASE_URL||'').trim().replace(/\/$/,'');
   return base || 'http://localhost:3000';
