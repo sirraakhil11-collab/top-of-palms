@@ -500,9 +500,17 @@ function chipTap(el){
     c.classList.toggle('on',posPaySel[id].includes(c.getAttribute('data-val')));
   });
   const btn=document.getElementById('psave-'+id); if(btn) btn.style.display='block';
-  // If Direct Bill just added, show billing details modal
+  // If Direct Bill just added, only open modal if no document already exists
   if(val==='Direct Bill' && !wasDB && posPaySel[id].includes('Direct Bill')){
-    openDbModal(id);
+    const res=allData.find(r=>r.id===id);
+    const existingStatus = res?.direct_bill_status;
+    // Skip modal if document is already completed, in-progress, or sent
+    const hasDoc = existingStatus && existingStatus !== 'na' && existingStatus !== 'pending_send';
+    if(hasDoc){
+      toast('✓ Using existing Direct Bill document');
+    } else {
+      openDbModal(id);
+    }
   }
 }
 
