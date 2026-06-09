@@ -7,7 +7,7 @@ const crypto  = require('crypto');
 const { handleIncomingEmail }                       = require('./src/emailInbound');
 const { handleIncomingSMS }                         = require('./src/sms');
 const { handleIncomingCall, handleVoiceCollect, handleCallStatus } = require('./src/voice');
-const { getEmailReply }                             = require('./src/agent');
+const { getEmailReply, getChatReply }               = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
 const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail } = require('./src/email');
 const directBill = require('./src/direct-bill');
@@ -280,6 +280,30 @@ app.post('/api/demo/chat', async (req, res) => {
     if (r.complete&&r.collected){ s.collected=r.collected; delete demoSessions[key]; setImmediate(()=>processReservation({...s}).catch(console.error)); }
     res.json({ text:r.text, complete:r.complete||false, collected:r.collected||null });
   } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+//  AI WIDGET CHAT  — stateless, history sent by client each turn
+// ══════════════════════════════════════════════════════════════════════════
+app.post('/api/chat', async (req, res) => {
+  const { messages } = req.body;
+  if (!Array.isArray(messages) || !messages.length)
+    return res.status(400).json({ error: 'messages array required' });
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!rateLimit(ip, 'chat', 40, 60000))
+    return res.status(429).json({ error: 'Too many messages — please slow down.' });
+
+  try {
+    const settings  = await db.getAllSettings().catch(() => ({}));
+    const openTime  = settings.open_time  || '11:00';
+    const closeTime = settings.close_time || '14:00';
+    const reply     = await getChatReply(messages, openTime, closeTime);
+    res.json(reply);
+  } catch (err) {
+    console.error('[Chat]', err.message);
+    res.status(500).json({ error: 'AI assistant is temporarily unavailable. Please use the reservation form instead.' });
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -750,6 +774,24 @@ app.get('/directbill/form/:token', (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'directbill-form.html'))
 );
 
+// Demo preview — returns empty mock data so the form renders without a real reservation
+app.get('/api/directbill/form-info/demo', auth.requireManager, (req, res) => {
+  res.json({
+    ref:              'DEMO0000',
+    name:             '',
+    email:            '',
+    phone_ext:        '',
+    department:       '',
+    datetime:         'Demo — not a real reservation',
+    reservation_date: '',
+    reservation_time: '',
+    party:            1,
+    num_days:         1,
+    rate:             12.75,
+    demo:             true
+  });
+});
+
 // Return pre-fill data for the form page
 app.get('/api/directbill/form-info/:token', async (req, res) => {
   try {
@@ -874,6 +916,7 @@ app.post('/api/directbill/approve/:token', async (req, res) => {
     if (req.body) {
       if (req.body.approver_signature_png) billing.approver_signature_png = req.body.approver_signature_png;
       if (req.body.approver_typed_name)   billing.approver_typed_name   = req.body.approver_typed_name;
+      if (req.body.approver_name)         billing.approver_name         = req.body.approver_name;
       await db.updateReservation(r.id, { direct_bill_data: JSON.stringify(billing) });
     }
     const pdfBuf  = await directBill.buildCompletedPDF(r, billing);
@@ -1172,10 +1215,8 @@ app.get('/api/reservations', auth.requireManager, async (req, res) => {
   } catch(err){ res.status(500).json({ error:err.message }); }
 });
 app.get('/api/reservations/:id', async (req, res) => {
-  try {
-    const r = await db.getReservation(req.params.id);
-    return r ? res.json(r) : res.status(404).json({ error:`Reservation ${req.params.id.slice(0,8)} not found. It may have been created before the last deployment — please use the dashboard to manage existing reservations.` });
-  } catch(err) { res.status(500).json({ error:`Database error: ${err.message}` }); }
+  try { const r=await db.getReservation(req.params.id); return r?res.json(r):res.status(404).json({error:'Not found'}); }
+  catch(err){ res.status(500).json({ error:err.message }); }
 });
 app.get('/api/stats', auth.requireManager, async (req, res) => {
   try { res.json(await db.getStats()); }

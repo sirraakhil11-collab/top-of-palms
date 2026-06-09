@@ -90,6 +90,8 @@ function renderApprovalCard(d) {
     </div>
     <p style="font-size:13px;color:#374151">Please sign below and click Approve to authorize On Top of the Palms to charge the above In-Kind account.</p>
     <div class="sig-wrap">
+      <div class="sig-label" style="margin-bottom:8px">Your Full Name <span style="color:#b91c1c">*</span></div>
+      <input type="text" id="f-approver-name" placeholder="Type your full name" style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;outline:none;margin-bottom:14px" oninput="onNameInput()">
       <div class="sig-label">Your Signature <span style="color:#b91c1c">*</span> <span style="font-size:11px;font-weight:400;color:#9ca3af">(draw OR type)</span></div>
       <canvas id="sig-canvas" width="440" height="110"></canvas>
       <div class="sig-actions">
@@ -108,7 +110,15 @@ function renderApprovalCard(d) {
 }
 
 async function doApprove() {
+  const approverName = (document.getElementById('f-approver-name')?.value||'').trim();
   const typedSig = (document.getElementById('f-typed-sig')?.value||'').trim();
+  if (!approverName) {
+    const el = document.getElementById('error-msg');
+    el.textContent = 'Please enter your full name.';
+    el.classList.add('show');
+    document.getElementById('f-approver-name')?.focus();
+    return;
+  }
   if (!sigHasContent() && !typedSig) {
     const el = document.getElementById('error-msg');
     el.textContent = 'Please draw your signature or type your name before approving.';
@@ -125,7 +135,8 @@ async function doApprove() {
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         approver_signature_png: getSigDataUrl(),
-        approver_typed_name: (document.getElementById('f-typed-sig')?.value||'').trim()
+        approver_typed_name: typedSig || approverName,
+        approver_name: approverName
       })
     });
     if (res.ok) {
@@ -167,7 +178,14 @@ function initSigPad(){
 }
 function clearSig(){const c=document.getElementById('sig-canvas');if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.classList.remove('signed');_sp=[];}
 function sigHasContent(){return _sp.length>5;}
-function onTypedSig(){if((document.getElementById('f-typed-sig')?.value||'').trim())clearSig();}
+function onTypedSig(){
+  const typed = (document.getElementById('f-typed-sig')?.value||'').trim();
+  if(typed) clearSig();
+  // Auto-fill name field if empty
+  const nameEl = document.getElementById('f-approver-name');
+  if(nameEl && !nameEl.value.trim() && typed) nameEl.value = typed;
+}
+function onNameInput(){}
 function getSigDataUrl(){const c=document.getElementById('sig-canvas');return c&&sigHasContent()?c.toDataURL('image/png'):'';}
 
 // Init sig pad after approval card renders
