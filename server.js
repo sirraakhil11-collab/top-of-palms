@@ -916,6 +916,7 @@ app.post('/api/directbill/approve/:token', async (req, res) => {
     if (req.body) {
       if (req.body.approver_signature_png) billing.approver_signature_png = req.body.approver_signature_png;
       if (req.body.approver_typed_name)   billing.approver_typed_name   = req.body.approver_typed_name;
+      if (req.body.approver_name)         billing.approver_name         = req.body.approver_name;
       await db.updateReservation(r.id, { direct_bill_data: JSON.stringify(billing) });
     }
     const pdfBuf  = await directBill.buildCompletedPDF(r, billing);

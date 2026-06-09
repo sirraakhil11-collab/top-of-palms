@@ -98,59 +98,59 @@
     }
     #board{
       display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-      gap:10px;
+      grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+      gap:8px;
     }
-    @media(min-width:900px){#board{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}}
+    @media(min-width:900px){#board{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}}
     @media(max-width:480px){#board{grid-template-columns:1fr 1fr}}
     @media(max-width:360px){#board{grid-template-columns:1fr}}
 
     /* ── Card ── */
-    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:14px;overflow:hidden;transition:box-shadow .15s}
+    .rc{background:#1e2130;border:1px solid #2d3148;border-radius:10px;overflow:hidden;transition:box-shadow .15s}
     .rc.checked-in{border-color:rgba(74,222,128,.4);background:#1a2e20}
     .rc.no-show{opacity:.5}
-    .rt{padding:11px 14px 8px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
-    .rn{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
-    .rs{font-size:11px;color:#6b7280;margin-top:2px}
-    .rdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+    .rt{padding:7px 10px 5px;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:flex-start;gap:4px}
+    .rn{font-size:12px;font-weight:700;color:#fff;line-height:1.2}
+    .rs{font-size:10px;color:#6b7280;margin-top:1px}
+    .rdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
     .df{background:#60a5fa}.ds{background:#4ade80}
-    .rb{padding:10px 14px;display:flex;flex-direction:column;gap:4px}
-    .rr{display:flex;justify-content:space-between;align-items:center;font-size:12px}
-    .rk{color:#6b7280;font-size:11px}.rv{color:#d1d5db;font-weight:500}
-    .rv.big{font-size:24px;font-weight:800;color:#fff;line-height:1}
-    .rbg{font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px}
+    .rb{padding:6px 10px;display:flex;flex-direction:column;gap:2px}
+    .rr{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+    .rk{color:#6b7280;font-size:10px}.rv{color:#d1d5db;font-weight:500}
+    .rv.big{font-size:20px;font-weight:800;color:#fff;line-height:1}
+    .rbg{font-size:9px;font-weight:600;padding:1px 6px;border-radius:5px}
     .rf{background:#1e3a5f;color:#60a5fa}.rsb{background:#14532d;color:#4ade80}
-    .att-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;white-space:nowrap}
+    .att-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;padding:2px 6px;border-radius:7px;white-space:nowrap}
     .badge-checkin{background:#14532d;color:#4ade80}
     .badge-noshow{background:#3b1515;color:#f87171}
     .badge-pending{background:#252836;color:#6b7280}
 
     /* ── Seating / Payment sections ── */
-    .tbl-section,.pay-section{padding:8px 14px;border-top:1px solid #2d3148}
-    .sec-lbl{color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-    .pos-select{width:100%;background:#252836;border:1px solid #3d4065;border-radius:7px;padding:7px 9px;color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+    .tbl-section,.pay-section{padding:5px 10px;border-top:1px solid #2d3148}
+    .sec-lbl{color:#6b7280;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+    .pos-select{width:100%;background:#252836;border:1px solid #3d4065;border-radius:6px;padding:5px 7px;color:#fff;font-size:12px;font-family:inherit;outline:none;cursor:pointer}
     .pos-select:focus{border-color:#4ade80}
-    .pay-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+    .pay-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
     .pay-chip{
-      padding:7px 11px;border-radius:9px;font-size:12px;font-weight:600;
+      padding:5px 8px;border-radius:7px;font-size:11px;font-weight:600;
       cursor:pointer;border:1.5px solid #3d4065;color:#6b7280;background:#252836;
       transition:all .12s;user-select:none;-webkit-tap-highlight-color:transparent;
-      min-height:34px;display:flex;align-items:center;
+      min-height:28px;display:flex;align-items:center;
     }
     .pay-chip:active{transform:scale(.96)}
     .pay-chip.on{background:#1a2e20;color:#4ade80;border-color:#4ade80}
     .save-sm{
-      background:#006747;border:none;color:#fff;border-radius:6px;
-      padding:8px;font-size:12px;font-weight:600;cursor:pointer;
-      margin-top:6px;width:100%;
+      background:#006747;border:none;color:#fff;border-radius:5px;
+      padding:5px;font-size:11px;font-weight:600;cursor:pointer;
+      margin-top:4px;width:100%;
     }
 
     /* ── Attendance buttons ── */
-    .att-section{padding:8px 14px 12px;border-top:1px solid #2d3148}
-    .att-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .att-section{padding:5px 10px 8px;border-top:1px solid #2d3148}
+    .att-btns{display:grid;grid-template-columns:1fr 1fr;gap:5px}
     .att-btn{
-      border:none;border-radius:8px;padding:11px 0;font-size:13px;font-weight:700;
-      cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:4px;
+      border:none;border-radius:7px;padding:8px 0;font-size:12px;font-weight:700;
+      cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:3px;
       -webkit-tap-highlight-color:transparent;
     }
     .att-btn:active{transform:scale(.96)}
@@ -373,8 +373,13 @@ function renderAll(date){
     });
   }
 
-  // Sort by reservation time
-  list=[...list].sort((a,b)=>(a.datetime_iso||a.datetime||'').localeCompare(b.datetime_iso||b.datetime||''));
+  // Sort: pending/no-show by time first, checked-in at bottom
+  list=[...list].sort((a,b)=>{
+    const aCI = a.attendance==='checked_in' ? 1 : 0;
+    const bCI = b.attendance==='checked_in' ? 1 : 0;
+    if(aCI!==bCI) return aCI-bCI;
+    return (a.datetime_iso||a.datetime||'').localeCompare(b.datetime_iso||b.datetime||'');
+  });
 
   if(!list.length){
     const msgs={all:'No confirmed reservations.',checked_in:'No check-ins yet.',no_show:'No no-shows.',pending:'Everyone is checked in!'};
