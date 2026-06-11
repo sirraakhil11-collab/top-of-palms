@@ -409,15 +409,14 @@ async function buildSignedFormPDF(reservation, billing) {
     y -= 32;
     field('Approver Printed Name', billing.approver_typed_name || billing.approver_name || '', ML, y, 280);
     field('In-Kind Account', billing.inkind_account || '', ML+300, y, 208);
-    y -= 8;
+    y -= 12;
     text('IN-KIND BILLING: APPROVED', ML, y, { size:9, bold:true, color:GREEN });
   }
 
-  // Footer
-  hline(72, { thick:0.5 });
-  text(`On Top of the Palms · University of South Florida · ${PHONE}`, ML, 60, { size:8, color:GRAY });
-  text(`Return to: ${FORWARD_TO}`, ML, 49, { size:8, color:GRAY });
-  text(`Ref: ${ref} · Processed: ${signDate}`, MR-160, 49, { size:8, color:GRAY });
+  // Footer — fixed at bottom, well clear of content
+  hline(36, { thick:0.5 });
+  text(`On Top of the Palms · University of South Florida · ${PHONE}`, ML, 24, { size:8, color:GRAY });
+  text(`Ref: ${ref} · Processed: ${signDate}`, MR-160, 24, { size:8, color:GRAY });
 
   return Buffer.from(await pdfDoc.save());
 }
