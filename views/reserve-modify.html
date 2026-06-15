@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modify Reservation — Top of the Palms</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh;padding:32px 16px}
+    .wrap{max-width:520px;margin:0 auto}
+    .card{background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:16px}
+    h1{font-size:22px;font-weight:700;color:#111827;margin-bottom:6px}
+    .subtitle{font-size:14px;color:#6b7280;margin-bottom:28px;line-height:1.5}
+    label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px;margin-top:18px}
+    label:first-of-type{margin-top:0}
+    input,select,textarea{width:100%;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:10px;font-size:15px;font-family:inherit;color:#111827;outline:none;transition:border-color .15s}
+    input:focus,select:focus,textarea:focus{border-color:#006747}
+    textarea{resize:vertical;min-height:80px}
+    .note-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;font-size:13px;color:#166534;margin-top:20px;line-height:1.5}
+    .warn-box{background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:14px 16px;font-size:13px;color:#713f12;margin-top:16px;line-height:1.5;display:none}
+    .btn{display:block;width:100%;background:#006747;color:#fff;border:none;border-radius:10px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;margin-top:24px;transition:background .15s}
+    .btn:hover{background:#004d34}
+    .btn:disabled{background:#9ca3af;cursor:not-allowed}
+    .error-msg{color:#b91c1c;font-size:14px;margin-top:12px;display:none}
+    .success-card{display:none;text-align:center;padding:40px 24px}
+    .success-card .icon{font-size:52px;margin-bottom:16px}
+    .success-card h2{font-size:20px;font-weight:700;color:#111827;margin-bottom:8px}
+    .success-card p{font-size:14px;color:#6b7280;line-height:1.6}
+    .loading-card{text-align:center;padding:48px 24px;color:#6b7280;font-size:14px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="loading-card">
+    <div class="loading-card">Loading your reservation…</div>
+  </div>
+
+  <div class="card" id="form-card" style="display:none">
+    <h1>Modify Your Reservation</h1>
+    <p class="subtitle" id="subtitle">Update the details below and submit. Major changes (date or party size) will be re-reviewed by our team.</p>
+
+    <label for="inp-date">Date</label>
+    <input type="date" id="inp-date" required>
+
+    <label for="inp-time">Preferred Time</label>
+    <select id="inp-time">
+      <option value="11:00">11:00 AM</option>
+      <option value="11:30">11:30 AM</option>
+      <option value="12:00">12:00 PM</option>
+      <option value="12:30">12:30 PM</option>
+      <option value="13:00">1:00 PM</option>
+      <option value="13:30">1:30 PM</option>
+    </select>
+
+    <label for="inp-party">Party Size</label>
+    <select id="inp-party">
+      <option value="1">1 person</option>
+      <option value="2">2 people</option>
+      <option value="3">3 people</option>
+      <option value="4">4 people</option>
+      <option value="5">5 people</option>
+      <option value="6">6 people</option>
+      <option value="7">7 people</option>
+      <option value="8">8 people</option>
+      <option value="9">9 people</option>
+      <option value="10">10 people</option>
+    </select>
+
+    <label for="inp-notes">Special Notes <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+    <textarea id="inp-notes" placeholder="Allergies, accessibility needs, special occasions…"></textarea>
+
+    <div class="warn-box" id="warn-box">⚠️ Changing the <strong>date</strong> or <strong>party size</strong> will require manager re-approval. You'll receive an email once the updated reservation is reviewed.</div>
+
+    <div class="note-box" id="note-box">Your current reservation details are shown above. Only fields you change will be updated.</div>
+
+    <p class="error-msg" id="error-msg"></p>
+    <button class="btn" id="submit-btn" onclick="submitModify()">Save Changes →</button>
+  </div>
+
+  <div class="card success-card" id="success-card">
+    <div class="icon" id="success-icon">✅</div>
+    <h2 id="success-title">Reservation Updated!</h2>
+    <p id="success-sub">Your changes have been saved. Check your email for confirmation.</p>
+  </div>
+</div>
+
+<script>
+  const parts = window.location.pathname.split('/');
+  // /reserve/modify/:token
+  const token = parts[parts.length - 1];
+  let origDate = '', origParty = '';
+
+  async function loadReservation() {
+    try {
+      const resp = await fetch(`/api/reserve/modify/${token}`);
+      const data = await resp.json();
+      if (!resp.ok || data.error) {
+        showError(data.error || 'This modify link is invalid or has expired.');
+        return;
+      }
+      // Parse date & time from datetime string e.g. "Monday, June 16, 2026 at 12:00 PM"
+      const r = data;
+      origDate  = r.reservation_date || '';
+      origParty = String(r.party || 1);
+
+      document.getElementById('inp-date').value  = origDate;
+      document.getElementById('inp-party').value = origParty;
+      document.getElementById('inp-notes').value = r.notes || '';
+
+      // Set time
+      const timeVal = r.reservation_time || '12:00';
+      document.getElementById('inp-time').value = timeVal;
+
+      document.getElementById('subtitle').textContent =
+        `Modifying reservation for ${r.name} — originally ${r.datetime}.`;
+
+      // Watch for major changes
+      document.getElementById('inp-date').addEventListener('change', checkMajor);
+      document.getElementById('inp-party').addEventListener('change', checkMajor);
+
+      document.getElementById('loading-card').style.display = 'none';
+      document.getElementById('form-card').style.display = 'block';
+    } catch (e) {
+      showError('Could not load your reservation. Please try again.');
+    }
+  }
+
+  function checkMajor() {
+    const dateChanged  = document.getElementById('inp-date').value  !== origDate;
+    const partyChanged = document.getElementById('inp-party').value !== origParty;
+    document.getElementById('warn-box').style.display = (dateChanged || partyChanged) ? 'block' : 'none';
+  }
+
+  async function submitModify() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    document.getElementById('error-msg').style.display = 'none';
+
+    const body = {
+      date:  document.getElementById('inp-date').value,
+      time:  document.getElementById('inp-time').value,
+      party: parseInt(document.getElementById('inp-party').value),
+      notes: document.getElementById('inp-notes').value.trim()
+    };
+
+    try {
+      const resp = await fetch(`/api/reserve/modify/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) {
+        showFormError(data.error || 'Update failed — please try again.');
+        btn.disabled = false; btn.textContent = 'Save Changes →';
+        return;
+      }
+
+      document.getElementById('form-card').style.display = 'none';
+      document.getElementById('success-card').style.display = 'block';
+      if (data.major_change) {
+        document.getElementById('success-icon').textContent  = '⏳';
+        document.getElementById('success-title').textContent = 'Update Submitted for Review';
+        document.getElementById('success-sub').textContent   = 'Your date or party size changed, so your reservation needs manager re-approval. You\'ll receive an email once it\'s reviewed.';
+      }
+    } catch (e) {
+      showFormError('Network error — please try again.');
+      btn.disabled = false; btn.textContent = 'Save Changes →';
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('loading-card').innerHTML =
+      `<div style="text-align:center;padding:48px 24px">
+        <div style="font-size:40px;margin-bottom:16px">⚠️</div>
+        <h2 style="font-size:18px;font-weight:700;color:#111827;margin-bottom:8px">Link Invalid</h2>
+        <p style="font-size:14px;color:#6b7280">${esc(msg)}</p>
+       </div>`;
+  }
+
+  function showFormError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  loadReservation();
+</script>
+</body>
+</html>

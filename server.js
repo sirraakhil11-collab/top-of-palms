@@ -21,6 +21,13 @@ function makeUploadToken(reservationId) {
 function verifyUploadToken(token, reservationId) {
   return token === makeUploadToken(reservationId);
 }
+function makeModifyToken(reservationId) {
+  const secret = process.env.SESSION_SECRET || 'topp-secret-key-2026';
+  return crypto.createHmac('sha256', secret).update(`modify:${reservationId}`).digest('hex').slice(0, 40);
+}
+function verifyModifyToken(token, reservationId) {
+  return token === makeModifyToken(reservationId);
+}
 const blockedDates = require('./src/blocked-dates');
 const auth = require('./src/auth');
 const db   = require('./src/db');
@@ -167,7 +174,7 @@ app.get('/embed/chatbot.js', (req, res) => {
   res.sendFile(path.join(__dirname,'public','embed','chatbot.js'));
 });
 // Allow CORS on public API endpoints used by the embedded widget
-app.use(['/api/reserve','/api/public/rate','/api/reserve/hours','/api/blocked-dates'], (req, res, next) => {
+app.use(['/api/reserve','/api/public/rate','/api/reserve/hours','/api/blocked-dates','/api/public/capacity','/api/public/settings'], (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -188,6 +195,31 @@ app.get('/api/reserve/status', async (req, res) => {
 app.get('/api/reserve/hours', async (req, res) => {
   const s = await db.getAllSettings().catch(() => ({}));
   res.json({ open_time: s.open_time || '11:00', close_time: s.close_time || '14:00' });
+});
+
+// Public capacity check — used by guest form to validate party size vs remaining seats
+app.get('/api/public/capacity', async (req, res) => {
+  try {
+    const date = req.query.date || new Date().toISOString().split('T')[0];
+    const s     = await db.getAllSettings().catch(() => ({}));
+    const limit = parseInt(s.daily_limit || '60');
+    const taken = await db.getDailyPeopleCount(date);
+    const blocked = await blockedDates.isBlocked(date);
+    res.json({ date, limit, taken, available: Math.max(0, limit - taken), blocked: !!blocked, blocked_reason: blocked?.reason || null });
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// Public settings — announcement banner, upcoming rate (no auth needed for guest form)
+app.get('/api/public/settings', async (req, res) => {
+  try {
+    const s = await db.getAllSettings().catch(() => ({}));
+    res.json({
+      announcement:      s.announcement      || '',
+      upcoming_rate:     s.upcoming_rate      || '',
+      upcoming_rate_date:s.upcoming_rate_date || '',
+      direct_bill_rate:  s.direct_bill_rate   || '12.75'
+    });
+  } catch(err) { res.status(500).json({}); }
 });
 
 app.post('/api/reserve', async (req, res) => {
@@ -231,10 +263,16 @@ app.post('/api/reserve', async (req, res) => {
     if (!allBookingDates.length)
       return res.status(400).json({ error:'No valid weekdays found starting from that date.' });
 
-    // Check capacity for each day
+    // Check blocked dates and capacity for each day
     for (const d of allBookingDates) {
       const bl = await blockedDates.isBlocked(d);
-      if (bl) return res.status(400).json({ error:`${d} is a blocked/closed date. Please choose different dates.` });
+      if (bl) return res.status(400).json({ error:`${d} is a blocked/closed date (${bl.reason}). Please choose different dates.` });
+      const taken = await db.getDailyPeopleCount(d);
+      const s2    = await db.getAllSettings().catch(() => ({}));
+      const limit = parseInt(s2.daily_limit || '60');
+      const avail = Math.max(0, limit - taken);
+      if (avail === 0) return res.status(400).json({ error:`Sorry, ${d} is fully booked (${limit} guests). Please choose another date.`, fully_booked:true, date:d });
+      if (partySize > avail) return res.status(400).json({ error:`Only ${avail} seat${avail===1?'':'s'} remaining on ${d}. Please reduce your party size to ${avail} or choose another date.`, partial:true, available:avail, date:d });
     }
 
     const partyN      = partySize;
@@ -370,7 +408,8 @@ app.post('/manager/deny/:id', async (req, res) => {
     const r = await db.getReservation(req.params.id);
     if (!r) return res.status(404).json({ error:'Not found' });
     if (r.status !== 'pending_approval') return res.json({ success:true, already:true, status:r.status });
-    await db.updateReservation(r.id,{ status:'denied', processed_at:new Date().toISOString() });
+    const denial_reason = (req.body.denial_reason || '').trim().slice(0, 500);
+    await db.updateReservation(r.id,{ status:'denied', processed_at:new Date().toISOString(), denial_reason });
     const updated = await db.getReservation(r.id);
     await sendEmail(updated,'denied').catch(console.error);
     res.json({ success:true, name:r.name, datetime:r.datetime, email:r.email });
@@ -1056,7 +1095,9 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
     const adminOnly = ['web_form_enabled','email_intake_enabled','sms_intake_enabled'];
     const managerOk = ['open_time','close_time','direct_bill_rate','daily_limit',
                        'batch_recipient_email','batch_schedule','batch_schedule_time',
-                       'batch_schedule_weekday','batch_last_run'];
+                       'batch_schedule_weekday','batch_last_run',
+                       'contact_phone','contact_email','announcement',
+                       'upcoming_rate','upcoming_rate_date'];
     const key = req.params.key;
     if (!adminOnly.includes(key) && !managerOk.includes(key))
       return res.status(400).json({ error:'Unknown setting key' });
@@ -1082,6 +1123,14 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
       await db.updateSetting(key, String(n));
       console.log(`[Settings] daily_limit = ${n}`);
       return res.json({ key, value: String(n) });
+    }
+    // Free-text settings (no format restriction)
+    const freeText = ['contact_phone','contact_email','announcement','upcoming_rate','upcoming_rate_date',
+                      'batch_recipient_email','batch_schedule','batch_schedule_time','batch_schedule_weekday','batch_last_run'];
+    if (freeText.includes(key)) {
+      await db.updateSetting(key, String(value || '').slice(0, 1000));
+      console.log(`[Settings] ${key} updated`);
+      return res.json({ key, value });
     }
     if (!/^\d{1,2}:\d{2}$/.test(value)) return res.status(400).json({ error:'Value must be HH:MM format' });
     await db.updateSetting(key, value);
@@ -1209,6 +1258,91 @@ app.delete('/api/blocked-dates/:date', auth.requireManager, async (req, res) => 
     await blockedDates.removeBlocked(req.params.date);
     res.json({ success:true });
   } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// Block a date range at once
+app.post('/api/blocked-dates/range', auth.requireManager, async (req, res) => {
+  try {
+    const { from, to, reason } = req.body;
+    if (!from || !to || !reason) return res.status(400).json({ error:'from, to and reason required' });
+    const start = new Date(from + 'T12:00:00'), end = new Date(to + 'T12:00:00');
+    if (isNaN(start) || isNaN(end) || start > end) return res.status(400).json({ error:'Invalid date range' });
+    const added = [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      const iso = cur.toISOString().split('T')[0];
+      await blockedDates.addBlocked(iso, reason);
+      added.push(iso);
+      cur.setDate(cur.getDate() + 1);
+    }
+    res.json({ success:true, added, count: added.length });
+  } catch(err){ res.status(500).json({ error:err.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+//  GUEST RESERVATION MODIFICATION
+// ══════════════════════════════════════════════════════════════════════════
+app.get('/reserve/modify/:token', (req, res) => res.sendFile(path.join(__dirname, 'views', 'reserve-modify.html')));
+
+// Returns reservation data for the modify page (validates token)
+app.get('/api/reserve/modify/:token', async (req, res) => {
+  try {
+    const all = await db.getAllReservations();
+    const r = all.find(x => makeModifyToken(x.id) === req.params.token);
+    if (!r) return res.status(404).json({ error: 'Modification link is invalid or expired.' });
+    if (['denied','cancelled'].includes(r.status)) return res.status(400).json({ error: `This reservation has been ${r.status} and cannot be modified.` });
+    res.json(r);
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// Guest submits modification
+app.post('/api/reserve/modify/:token', async (req, res) => {
+  try {
+    const all = await db.getAllReservations();
+    const r = all.find(x => makeModifyToken(x.id) === req.params.token);
+    if (!r) return res.status(404).json({ error: 'Modification link is invalid.' });
+    if (['denied','cancelled'].includes(r.status)) return res.status(400).json({ error: `This reservation has been ${r.status}.` });
+
+    const { date, time, party, notes } = req.body;
+    const partyN = parseInt(party);
+    const updates = { notes: (notes || '').trim() };
+
+    const majorChange = (date && date !== r.reservation_date) || (partyN && partyN !== r.party);
+
+    if (date) {
+      const d = new Date(date + 'T12:00:00');
+      if (d.getDay() === 0 || d.getDay() === 6) return res.status(400).json({ error: 'Please select a weekday.' });
+      if (new Date(date + 'T' + (time||'11:00') + ':00') < new Date(Date.now() + 24*60*60*1000))
+        return res.status(400).json({ error: 'Modifications must be made at least 24 hours in advance.' });
+      const bl = await blockedDates.isBlocked(date);
+      if (bl) return res.status(400).json({ error: `${date} is blocked: ${bl.reason}` });
+      const taken = await db.getDailyPeopleCount(date);
+      const s2    = await db.getAllSettings().catch(() => ({}));
+      const limit = parseInt(s2.daily_limit || '60');
+      const need  = partyN || r.party;
+      if (taken + need > limit) return res.status(400).json({ error: `Only ${Math.max(0,limit-taken)} seats available on ${date}.` });
+      updates.reservation_date = date;
+      const displayTime = new Date(`${date}T${time||r.reservation_time||'11:00'}:00`).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+      updates.datetime = displayTime;
+      updates.reservation_time = time || r.reservation_time;
+    }
+    if (partyN && !isNaN(partyN) && partyN >= 2 && partyN <= 15) updates.party = partyN;
+
+    if (majorChange) {
+      updates.status = 'pending_approval';
+      updates.processed_at = null;
+    }
+
+    const updated = await db.updateReservation(r.id, updates);
+
+    if (majorChange) {
+      await sendManagerApprovalEmail(updated).catch(console.error);
+      const { sendEmail: se } = require('./src/email');
+      await se(updated, 'pending').catch(console.error);
+    }
+
+    res.json({ success: true, major_change: majorChange, reservation: updated });
+  } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
 // ══════════════════════════════════════════════════════════════════════════

@@ -3,7 +3,23 @@ const sgMail = require('@sendgrid/mail');
 const FROM         = process.env.FROM_EMAIL;
 const NAME         = 'On Top of the Palms Reservations';
 const MANAGER_MAIL = process.env.MANAGER_EMAIL;
-const PHONE        = process.env.RESTAURANT_PHONE || '(813) 974-0000';
+const PHONE_ENV    = process.env.RESTAURANT_PHONE || '(813) 974-0000';
+
+// Dynamic contact info — reads from DB settings, falls back to env vars
+async function getContact() {
+  try {
+    const db = require('./db');
+    const s  = await db.getAllSettings();
+    return { phone: s.contact_phone || PHONE_ENV, replyEmail: s.contact_email || FROM };
+  } catch { return { phone: PHONE_ENV, replyEmail: FROM }; }
+}
+
+function makeModifyLink(reservationId) {
+  const crypto = require('crypto');
+  const secret = process.env.SESSION_SECRET || 'topp-secret-key-2026';
+  const token  = crypto.createHmac('sha256', secret).update(`modify:${reservationId}`).digest('hex').slice(0, 40);
+  return `${getSafeBase()}/reserve/modify/${token}`;
+}
 
 // Always set the API key if available
 function getSg() {
@@ -13,7 +29,8 @@ function getSg() {
   return sgMail;
 }
 
-function layout(body) {
+function layout(body, phone) {
+  const ph = phone || PHONE_ENV;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;margin:0;padding:24px 16px">
 <div style="max-width:560px;margin:0 auto">
@@ -22,7 +39,7 @@ function layout(body) {
     <h1 style="color:#fff;font-size:18px;font-weight:700;margin:0">Top of the Palms</h1>
   </div>
   <div style="background:#fff;border-radius:0 0 10px 10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,.08)">${body}</div>
-  <p style="text-align:center;color:#9ca3af;font-size:11px;margin:12px 0 0">On Top of the Palms · USF Tampa Campus · ${PHONE}</p>
+  <p style="text-align:center;color:#9ca3af;font-size:11px;margin:12px 0 0">On Top of the Palms · USF Tampa Campus · ${ph}</p>
 </div></body></html>`;
 }
 
@@ -56,21 +73,26 @@ async function _send(msg, label) {
 
 // ── Guest emails ──────────────────────────────────────────────────────────────
 async function sendEmail(reservation, type) {
+  const contact = await getContact();
   const templates = { confirmed: confirmedEmail, pending: pendingEmail, denied: deniedEmail };
-  const t = templates[type](reservation);
+  const t = templates[type](reservation, contact);
   await _send({ to: reservation.email, from: { email: FROM, name: NAME }, subject: t.subject, html: t.html }, type);
 }
 
-function confirmedEmail(r) {
+function confirmedEmail(r, contact) {
+  const phone = contact?.phone || PHONE_ENV;
+  const modifyLink = makeModifyLink(r.id);
   return { subject: 'Your reservation is confirmed — Top of the Palms ✓', html: layout(`
     <div style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✓ Confirmed</div>
     <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">We look forward to seeing you!</h2>
     <p style="color:#6b7280;font-size:14px;margin:0 0 20px">Hi ${r.name}, your reservation is confirmed.</p>
     <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">${reservationRows(r)}</table></div>
-    <p style="color:#374151;font-size:14px">Please arrive a few minutes early. Reply here or call ${PHONE} with any questions.</p>`) };
+    <p style="color:#374151;font-size:14px">Please arrive a few minutes early. Reply here or call ${phone} with any questions.</p>
+    <p style="margin-top:16px"><a href="${modifyLink}" style="color:#006747;font-size:13px">Need to change your reservation? Click here to modify →</a></p>`, phone) };
 }
 
-function pendingEmail(r) {
+function pendingEmail(r, contact) {
+  const phone = contact?.phone || PHONE_ENV;
   return { subject: 'We received your reservation request — Top of the Palms', html: layout(`
     <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">⏳ Under review</div>
     <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Request received!</h2>
@@ -81,24 +103,31 @@ function pendingEmail(r) {
       ${r.payment_method ? row('Payment', r.payment_method) : ''}
       ${row('Status', '<span style="color:#b45309">Pending manager review</span>', true)}
     </table></div>
-    <p style="color:#374151;font-size:14px">You will receive another email once confirmed. Reply here with any questions.</p>`) };
+    <p style="color:#374151;font-size:14px">You will receive another email once confirmed. Reply here or call ${phone} with any questions.</p>`, phone) };
 }
 
-function deniedEmail(r) {
+function deniedEmail(r, contact) {
+  const phone = contact?.phone || PHONE_ENV;
+  const reasonBlock = r.denial_reason
+    ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin:16px 0;font-size:14px;color:#374151"><strong>Reason:</strong> ${r.denial_reason}</div>`
+    : '';
   return { subject: 'Update on your reservation request — Top of the Palms', html: layout(`
     <div style="display:inline-block;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✕ Unable to accommodate</div>
     <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">We're sorry</h2>
-    <p style="color:#6b7280;font-size:14px;margin:0 0 20px">Hi ${r.name}, unfortunately we cannot accommodate your request for ${r.datetime}.</p>
-    <p style="color:#374151;font-size:14px">Please reply here or call ${PHONE} to find an alternative time. We'd love to have you!</p>`) };
+    <p style="color:#6b7280;font-size:14px;margin:0 0 8px">Hi ${r.name}, unfortunately we cannot accommodate your request for ${r.datetime}.</p>
+    ${reasonBlock}
+    <p style="color:#374151;font-size:14px">Please reply here or call ${phone} to find an alternative time. We'd love to have you!</p>`, phone) };
 }
 
 // ── Manager approval email ────────────────────────────────────────────────────
 async function sendManagerApprovalEmail(reservation) {
+  const contact    = await getContact();
   const base       = getSafeBase();
   const approveUrl = `${base}/manager/confirm/approve/${reservation.id}`;
   const denyUrl    = `${base}/manager/confirm/deny/${reservation.id}`;
   const dashUrl    = `${base}/manager/dashboard`;
   const party      = reservation.party + (reservation.party===1?' guest':' guests');
+  const PHONE      = contact.phone;
 
   function r(k,v,last){ return `<tr><td style="color:#6b7280;padding:8px 0;font-size:13px;${last?'':'border-bottom:1px solid #f3f4f6'}">${k}</td><td style="color:#111827;font-weight:600;text-align:right;font-size:13px;padding:8px 0;${last?'':'border-bottom:1px solid #f3f4f6'}">${v}</td></tr>`; }
 

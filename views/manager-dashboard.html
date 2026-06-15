@@ -340,6 +340,75 @@
       </div>
     </div>
 
+    <!-- Contact Info -->
+    <div class="settings-panel">
+      <h3>📞 Contact Info (Email Footers)</h3>
+      <p>Phone number and reply email shown in all guest emails. Leave blank to use the server defaults.</p>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div class="sr-label">Phone number</div>
+        <input type="text" id="contact-phone-inp" placeholder="e.g. (813) 974-3573"
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:var(--gray-900)">
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none">
+        <div class="sr-label">Reply-to email</div>
+        <input type="email" id="contact-email-inp" placeholder="e.g. dining@usf.edu"
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:var(--gray-900)">
+      </div>
+      <button class="save-btn" onclick="saveContactInfo()">Save Contact Info</button>
+      <div id="contact-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+    </div>
+
+    <!-- Announcement Banner -->
+    <div class="settings-panel">
+      <h3>📢 Guest Announcement</h3>
+      <p>Shows a notice banner at the top of the reservation page. Leave blank to hide it.</p>
+      <textarea id="announce-inp" placeholder="e.g. New menu starting August 1st! Prices updated."
+        style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;min-height:72px;outline:none;color:var(--gray-900)"></textarea>
+      <button class="save-btn" onclick="saveAnnouncement()">Save Announcement</button>
+      <div id="announce-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+    </div>
+
+    <!-- Upcoming Rate Change -->
+    <div class="settings-panel">
+      <h3>📅 Upcoming Rate Change</h3>
+      <p>Notify guests of a future price change. They'll see a notice when selecting a date on or after the effective date.</p>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div class="sr-label">New rate ($ per person)</div>
+        <input type="number" id="upcoming-rate-inp" min="1" max="999" step="0.25" placeholder="e.g. 14.65"
+          style="width:140px;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;outline:none;color:var(--green)">
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none">
+        <div class="sr-label">Effective from date</div>
+        <input type="date" id="upcoming-rate-date-inp"
+          style="padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:var(--gray-900)">
+      </div>
+      <button class="save-btn" onclick="saveUpcomingRate()">Save</button>
+      <button class="save-btn" style="background:var(--gray-400);margin-left:8px" onclick="clearUpcomingRate()">Clear</button>
+      <div id="upcoming-rate-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+    </div>
+
+    <!-- Block Date Range -->
+    <div class="settings-panel">
+      <h3>🚫 Block Date Range</h3>
+      <p>Prevent reservations for a range of dates (e.g. holidays, staff training, closures). A message will show on the guest form.</p>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div class="sr-label">From date</div>
+        <input type="date" id="block-from-inp" style="padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:var(--gray-900)">
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div class="sr-label">To date</div>
+        <input type="date" id="block-to-inp" style="padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:var(--gray-900)">
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none">
+        <div class="sr-label">Reason</div>
+        <input type="text" id="block-reason-inp" placeholder="e.g. Spring Break closure"
+          style="width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:var(--gray-900)">
+      </div>
+      <button class="save-btn" onclick="blockDateRange()">Block Dates</button>
+      <div id="block-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+      <div id="blocked-list" style="margin-top:14px"></div>
+    </div>
+
     <!-- QR Code -->
     <div class="settings-panel">
       <h3>📱 Reservation QR Code</h3>
@@ -645,11 +714,117 @@ async function loadSettings() {
       if (wt2) wt2.checked = s.web_form_enabled === 'true';
     }
 
+    // Contact info
+    document.getElementById('contact-phone-inp').value = s.contact_phone || '';
+    document.getElementById('contact-email-inp').value = s.contact_email || '';
+
+    // Announcement
+    document.getElementById('announce-inp').value = s.announcement || '';
+
+    // Upcoming rate
+    document.getElementById('upcoming-rate-inp').value      = s.upcoming_rate      || '';
+    document.getElementById('upcoming-rate-date-inp').value = s.upcoming_rate_date || '';
+
     // Build QR code
     const baseUrl = window.location.origin;
     const reserveUrl = baseUrl + '/reserve';
     buildQR(reserveUrl);
+
+    // Load blocked dates list
+    loadBlockedList();
   } catch(e) { console.error(e); }
+}
+
+async function saveContactInfo() {
+  const phone = document.getElementById('contact-phone-inp').value.trim();
+  const email = document.getElementById('contact-email-inp').value.trim();
+  const msg   = document.getElementById('contact-msg');
+  try {
+    await Promise.all([
+      fetch('/api/settings/contact_phone', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:phone})}),
+      fetch('/api/settings/contact_email', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:email})})
+    ]);
+    msg.style.color='var(--green)'; msg.textContent='✓ Saved — emails will now use this contact info.';
+    setTimeout(()=>msg.textContent='',3000);
+  } catch { msg.style.color='var(--red)'; msg.textContent='Save failed.'; }
+}
+
+async function saveAnnouncement() {
+  const val = document.getElementById('announce-inp').value.trim();
+  const msg = document.getElementById('announce-msg');
+  try {
+    await fetch('/api/settings/announcement', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:val})});
+    msg.style.color='var(--green)'; msg.textContent = val ? '✓ Announcement saved — guests will see it on the form.' : '✓ Announcement cleared.';
+    setTimeout(()=>msg.textContent='',3000);
+  } catch { msg.style.color='var(--red)'; msg.textContent='Save failed.'; }
+}
+
+async function saveUpcomingRate() {
+  const rate = document.getElementById('upcoming-rate-inp').value.trim();
+  const date = document.getElementById('upcoming-rate-date-inp').value.trim();
+  const msg  = document.getElementById('upcoming-rate-msg');
+  if (!rate || !date) { msg.style.color='var(--red)'; msg.textContent='Both rate and date required.'; return; }
+  try {
+    await Promise.all([
+      fetch('/api/settings/upcoming_rate',      {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:rate})}),
+      fetch('/api/settings/upcoming_rate_date', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:date})})
+    ]);
+    msg.style.color='var(--green)'; msg.textContent=`✓ Saved — guests will see rate $${parseFloat(rate).toFixed(2)} notice from ${date}.`;
+    setTimeout(()=>msg.textContent='',4000);
+  } catch { msg.style.color='var(--red)'; msg.textContent='Save failed.'; }
+}
+
+async function clearUpcomingRate() {
+  const msg = document.getElementById('upcoming-rate-msg');
+  try {
+    await Promise.all([
+      fetch('/api/settings/upcoming_rate',      {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:''})}),
+      fetch('/api/settings/upcoming_rate_date', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:''})})
+    ]);
+    document.getElementById('upcoming-rate-inp').value='';
+    document.getElementById('upcoming-rate-date-inp').value='';
+    msg.style.color='var(--gray-400)'; msg.textContent='Upcoming rate cleared.';
+    setTimeout(()=>msg.textContent='',3000);
+  } catch { msg.style.color='var(--red)'; msg.textContent='Clear failed.'; }
+}
+
+async function blockDateRange() {
+  const from   = document.getElementById('block-from-inp').value;
+  const to     = document.getElementById('block-to-inp').value;
+  const reason = document.getElementById('block-reason-inp').value.trim();
+  const msg    = document.getElementById('block-msg');
+  if (!from || !to || !reason) { msg.style.color='var(--red)'; msg.textContent='From date, to date and reason are all required.'; return; }
+  if (from > to) { msg.style.color='var(--red)'; msg.textContent='From date must be before or equal to to date.'; return; }
+  try {
+    const r = await fetch('/api/blocked-dates/range', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from,to,reason})});
+    const d = await r.json();
+    if (!r.ok) { msg.style.color='var(--red)'; msg.textContent=d.error||'Failed.'; return; }
+    msg.style.color='var(--green)'; msg.textContent=`✓ Blocked ${d.count} date${d.count===1?'':'s'}.`;
+    document.getElementById('block-from-inp').value='';
+    document.getElementById('block-to-inp').value='';
+    document.getElementById('block-reason-inp').value='';
+    setTimeout(()=>msg.textContent='',3000);
+    loadBlockedList();
+  } catch { msg.style.color='var(--red)'; msg.textContent='Request failed.'; }
+}
+
+async function loadBlockedList() {
+  try {
+    const list = await fetch('/api/blocked-dates').then(r=>r.json());
+    const el   = document.getElementById('blocked-list');
+    if (!list.length) { el.innerHTML='<p style="font-size:12px;color:var(--gray-400)">No blocked dates.</p>'; return; }
+    el.innerHTML = `<div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:6px">Blocked dates (${list.length})</div>` +
+      list.map(d => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:12px">
+        <span><strong>${d.date}</strong> — ${esc(d.reason)}</span>
+        <button onclick="unblockDate('${d.date}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:2px 6px">✕</button>
+      </div>`).join('');
+  } catch {}
+}
+
+async function unblockDate(date) {
+  await fetch(`/api/blocked-dates/${date}`, {method:'DELETE'});
+  loadBlockedList();
+  showToast(`${date} unblocked`);
 }
 
 function buildQR(url) {

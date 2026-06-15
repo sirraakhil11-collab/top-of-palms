@@ -30,6 +30,11 @@
     #sig-canvas{width:100%;height:120px;border:1.5px solid #d1d5db;border-radius:10px;cursor:crosshair;touch-action:none;background:#fafafa;display:block}
     #sig-canvas.signed{border-color:#006747}
     .sig-clear{font-size:12px;color:#9ca3af;cursor:pointer;text-decoration:underline;margin-top:4px;display:inline-block}
+    .deny-reason-wrap{display:none;margin-bottom:20px;text-align:left}
+    .deny-reason-wrap label{font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px}
+    .deny-reason-wrap span{font-size:12px;color:#9ca3af;font-weight:400}
+    .deny-reason-wrap textarea{width:100%;padding:10px 13px;border:1.5px solid #d1d5db;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;min-height:80px;outline:none;color:#111827}
+    .deny-reason-wrap textarea:focus{border-color:#b91c1c}
   </style>
 </head>
 <body>
@@ -43,6 +48,10 @@
     <div class="sig-hint">Sign below to confirm this action (mouse or touch)</div>
     <canvas id="sig-canvas" width="420" height="120"></canvas>
     <span class="sig-clear" onclick="clearSig()">Clear signature</span>
+  </div>
+  <div class="deny-reason-wrap" id="deny-reason-wrap">
+    <label>Reason for denial <span>(optional — guest will see this in their email)</span></label>
+    <textarea id="denial-reason" placeholder="e.g. Fully booked on that date, please try another day…" maxlength="500"></textarea>
   </div>
   <div class="btns" id="btns"></div>
   <p class="loading" id="loading">Processing…</p>
@@ -99,6 +108,7 @@
       document.getElementById('btns').innerHTML = `
         <a href="/manager/dashboard" class="btn-back">← Cancel</a>
         <button class="btn-confirm ${btnCls}" onclick="confirm_action()">${btnText}</button>`;
+      if (action === 'deny') document.getElementById('deny-reason-wrap').style.display = 'block';
     } catch(e) { showError(e.message); }
   }
 
@@ -107,7 +117,8 @@
     document.getElementById('loading').style.display = 'block';
     try {
       // POST — never fires from an email preview (GET only), confirms the action
-      const resp = await fetch(`/manager/${action}/${id}`, { method: 'POST' });
+      const denial_reason = action === 'deny' ? (document.getElementById('denial-reason')?.value||'').trim() : '';
+      const resp = await fetch(`/manager/${action}/${id}`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ denial_reason }) });
       const data = await resp.json();
       if (!resp.ok) { showError(data.error || 'Action failed. Please try again.'); return; }
       if (data.already) {

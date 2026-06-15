@@ -55,6 +55,15 @@
     .submit-btn:disabled{background:#d1d5db;cursor:default}
     .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
     .err-msg.show{display:block}
+    .announce-banner{background:#1d4ed8;color:#fff;padding:12px 20px;text-align:center;font-size:14px;font-weight:600;line-height:1.5;display:none}
+    .announce-banner.show{display:block}
+    .capacity-warn{border-radius:8px;padding:10px 14px;font-size:13px;margin-top:6px;display:none}
+    .capacity-warn.show{display:block}
+    .capacity-warn.partial{background:#fffbeb;border:1px solid #fde68a;color:#b45309}
+    .capacity-warn.full{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
+    .capacity-warn.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+    .rate-upcoming{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:13px;color:#1d4ed8;margin-top:6px;display:none}
+    .rate-upcoming.show{display:block}
     .success-screen{display:none;text-align:center;padding:16px 0}
     .success-screen.show{display:block}
     .success-icon{font-size:52px;margin-bottom:14px}
@@ -82,6 +91,7 @@
   </style>
 </head>
 <body>
+<div class="announce-banner" id="announce-banner"></div>
 <header>
   <h1>🌴 On Top of the Palms</h1>
   <p>University of South Florida Dining · Managed by Compass USA</p>
@@ -148,6 +158,7 @@
         <label>Start Date <span class="req">*</span></label>
         <input id="f-date" type="date">
         <div class="hint">At least 24 hours from now</div>
+        <div class="rate-upcoming" id="rate-upcoming"></div>
       </div>
       <div class="form-group">
         <label>Time <span class="req">*</span></label>
@@ -173,7 +184,7 @@
     <div class="form-row">
       <div class="form-group">
         <label>Number of Guests <span class="req">*</span></label>
-        <select id="f-party" onchange="updateAmount()">
+        <select id="f-party" onchange="updateAmount();checkCapacity()">
           <option value="">Select party size</option>
           <option value="2">2 guests</option>
           <option value="3">3 guests</option>
@@ -191,6 +202,7 @@
           <option value="15">15 guests</option>
         </select>
         <div class="hint">Min 2 · Max 15 per reservation</div>
+        <div class="capacity-warn" id="capacity-warn"></div>
       </div>
       <div class="form-group" id="amount-display-wrap" style="display:none">
         <label>Estimated Total</label>
@@ -244,15 +256,69 @@
 
   let selectedPayments = [];
 
-  // Load configurable rate from server
-  (async function loadRate(){
+  let upcomingRate = '', upcomingRateDate = '';
+
+  // Load public settings — rate, announcement, upcoming rate
+  (async function loadPublicSettings(){
     try {
-      const d = await fetch('/api/public/rate').then(r=>r.json());
-      RATE = parseFloat(d.rate) || 12.75;
-      // Update any visible rate hints
+      const d = await fetch('/api/public/settings').then(r=>r.json());
+      RATE = parseFloat(d.direct_bill_rate) || 12.75;
       document.querySelectorAll('.rate-hint').forEach(el => { el.textContent = `@ $${RATE.toFixed(2)} per guest per day`; });
+      if (d.announcement) {
+        const b = document.getElementById('announce-banner');
+        b.textContent = d.announcement;
+        b.classList.add('show');
+      }
+      upcomingRate     = d.upcoming_rate     || '';
+      upcomingRateDate = d.upcoming_rate_date|| '';
     } catch(e){}
   })();
+
+  // Capacity check — called when date or party changes
+  let _capCache = {};
+  async function checkCapacity() {
+    const date  = document.getElementById('f-date').value;
+    const party = parseInt(document.getElementById('f-party').value || '0');
+    const warn  = document.getElementById('capacity-warn');
+    if (!date) { warn.className='capacity-warn'; return; }
+
+    try {
+      const key = date;
+      if (!_capCache[key]) _capCache[key] = await fetch(`/api/public/capacity?date=${date}`).then(r=>r.json());
+      const cap = _capCache[key];
+
+      // Upcoming rate notice
+      const rateEl = document.getElementById('rate-upcoming');
+      if (upcomingRate && upcomingRateDate && date >= upcomingRateDate) {
+        rateEl.textContent = `ℹ️ Note: From ${upcomingRateDate} the rate changes to $${parseFloat(upcomingRate).toFixed(2)} per guest per day.`;
+        rateEl.classList.add('show');
+      } else {
+        rateEl.className = 'rate-upcoming';
+      }
+
+      if (cap.blocked) {
+        warn.textContent = `⛔ This date is unavailable: ${cap.blocked_reason || 'Closed'}. Please choose another date.`;
+        warn.className = 'capacity-warn show full';
+        return;
+      }
+      if (cap.available === 0) {
+        warn.textContent = `⛔ Fully booked on this date (${cap.taken}/${cap.limit} guests). Please choose another date.`;
+        warn.className = 'capacity-warn show full';
+        return;
+      }
+      if (party > 0 && party > cap.available) {
+        warn.textContent = `⚠️ Only ${cap.available} seat${cap.available===1?'':'s'} remaining on this date. Please reduce your party size or choose another date.`;
+        warn.className = 'capacity-warn show partial';
+        return;
+      }
+      if (party > 0) {
+        warn.textContent = `✓ ${cap.available} seat${cap.available===1?'':'s'} available on this date.`;
+        warn.className = 'capacity-warn show ok';
+      } else {
+        warn.className = 'capacity-warn';
+      }
+    } catch(e) { document.getElementById('capacity-warn').className='capacity-warn'; }
+  }
 
   // Load operating hours from server then build time picker
   async function loadHours() {
@@ -355,7 +421,7 @@
       tomorrow.setDate(tomorrow.getDate() + 1);
     }
     inp.min = tomorrow.toISOString().split('T')[0];
-    inp.addEventListener('change', validateDate);
+    inp.addEventListener('change', () => { validateDate(); _capCache = {}; checkCapacity(); });
   }
 
   function validateDate() {
