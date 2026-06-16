@@ -436,6 +436,88 @@
       <div id="bd-list"><div style="text-align:center;color:#9ca3af;padding:20px">Loading…</div></div>
     </div>
   </div>
+
+  <!-- Block Date Range -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">🚫 Block Date Range
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Block a range of dates at once (e.g. holidays, closures) — guests see a message on the form</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">From date</label>
+          <input type="date" id="bdr-from" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">To date</label>
+          <input type="date" id="bdr-to" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Reason</label>
+          <input type="text" id="bdr-reason" placeholder="e.g. Spring Break closure" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;width:100%">
+        </div>
+        <button onclick="blockDateRange()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Block Range</button>
+      </div>
+      <div id="bdr-msg" style="font-size:12px;min-height:16px"></div>
+    </div>
+  </div>
+
+  <!-- Contact Info -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">📞 Contact Info (Email Footers)
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Phone number and reply email shown in all guest emails — leave blank to use server defaults</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Phone number</label>
+          <input type="text" id="ci-phone" placeholder="e.g. (813) 974-3573" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;width:100%">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Reply-to email</label>
+          <input type="email" id="ci-email" placeholder="e.g. dining@usf.edu" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit;width:100%">
+        </div>
+        <button onclick="saveContactInfo()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Save Contact Info</button>
+      </div>
+      <div id="ci-msg" style="font-size:12px;margin-top:10px;min-height:16px"></div>
+    </div>
+  </div>
+
+  <!-- Guest Announcement Banner -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">📢 Guest Announcement
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Shows a notice banner at the top of the reservation page — leave blank to hide it</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <textarea id="ann-text" placeholder="e.g. New menu starting August 1st! Prices updated." style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:72px;outline:none"></textarea>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button onclick="saveAnnouncement()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save Announcement</button>
+        <span id="ann-msg" style="font-size:12px"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Rate Change -->
+  <div style="margin-top:28px">
+    <div class="sec-hd">📅 Upcoming Rate Change
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Notify guests of a future price change when they select a date on/after the effective date</span>
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">New rate ($/person)</label>
+          <input type="number" id="ur-rate" step="0.25" min="1" max="999" placeholder="e.g. 14.65" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:15px;font-weight:700;outline:none;font-family:inherit;width:140px;color:#006747">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Effective from date</label>
+          <input type="date" id="ur-date" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;font-family:inherit">
+        </div>
+        <button onclick="saveUpcomingRate()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save</button>
+        <button onclick="clearUpcomingRate()" style="padding:9px 18px;background:#9ca3af;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Clear</button>
+      </div>
+      <div id="ur-msg" style="font-size:12px;margin-top:10px;min-height:16px"></div>
+    </div>
+  </div>
 </main>
 
 <!-- ── EDIT MODAL ─────────────────────────────────────────────────────────── -->
@@ -781,6 +863,94 @@ async function removeBlockedDate(date){
   await fetch(`/api/blocked-dates/${date}`,{ method:'DELETE' });
   await loadBlockedDates();
   toast('Date unblocked ✓');
+}
+
+async function blockDateRange(){
+  const from = document.getElementById('bdr-from').value;
+  const to = document.getElementById('bdr-to').value;
+  const reason = document.getElementById('bdr-reason').value.trim();
+  const msg = document.getElementById('bdr-msg');
+  if(!from||!to||!reason){ msg.style.color='#b91c1c'; msg.textContent='From date, to date and reason are all required.'; return; }
+  if(from>to){ msg.style.color='#b91c1c'; msg.textContent='From date must be before or equal to to date.'; return; }
+  try{
+    const r = await fetch('/api/blocked-dates/range',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({from,to,reason}) });
+    const d = await r.json();
+    if(!r.ok){ msg.style.color='#b91c1c'; msg.textContent=d.error||'Failed.'; return; }
+    msg.style.color='#15803d'; msg.textContent=`✓ Blocked ${d.count} date${d.count===1?'':'s'}.`;
+    document.getElementById('bdr-from').value='';
+    document.getElementById('bdr-to').value='';
+    document.getElementById('bdr-reason').value='';
+    await loadBlockedDates();
+    toast('Date range blocked ✓');
+  }catch(e){ msg.style.color='#b91c1c'; msg.textContent='Request failed.'; }
+}
+
+async function loadSettingsExtras(){
+  try{
+    const s = await fetch('/api/settings').then(r=>r.json());
+    document.getElementById('ci-phone').value = s.contact_phone || '';
+    document.getElementById('ci-email').value = s.contact_email || '';
+    document.getElementById('ann-text').value = s.announcement || '';
+    document.getElementById('ur-rate').value = s.upcoming_rate || '';
+    document.getElementById('ur-date').value = s.upcoming_rate_date || '';
+  }catch(e){ console.error(e); }
+}
+
+async function saveContactInfo(){
+  const phone = document.getElementById('ci-phone').value.trim();
+  const email = document.getElementById('ci-email').value.trim();
+  const msg = document.getElementById('ci-msg');
+  try{
+    await Promise.all([
+      fetch('/api/settings/contact_phone',{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:phone}) }),
+      fetch('/api/settings/contact_email',{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:email}) })
+    ]);
+    msg.style.color='#15803d'; msg.textContent='✓ Saved — emails will now use this contact info.';
+    toast('Contact info saved ✓');
+    setTimeout(()=>msg.textContent='',3000);
+  }catch(e){ msg.style.color='#b91c1c'; msg.textContent='Save failed.'; }
+}
+
+async function saveAnnouncement(){
+  const val = document.getElementById('ann-text').value.trim();
+  const msg = document.getElementById('ann-msg');
+  try{
+    await fetch('/api/settings/announcement',{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:val}) });
+    msg.style.color='#15803d'; msg.textContent = val ? '✓ Announcement saved — guests will see it on the form.' : '✓ Announcement cleared.';
+    toast('Announcement saved ✓');
+    setTimeout(()=>msg.textContent='',3000);
+  }catch(e){ msg.style.color='#b91c1c'; msg.textContent='Save failed.'; }
+}
+
+async function saveUpcomingRate(){
+  const rate = document.getElementById('ur-rate').value.trim();
+  const date = document.getElementById('ur-date').value.trim();
+  const msg = document.getElementById('ur-msg');
+  if(!rate||!date){ msg.style.color='#b91c1c'; msg.textContent='Both rate and date required.'; return; }
+  try{
+    await Promise.all([
+      fetch('/api/settings/upcoming_rate',{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:rate}) }),
+      fetch('/api/settings/upcoming_rate_date',{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:date}) })
+    ]);
+    msg.style.color='#15803d'; msg.textContent=`✓ Saved — guests will see rate $${parseFloat(rate).toFixed(2)} notice from ${date}.`;
+    toast('Upcoming rate saved ✓');
+    setTimeout(()=>msg.textContent='',4000);
+  }catch(e){ msg.style.color='#b91c1c'; msg.textContent='Save failed.'; }
+}
+
+async function clearUpcomingRate(){
+  const msg = document.getElementById('ur-msg');
+  try{
+    await Promise.all([
+      fetch('/api/settings/upcoming_rate',{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:''}) }),
+      fetch('/api/settings/upcoming_rate_date',{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:''}) })
+    ]);
+    document.getElementById('ur-rate').value='';
+    document.getElementById('ur-date').value='';
+    msg.style.color='#6b7280'; msg.textContent='Upcoming rate cleared.';
+    toast('Upcoming rate cleared');
+    setTimeout(()=>msg.textContent='',3000);
+  }catch(e){ msg.style.color='#b91c1c'; msg.textContent='Clear failed.'; }
 }
 
 async function loadAll(){
@@ -1332,7 +1502,7 @@ async function saveSchedule(){
   }catch(e){alert('Error saving schedule: '+e.message);}
 }
 
-loadAll();loadBlockedDates();loadServiceControls();loadSavedBatchEmail();loadHoursUI();loadPricingUI();loadScheduleUI();setInterval(loadAll,30000);
+loadAll();loadBlockedDates();loadServiceControls();loadSavedBatchEmail();loadHoursUI();loadPricingUI();loadScheduleUI();loadSettingsExtras();setInterval(loadAll,30000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
