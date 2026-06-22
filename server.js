@@ -218,8 +218,9 @@ app.get('/api/public/settings', async (req, res) => {
       upcoming_rate:     s.upcoming_rate      || '',
       upcoming_rate_date:s.upcoming_rate_date || '',
       direct_bill_rate:  s.direct_bill_rate   || '12.75',
-      contact_phone:     s.contact_phone      || process.env.RESTAURANT_PHONE || '',
-      contact_email:     s.contact_email      || process.env.FROM_EMAIL       || ''
+      contact_phone:         s.contact_phone          || process.env.RESTAURANT_PHONE || '',
+      contact_email:         s.contact_email          || process.env.FROM_EMAIL       || '',
+      announcement_enabled:  s.announcement_enabled !== 'false'
     });
   } catch(err) { res.status(500).json({}); }
 });
@@ -1098,7 +1099,7 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
     const managerOk = ['open_time','close_time','direct_bill_rate','daily_limit',
                        'batch_recipient_email','batch_schedule','batch_schedule_time',
                        'batch_schedule_weekday','batch_last_run',
-                       'contact_phone','contact_email','announcement',
+                       'contact_phone','contact_email','announcement','announcement_enabled',
                        'upcoming_rate','upcoming_rate_date'];
     const key = req.params.key;
     if (!adminOnly.includes(key) && !managerOk.includes(key))

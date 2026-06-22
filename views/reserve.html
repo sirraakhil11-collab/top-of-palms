@@ -12,69 +12,73 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh}
-    header{background:#006747;padding:20px 24px;text-align:center}
-    header h1{color:#fff;font-size:22px;font-weight:800}
-    header p{color:#a7d9c2;font-size:13px;margin-top:4px}
-    .card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
-    .card h2{font-size:20px;font-weight:700;color:#111827;margin-bottom:6px}
-    .card>p{color:#6b7280;font-size:14px;margin-bottom:16px}
-    .policy-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#374151;line-height:1.65}
-    .policy-box strong{color:#006747;display:block;margin-bottom:6px}
-    .policy-box ul{margin:6px 0 0 14px}
-    .policy-box li{margin-bottom:3px}
-    .sec-title{font-size:11px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #e5e7eb}
-    .form-group{margin-bottom:14px}
-    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-    label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px}
+    header{background:#006747;padding:10px 24px;text-align:center}
+    header h1{color:#fff;font-size:17px;font-weight:800}
+    header p{color:#a7d9c2;font-size:11px;margin-top:1px}
+    .card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 3px 14px rgba(0,0,0,.07)}
+    .card h2{font-size:17px;font-weight:700;color:#111827;margin-bottom:4px}
+    .card>p{color:#6b7280;font-size:13px;margin-bottom:10px}
+    .sec-title{font-size:10px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 7px;padding-bottom:4px;border-bottom:1px solid #e5e7eb}
+    .form-group{margin-bottom:10px}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px}
     label .req{color:#b91c1c;margin-left:2px}
-    label .opt{color:#9ca3af;font-weight:400;font-size:12px}
-    input,select,textarea{width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#111827;font-family:inherit;outline:none;transition:border-color .15s}
+    label .opt{color:#9ca3af;font-weight:400;font-size:11px}
+    input,select,textarea{width:100%;padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;color:#111827;font-family:inherit;outline:none;transition:border-color .15s}
     input:focus,select:focus,textarea:focus{border-color:#006747;box-shadow:0 0 0 3px rgba(0,103,71,.08)}
-    textarea{resize:vertical;min-height:72px}
-    .hint{font-size:11px;color:#9ca3af;margin-top:3px}
-    .radio-group{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    textarea{resize:vertical;min-height:56px}
+    .hint{font-size:11px;color:#9ca3af;margin-top:2px}
+    .radio-group{display:grid;grid-template-columns:1fr 1fr;gap:6px}
     .radio-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
-    .radio-opt label{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:#374151;transition:all .15s}
+    .radio-opt label{display:flex;align-items:center;gap:7px;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:#374151;transition:all .15s}
     .radio-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
-    /* Days selector */
-    .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:6px}
+    .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
     .day-opt{position:relative}
     .day-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
-    .day-opt label{display:flex;align-items:center;justify-content:center;padding:10px 4px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:#374151;transition:all .15s;text-align:center}
+    .day-opt label{display:flex;align-items:center;justify-content:center;padding:7px 2px;border:1.5px solid #e5e7eb;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;color:#374151;transition:all .15s;text-align:center}
     .day-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
-    /* Payment chips */
-    .pay-chips-guest{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-    .pchip{padding:10px 16px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;border:1.5px solid #e5e7eb;color:#374151;background:#fff;transition:all .15s;user-select:none}
+    .pay-chips-guest{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+    .pchip{padding:8px 13px;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid #e5e7eb;color:#374151;background:#fff;transition:all .15s;user-select:none}
     .pchip:hover{border-color:#006747;background:#f0fdf4}
     .pchip.on{background:#f0fdf4;color:#006747;border-color:#006747;font-weight:600}
-    .db-notice{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:13px;color:#b45309;margin-top:8px;display:none}
+    .db-notice{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#b45309;margin-top:6px;display:none}
     .db-notice.show{display:block}
-    .submit-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px;transition:background .15s}
+    .submit-btn{width:100%;background:#006747;color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;transition:background .15s}
     .submit-btn:hover{background:#004d34}
     .submit-btn:disabled{background:#d1d5db;cursor:default}
-    .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+    .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:10px;display:none}
     .err-msg.show{display:block}
     /* ── Side-panel layout ── */
-    .page-layout{display:grid;grid-template-columns:220px minmax(0,580px) 220px;gap:20px;max-width:1080px;margin:28px auto;padding:0 16px 60px;align-items:start}
+    .page-layout{display:grid;grid-template-columns:210px minmax(0,560px) 210px;gap:16px;max-width:1040px;margin:16px auto;padding:0 12px 40px;align-items:start}
     .container{max-width:none;margin:0;padding:0}
-    .side-panel{display:flex;flex-direction:column;gap:14px}
-    .side-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid #e5e7eb;animation:fadeUp .4s ease both}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-    .side-card-title{font-size:10px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+    .side-panel{display:flex;flex-direction:column;gap:10px}
+    .side-card{background:#fff;border-radius:13px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.07);border:1px solid #e5e7eb;animation:fadeUp .4s ease both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+    .side-card-title{font-size:10px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
     .side-card-title::after{content:'';flex:1;height:1px;background:#e5e7eb}
-    .side-info-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:12px;color:#374151;line-height:1.4}
+    .side-info-row{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid #f3f4f6;font-size:11.5px;color:#374151;line-height:1.4}
     .side-info-row:last-child{border-bottom:none}
-    .side-info-row .icon{font-size:14px;flex-shrink:0;margin-top:1px}
-    .side-step{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:12px;color:#374151;line-height:1.4}
+    .side-info-row .icon{font-size:13px;flex-shrink:0;margin-top:1px}
+    .side-step{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #f3f4f6;font-size:11.5px;color:#374151;line-height:1.4}
     .side-step:last-child{border-bottom:none}
-    .side-step .num{width:20px;height:20px;border-radius:50%;background:#006747;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-    .announce-card{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(29,78,216,.3);animation:fadeUp .5s .1s ease both;opacity:0}
-    .announce-card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.8;margin-bottom:8px}
-    .announce-card-body{font-size:13px;font-weight:500;line-height:1.6}
+    .side-step .num{width:18px;height:18px;border-radius:50%;background:#006747;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .announce-card{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:13px;padding:14px;box-shadow:0 2px 12px rgba(29,78,216,.3);animation:fadeUp .5s .1s ease both;opacity:0}
+    .announce-card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.8;margin-bottom:6px}
+    .announce-card-body{font-size:12.5px;font-weight:500;line-height:1.55}
+    /* ── Sparkle animation for rate banner ── */
+    @keyframes sparkle{
+      0%,100%{opacity:0;transform:scale(.4) rotate(0deg)}
+      50%{opacity:1;transform:scale(1) rotate(15deg)}
+    }
+    @keyframes shimmer{
+      0%,100%{box-shadow:0 4px 18px rgba(0,103,71,.35)}
+      50%{box-shadow:0 4px 28px rgba(207,196,147,.55),0 0 18px rgba(207,196,147,.3)}
+    }
+    .rate-banner-star{position:absolute;color:#CFC493;animation:sparkle var(--dur,.9s) var(--delay,0s) ease-in-out infinite;font-size:var(--sz,13px);pointer-events:none;line-height:1}
     @media(max-width:900px){
       .page-layout{grid-template-columns:1fr;gap:0;margin:0;padding:0}
       .side-panel{display:none}
-      .container{max-width:580px;margin:28px auto;padding:0 16px 60px}
+      .container{max-width:560px;margin:16px auto;padding:0 14px 40px}
     }
     .capacity-warn{border-radius:8px;padding:10px 14px;font-size:13px;margin-top:6px;display:none}
     .capacity-warn.show{display:block}
@@ -294,12 +298,58 @@
     const openLabel  = formatHM(openHour, openMin);
     const closeLabel = formatHM(closeHour, closeMin);
 
-    // ── LEFT: Restaurant info + How it works ────────────────────────────────
+    // ── LEFT: Upcoming Rate (sparkle) + Announcement ────────────────────────
+    let leftHTML = '';
+
+    if (settings.upcoming_rate && settings.upcoming_rate_date) {
+      const rateDate = new Date(settings.upcoming_rate_date + 'T12:00:00')
+        .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      leftHTML += `
+        <div style="background:linear-gradient(135deg,#006747 0%,#004d34 100%);border-radius:14px;padding:14px;box-shadow:0 4px 18px rgba(0,103,71,.35),0 0 0 0 rgba(207,196,147,.4);animation:fadeUp .45s .05s ease both,shimmer 2.4s 1s ease-in-out infinite;opacity:0;position:relative;overflow:hidden">
+          <!-- decorative blobs -->
+          <div style="position:absolute;top:-14px;right:-14px;width:70px;height:70px;border-radius:50%;background:rgba(207,196,147,.15)"></div>
+          <div style="position:absolute;bottom:-18px;left:-8px;width:55px;height:55px;border-radius:50%;background:rgba(207,196,147,.1)"></div>
+          <!-- sparkle stars -->
+          <span class="rate-banner-star" style="--dur:.85s;--delay:0s;--sz:11px;top:6px;left:8px">✦</span>
+          <span class="rate-banner-star" style="--dur:1.1s;--delay:.3s;--sz:9px;top:10px;right:22px">★</span>
+          <span class="rate-banner-star" style="--dur:.75s;--delay:.55s;--sz:13px;bottom:12px;right:10px">✦</span>
+          <span class="rate-banner-star" style="--dur:1.0s;--delay:.15s;--sz:8px;bottom:8px;left:14px">✶</span>
+          <span class="rate-banner-star" style="--dur:.9s;--delay:.7s;--sz:10px;top:50%;right:6px">✧</span>
+          <!-- label -->
+          <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#CFC493;margin-bottom:8px;position:relative">✨ Upcoming Rate Change</div>
+          <!-- price circle + text -->
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;position:relative">
+            <div style="background:rgba(207,196,147,.2);border:2px solid #CFC493;border-radius:50%;width:50px;height:50px;display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:shimmer 2.4s 1s ease-in-out infinite">
+              <span style="color:#CFC493;font-size:16px;font-weight:800">$${parseFloat(settings.upcoming_rate).toFixed(2)}</span>
+            </div>
+            <div>
+              <div style="color:#fff;font-size:12px;font-weight:700">New price per person</div>
+              <div style="color:#a7d9c2;font-size:10.5px;margin-top:2px">Effective ${rateDate}</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:7px;padding:7px 10px;font-size:10.5px;color:#d1fae5;line-height:1.5;position:relative">
+            Current: <strong style="color:#fff">$${parseFloat(settings.direct_bill_rate||'12.75').toFixed(2)}/person</strong> → updates ${rateDate}.
+          </div>
+        </div>`;
+    }
+
+    if (settings.announcement && settings.announcement_enabled !== false) {
+      leftHTML += `
+        <div class="announce-card" style="animation-delay:.12s">
+          <div class="announce-card-title">📢 Announcement</div>
+          <div class="announce-card-body">${settings.announcement.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        </div>`;
+    }
+
+    document.getElementById('side-left').innerHTML = leftHTML;
+
+    // ── RIGHT: About + Payment + How It Works ───────────────────────────────
     const phoneRow = settings.contact_phone
       ? `<div class="side-info-row"><span class="icon">📞</span><span><strong>Phone</strong><br>${settings.contact_phone.replace(/</g,'&lt;')}</span></div>` : '';
     const emailRow = settings.contact_email
       ? `<div class="side-info-row"><span class="icon">✉️</span><span><strong>Email</strong><br><a href="mailto:${settings.contact_email.replace(/</g,'&lt;')}" style="color:#006747;text-decoration:none;word-break:break-all">${settings.contact_email.replace(/</g,'&lt;')}</a></span></div>` : '';
-    document.getElementById('side-left').innerHTML = `
+
+    document.getElementById('side-right').innerHTML = `
       <div class="side-card" style="animation-delay:.05s">
         <div class="side-card-title">🌴 About</div>
         <div class="side-info-row"><span class="icon">📍</span><span><strong>On Top of the Palms</strong><br>USF Tampa Campus · Compass USA</span></div>
@@ -308,53 +358,19 @@
         <div class="side-info-row"><span class="icon">⏱</span><span><strong>Book ahead</strong><br>At least 24 hrs in advance</span></div>
         ${phoneRow}${emailRow}
       </div>
-      <div class="side-card" style="animation-delay:.12s">
+      <div class="side-card" style="animation-delay:.1s">
+        <div class="side-card-title">💳 Payment</div>
+        <div class="side-info-row"><span class="icon">💳</span><span><strong>Credit Card</strong><br>Visa, Mastercard, Amex</span></div>
+        <div class="side-info-row"><span class="icon">🎓</span><span><strong>USF Card</strong><br>Bull Bucks accepted</span></div>
+        <div class="side-info-row"><span class="icon">📄</span><span><strong>Direct Bill</strong><br>Auth form required · due within 30 days</span></div>
+      </div>
+      <div class="side-card" style="animation-delay:.16s">
         <div class="side-card-title">📋 How It Works</div>
         <div class="side-step"><span class="num">1</span><span>Fill out the form with your details and preferred date</span></div>
         <div class="side-step"><span class="num">2</span><span>Submit — a manager reviews and approves within a few hours</span></div>
         <div class="side-step"><span class="num">3</span><span>You receive a confirmation email with your booking details</span></div>
         <div class="side-step"><span class="num">4</span><span>Arrive on the day — show your confirmation if asked</span></div>
       </div>`;
-
-    // ── RIGHT: Announcement + payment tips ──────────────────────────────────
-    let rightHTML = '';
-    if (settings.announcement) {
-      rightHTML += `
-        <div class="announce-card">
-          <div class="announce-card-title">📢 Announcement</div>
-          <div class="announce-card-body">${settings.announcement.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-        </div>`;
-    }
-    if (settings.upcoming_rate && settings.upcoming_rate_date) {
-      const rateDate = new Date(settings.upcoming_rate_date + 'T12:00:00')
-        .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-      rightHTML += `
-        <div style="background:linear-gradient(135deg,#006747 0%,#004d34 100%);border-radius:16px;padding:18px;box-shadow:0 4px 18px rgba(0,103,71,.35);animation:fadeUp .45s .08s ease both;opacity:0;position:relative;overflow:hidden">
-          <div style="position:absolute;top:-18px;right:-18px;width:90px;height:90px;border-radius:50%;background:rgba(207,196,147,.18)"></div>
-          <div style="position:absolute;bottom:-24px;left:-10px;width:70px;height:70px;border-radius:50%;background:rgba(207,196,147,.12)"></div>
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#CFC493;margin-bottom:10px;position:relative">💰 Upcoming Rate Change</div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;position:relative">
-            <div style="background:rgba(207,196,147,.2);border:2px solid #CFC493;border-radius:50%;width:54px;height:54px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <span style="color:#CFC493;font-size:18px;font-weight:800">$${parseFloat(settings.upcoming_rate).toFixed(2)}</span>
-            </div>
-            <div>
-              <div style="color:#fff;font-size:13px;font-weight:700">New price per person</div>
-              <div style="color:#a7d9c2;font-size:11px;margin-top:2px">Effective ${rateDate}</div>
-            </div>
-          </div>
-          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;font-size:11px;color:#d1fae5;line-height:1.5;position:relative">
-            ℹ️ Current rate: <strong style="color:#fff">$${parseFloat(settings.direct_bill_rate||'12.75').toFixed(2)}/person</strong>. Price updates on ${rateDate}.
-          </div>
-        </div>`;
-    }
-    rightHTML += `
-      <div class="side-card" style="animation-delay:.22s">
-        <div class="side-card-title">💳 Payment</div>
-        <div class="side-info-row"><span class="icon">💳</span><span><strong>Credit Card</strong><br>Visa, Mastercard, Amex</span></div>
-        <div class="side-info-row"><span class="icon">🎓</span><span><strong>USF Card</strong><br>Bull Bucks accepted</span></div>
-        <div class="side-info-row"><span class="icon">📄</span><span><strong>Direct Bill</strong><br>Authorization form required · due within 30 days</span></div>
-      </div>`;
-    document.getElementById('side-right').innerHTML = rightHTML;
   }
 
   // Load public settings — rate, announcement, upcoming rate

@@ -486,12 +486,24 @@
   <!-- Guest Announcement Banner -->
   <div style="margin-top:28px">
     <div class="sec-hd">📢 Guest Announcement
-      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Shows a notice banner at the top of the reservation page — leave blank to hide it</span>
+      <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:8px">Shows on the reservation page — toggle to show or hide without losing the text</span>
     </div>
     <div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#374151">Show announcement to guests</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px">Toggle off to hide without deleting the text</div>
+        </div>
+        <label style="position:relative;width:42px;height:24px;flex-shrink:0;display:block;margin-bottom:0">
+          <input type="checkbox" id="ann-enabled" onchange="saveAnnouncementEnabled()" style="opacity:0;width:0;height:0;position:absolute">
+          <span id="ann-slider" style="position:absolute;inset:0;background:#d1d5db;border-radius:12px;cursor:pointer;transition:.2s">
+            <span style="content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;display:block" id="ann-knob"></span>
+          </span>
+        </label>
+      </div>
       <textarea id="ann-text" placeholder="e.g. New menu starting August 1st! Prices updated." style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:72px;outline:none"></textarea>
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
-        <button onclick="saveAnnouncement()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save Announcement</button>
+        <button onclick="saveAnnouncement()" style="padding:9px 18px;background:#006747;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save Text</button>
         <span id="ann-msg" style="font-size:12px"></span>
       </div>
     </div>
@@ -893,7 +905,27 @@ async function loadSettingsExtras(){
     document.getElementById('ann-text').value = s.announcement || '';
     document.getElementById('ur-rate').value = s.upcoming_rate || '';
     document.getElementById('ur-date').value = s.upcoming_rate_date || '';
+    setAnnToggle(s.announcement_enabled !== 'false');
   }catch(e){ console.error(e); }
+}
+
+function setAnnToggle(on){
+  const cb = document.getElementById('ann-enabled');
+  const slider = document.getElementById('ann-slider');
+  const knob = document.getElementById('ann-knob');
+  if(!cb) return;
+  cb.checked = on;
+  slider.style.background = on ? '#006747' : '#d1d5db';
+  knob.style.transform = on ? 'translateX(18px)' : 'none';
+}
+
+async function saveAnnouncementEnabled(){
+  const on = document.getElementById('ann-enabled').checked;
+  setAnnToggle(on);
+  try{
+    await fetch('/api/settings/announcement_enabled',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:String(on)})});
+    toast(on ? 'Announcement enabled ✓' : 'Announcement hidden ✓');
+  }catch(e){ toast('Save failed'); }
 }
 
 async function saveContactInfo(){
