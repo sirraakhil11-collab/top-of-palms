@@ -262,7 +262,7 @@
       document.getElementById('info-name').textContent  = data.name || '—';
       document.getElementById('info-email').textContent = data.email || '—';
       document.getElementById('info-dept').textContent  = data.department || '—';
-      document.getElementById('info-type').textContent  = data.guest_status === 'faculty' ? '🎓 Faculty' : '📚 Student';
+      document.getElementById('info-type').textContent  = data.guest_status === 'faculty' ? '🎓 Faculty / Employee' : data.guest_status === 'student' ? '📚 Student' : '👤 Other';
       document.getElementById('info-ref').textContent   = (data.id || '').slice(0,8).toUpperCase();
       document.getElementById('info-orig').textContent  = data.datetime || '—';
 

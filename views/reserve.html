@@ -166,14 +166,18 @@
     </div>
     <div class="form-group">
       <label>I am a <span class="req">*</span></label>
-      <div class="radio-group">
+      <div class="radio-group" style="grid-template-columns:1fr 1fr 1fr">
         <div class="radio-opt">
           <input type="radio" name="guest_type" id="type-faculty" value="faculty">
-          <label for="type-faculty">🎓 Faculty</label>
+          <label for="type-faculty">🎓 Faculty / Employee</label>
         </div>
         <div class="radio-opt">
           <input type="radio" name="guest_type" id="type-student" value="student">
           <label for="type-student">📚 Student</label>
+        </div>
+        <div class="radio-opt">
+          <input type="radio" name="guest_type" id="type-other" value="other">
+          <label for="type-other">👤 Other</label>
         </div>
       </div>
     </div>
@@ -854,8 +858,8 @@
           q:"What's your **email address**?",
           validate: v => BOT_EMAIL_RX.test(v) ? null : 'Please enter a valid email address (e.g. name@usf.edu).' },
         { key:'type',
-          q:"Are you **Faculty** or **Student**?", opts:['Faculty','Student'],
-          validate: v => ['faculty','student'].includes(v.toLowerCase()) ? null : 'Please choose Faculty or Student.' },
+          q:"Are you **Faculty / Employee**, **Student**, or **Other**?", opts:['Faculty / Employee','Student','Other'],
+          validate: v => ['faculty / employee','faculty','student','other'].includes(v.toLowerCase()) ? null : 'Please choose Faculty / Employee, Student, or Other.' },
         { key:'date',
           q:"What **date** would you like to dine?\nChoose from the calendar below or type YYYY-MM-DD.",
           validate: validateBotDate, showCal: true },
@@ -1122,7 +1126,7 @@
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
             name: ans.name, department: ans.dept, phone_ext:'',
-            guest_type: ans.type.toLowerCase(),
+            guest_type: ans.type.toLowerCase().startsWith('faculty') ? 'faculty' : ans.type.toLowerCase(),
             uid: ans.uid||'', email: ans.email,
             party: parseInt(ans.party), num_days: parseInt(ans.days||'1'),
             datetime_iso: dateISO, datetime_display: displayTime,
