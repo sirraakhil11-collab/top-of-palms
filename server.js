@@ -217,7 +217,9 @@ app.get('/api/public/settings', async (req, res) => {
       announcement:      s.announcement      || '',
       upcoming_rate:     s.upcoming_rate      || '',
       upcoming_rate_date:s.upcoming_rate_date || '',
-      direct_bill_rate:  s.direct_bill_rate   || '12.75'
+      direct_bill_rate:  s.direct_bill_rate   || '12.75',
+      contact_phone:     s.contact_phone      || process.env.RESTAURANT_PHONE || '',
+      contact_email:     s.contact_email      || process.env.FROM_EMAIL       || ''
     });
   } catch(err) { res.status(500).json({}); }
 });

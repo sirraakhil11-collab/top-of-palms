@@ -131,15 +131,9 @@
     <h2>Make a Reservation</h2>
     <p id="hours-desc">Open Monday–Friday, 11:00 AM – 2:00 PM. All reservations require manager approval.</p>
 
-    <div class="policy-box">
-      <strong>📋 Reservation Policy</strong>
-      <ul>
-        <li>Reservations available for parties of <strong>2–15 guests</strong></li>
-        <li>Must be requested at least <strong>24 hours in advance</strong></li>
-        <li>Credit card preferred — Direct Bill accepted (payment due within 30 days)</li>
-        <li>Limited daily reservations — additional guests accommodated as walk-ups</li>
-        <li>Same-day requests welcome as walk-ups based on availability</li>
-      </ul>
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:12px;color:#6b7280;display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:15px;flex-shrink:0">ℹ️</span>
+      <span>Limited daily reservations — accommodated based on capacity. <strong>Same-day walk-ups welcome</strong> based on availability.</span>
     </div>
 
     <div class="err-msg" id="err-msg"></div>
@@ -301,6 +295,10 @@
     const closeLabel = formatHM(closeHour, closeMin);
 
     // ── LEFT: Restaurant info + How it works ────────────────────────────────
+    const phoneRow = settings.contact_phone
+      ? `<div class="side-info-row"><span class="icon">📞</span><span><strong>Phone</strong><br>${settings.contact_phone.replace(/</g,'&lt;')}</span></div>` : '';
+    const emailRow = settings.contact_email
+      ? `<div class="side-info-row"><span class="icon">✉️</span><span><strong>Email</strong><br><a href="mailto:${settings.contact_email.replace(/</g,'&lt;')}" style="color:#006747;text-decoration:none;word-break:break-all">${settings.contact_email.replace(/</g,'&lt;')}</a></span></div>` : '';
     document.getElementById('side-left').innerHTML = `
       <div class="side-card" style="animation-delay:.05s">
         <div class="side-card-title">🌴 About</div>
@@ -308,6 +306,7 @@
         <div class="side-info-row"><span class="icon">🕐</span><span><strong>Hours</strong><br>Mon–Fri ${openLabel} – ${closeLabel}</span></div>
         <div class="side-info-row"><span class="icon">👥</span><span><strong>Party size</strong><br>2 – 15 guests</span></div>
         <div class="side-info-row"><span class="icon">⏱</span><span><strong>Book ahead</strong><br>At least 24 hrs in advance</span></div>
+        ${phoneRow}${emailRow}
       </div>
       <div class="side-card" style="animation-delay:.12s">
         <div class="side-card-title">📋 How It Works</div>
@@ -327,12 +326,24 @@
         </div>`;
     }
     if (settings.upcoming_rate && settings.upcoming_rate_date) {
+      const rateDate = new Date(settings.upcoming_rate_date + 'T12:00:00')
+        .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
       rightHTML += `
-        <div class="side-card" style="animation-delay:.18s;border-left:3px solid #2563eb">
-          <div class="side-card-title">💰 Rate Change</div>
-          <div style="font-size:12px;color:#374151;line-height:1.5">
-            From <strong>${settings.upcoming_rate_date}</strong> the rate changes to
-            <strong style="color:#006747">$${parseFloat(settings.upcoming_rate).toFixed(2)}/person</strong>
+        <div style="background:linear-gradient(135deg,#006747 0%,#004d34 100%);border-radius:16px;padding:18px;box-shadow:0 4px 18px rgba(0,103,71,.35);animation:fadeUp .45s .08s ease both;opacity:0;position:relative;overflow:hidden">
+          <div style="position:absolute;top:-18px;right:-18px;width:90px;height:90px;border-radius:50%;background:rgba(207,196,147,.18)"></div>
+          <div style="position:absolute;bottom:-24px;left:-10px;width:70px;height:70px;border-radius:50%;background:rgba(207,196,147,.12)"></div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#CFC493;margin-bottom:10px;position:relative">💰 Upcoming Rate Change</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;position:relative">
+            <div style="background:rgba(207,196,147,.2);border:2px solid #CFC493;border-radius:50%;width:54px;height:54px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <span style="color:#CFC493;font-size:18px;font-weight:800">$${parseFloat(settings.upcoming_rate).toFixed(2)}</span>
+            </div>
+            <div>
+              <div style="color:#fff;font-size:13px;font-weight:700">New price per person</div>
+              <div style="color:#a7d9c2;font-size:11px;margin-top:2px">Effective ${rateDate}</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;font-size:11px;color:#d1fae5;line-height:1.5;position:relative">
+            ℹ️ Current rate: <strong style="color:#fff">$${parseFloat(settings.direct_bill_rate||'12.75').toFixed(2)}/person</strong>. Price updates on ${rateDate}.
           </div>
         </div>`;
     }
