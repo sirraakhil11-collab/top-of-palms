@@ -55,8 +55,12 @@
     .submit-btn:disabled{background:#d1d5db;cursor:default}
     .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
     .err-msg.show{display:block}
-    .announce-banner{background:#1d4ed8;color:#fff;padding:12px 20px;text-align:center;font-size:14px;font-weight:600;line-height:1.5;display:none}
+    .announce-banner{background:linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 50%,#1e3a5f 100%);color:#fff;padding:0;display:none;position:relative;overflow:hidden}
     .announce-banner.show{display:block}
+    .announce-inner{max-width:1200px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;z-index:1}
+    .announce-icon{font-size:18px;flex-shrink:0}
+    .announce-text{font-size:14px;font-weight:600;line-height:1.5;text-align:center}
+    .announce-banner::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 1px,transparent 1px,transparent 8px);z-index:0}
     .capacity-warn{border-radius:8px;padding:10px 14px;font-size:13px;margin-top:6px;display:none}
     .capacity-warn.show{display:block}
     .capacity-warn.partial{background:#fffbeb;border:1px solid #fde68a;color:#b45309}
@@ -71,6 +75,10 @@
     .success-badge{display:inline-block;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:16px;background:#fef3c7;color:#b45309}
     .success-detail{font-size:13px;color:#374151;line-height:1.7;margin-bottom:20px;text-align:left;background:#f9fafb;border-radius:8px;padding:14px}
     .new-btn{background:#006747;color:#fff;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer}
+    .modify-link-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;margin:16px 0;text-align:left}
+    .modify-link-box p{font-size:13px;color:#166534;margin-bottom:8px;font-weight:600}
+    .modify-link-box a{display:inline-block;background:#006747;color:#fff;text-decoration:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600}
+    .modify-link-box a:hover{background:#004d34}
     @media(max-width:600px){
       header{padding:16px}
       header h1{font-size:18px}
@@ -91,7 +99,7 @@
   </style>
 </head>
 <body>
-<div class="announce-banner" id="announce-banner"></div>
+<div class="announce-banner" id="announce-banner"><div class="announce-inner"><span class="announce-icon">📢</span><span class="announce-text" id="announce-text"></span></div></div>
 <header>
   <h1>🌴 On Top of the Palms</h1>
   <p>University of South Florida Dining · Managed by Compass USA</p>
@@ -232,7 +240,11 @@
     <h2>Request Submitted!</h2>
     <div class="success-badge">Pending manager approval</div>
     <div class="success-detail" id="success-detail"></div>
-    <p style="font-size:13px;color:#6b7280;margin-bottom:16px">A manager will review your request and you will receive a confirmation email. Walk-ups are always welcome based on availability.</p>
+    <div class="modify-link-box" id="modify-link-box" style="display:none">
+      <p>✏️ Need to make a change before approval?</p>
+      <a id="modify-link-btn" href="#">Edit My Reservation</a>
+    </div>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:16px">A manager will review your request and you'll receive a confirmation email. Walk-ups are always welcome based on availability.</p>
     <button class="new-btn" onclick="resetForm()">Make Another Reservation</button>
   </div>
 
@@ -265,9 +277,8 @@
       RATE = parseFloat(d.direct_bill_rate) || 12.75;
       document.querySelectorAll('.rate-hint').forEach(el => { el.textContent = `@ $${RATE.toFixed(2)} per guest per day`; });
       if (d.announcement) {
-        const b = document.getElementById('announce-banner');
-        b.textContent = d.announcement;
-        b.classList.add('show');
+        document.getElementById('announce-text').textContent = d.announcement;
+        document.getElementById('announce-banner').classList.add('show');
       }
       upcomingRate     = d.upcoming_rate     || '';
       upcomingRateDate = d.upcoming_rate_date|| '';
@@ -546,6 +557,12 @@
         note.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#b45309';
         note.textContent = '⚠️ A Direct Bill authorization form has been emailed to you. Please complete and return it within 30 days of dining.';
         detail.appendChild(note);
+      }
+
+      if (data.modify_url) {
+        const box = document.getElementById('modify-link-box');
+        document.getElementById('modify-link-btn').href = data.modify_url;
+        box.style.display = 'block';
       }
     } catch(e) { showErr('Could not reach server. Please try again.'); }
   }

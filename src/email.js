@@ -74,7 +74,7 @@ async function _send(msg, label) {
 // ── Guest emails ──────────────────────────────────────────────────────────────
 async function sendEmail(reservation, type) {
   const contact = await getContact();
-  const templates = { confirmed: confirmedEmail, pending: pendingEmail, denied: deniedEmail };
+  const templates = { confirmed: confirmedEmail, pending: pendingEmail, denied: deniedEmail, cancelled: cancelledEmail, modified: modifiedEmail };
   const t = templates[type](reservation, contact);
   await _send({ to: reservation.email, from: { email: FROM, name: NAME }, subject: t.subject, html: t.html }, type);
 }
@@ -117,6 +117,32 @@ function deniedEmail(r, contact) {
     <p style="color:#6b7280;font-size:14px;margin:0 0 8px">Hi ${r.name}, unfortunately we cannot accommodate your request for ${r.datetime}.</p>
     ${reasonBlock}
     <p style="color:#374151;font-size:14px">Please reply here or call ${phone} to find an alternative time. We'd love to have you!</p>`, phone) };
+}
+
+function cancelledEmail(r, contact) {
+  const phone = contact?.phone || PHONE_ENV;
+  return { subject: 'Your reservation has been cancelled — Top of the Palms', html: layout(`
+    <div style="display:inline-block;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✕ Cancelled</div>
+    <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Reservation Cancelled</h2>
+    <p style="color:#6b7280;font-size:14px;margin:0 0 20px">Hi ${r.name}, your reservation has been cancelled as requested.</p>
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">
+      ${row('Date & time', r.datetime)}
+      ${row('Party size', r.party+(r.party===1?' guest':' guests'))}
+      ${row('Confirmation #', `<span style="font-family:monospace;background:#f3f4f6;padding:2px 6px;border-radius:4px">${r.id.slice(0,8).toUpperCase()}</span>`, true)}
+    </table></div>
+    <p style="color:#374151;font-size:14px">We hope to see you another time! Call ${phone} or reply to make a new reservation.</p>`, phone) };
+}
+
+function modifiedEmail(r, contact) {
+  const phone = contact?.phone || PHONE_ENV;
+  const modifyLink = makeModifyLink(r.id);
+  return { subject: 'Your reservation has been updated — Top of the Palms ✓', html: layout(`
+    <div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✏️ Updated</div>
+    <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Reservation Updated</h2>
+    <p style="color:#6b7280;font-size:14px;margin:0 0 20px">Hi ${r.name}, your reservation details have been updated.</p>
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:4px 16px;margin-bottom:20px"><table style="width:100%;border-collapse:collapse">${reservationRows(r)}</table></div>
+    <p style="color:#374151;font-size:14px">Reply here or call ${phone} if you need further changes.</p>
+    <p style="margin-top:16px"><a href="${modifyLink}" style="color:#006747;font-size:13px">Need another change? Click here to modify →</a></p>`, phone) };
 }
 
 // ── Manager approval email ────────────────────────────────────────────────────
@@ -238,4 +264,4 @@ function getSafeBase() {
   return base || 'http://localhost:3000';
 }
 
-module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail };
+module.exports = { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail, makeModifyLink };

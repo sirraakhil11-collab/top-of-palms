@@ -9,7 +9,7 @@ const { handleIncomingSMS }                         = require('./src/sms');
 const { handleIncomingCall, handleVoiceCollect, handleCallStatus } = require('./src/voice');
 const { getEmailReply, getChatReply }               = require('./src/agent');
 const { processReservation }                        = require('./src/reservations');
-const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail } = require('./src/email');
+const { sendEmail, sendManagerApprovalEmail, sendDirectBillEmail, sendTestEmail, makeModifyLink } = require('./src/email');
 const directBill = require('./src/direct-bill');
 const multerMem = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } }); // 10MB for doc uploads
 
@@ -304,7 +304,7 @@ app.post('/api/reserve', async (req, res) => {
     if (!result.success)
       return res.status(429).json({ error: result.reason || 'Could not create reservation. Please try different dates.' });
 
-    res.json({ success:true, status:'pending', days_booked: numDays });
+    res.json({ success:true, status:'pending', days_booked: numDays, modify_url: makeModifyLink(result.reservation.id) });
   } catch(err) { console.error('[Form]',err.message); res.status(500).json({ error:'Submission failed. Please try again.' }); }
 });
 
@@ -1303,9 +1303,10 @@ app.post('/api/reserve/modify/:token', async (req, res) => {
     if (!r) return res.status(404).json({ error: 'Modification link is invalid.' });
     if (['denied','cancelled'].includes(r.status)) return res.status(400).json({ error: `This reservation has been ${r.status}.` });
 
-    const { date, time, party, notes } = req.body;
+    const { date, time, party, notes, payment_method } = req.body;
     const partyN = parseInt(party);
     const updates = { notes: (notes || '').trim() };
+    if (payment_method !== undefined) updates.payment_method = payment_method;
 
     const majorChange = (date && date !== r.reservation_date) || (partyN && partyN !== r.party);
 
@@ -1337,13 +1338,59 @@ app.post('/api/reserve/modify/:token', async (req, res) => {
 
     if (majorChange) {
       await sendManagerApprovalEmail(updated).catch(console.error);
-      const { sendEmail: se } = require('./src/email');
-      await se(updated, 'pending').catch(console.error);
+      await sendEmail(updated, 'pending').catch(console.error);
+    } else {
+      await sendEmail(updated, 'modified').catch(console.error);
     }
 
     res.json({ success: true, major_change: majorChange, reservation: updated });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
+
+// Guest cancels their reservation via modify link token
+app.post('/api/reserve/modify/:token/cancel', async (req, res) => {
+  try {
+    const all = await db.getAllReservations();
+    const r = all.find(x => makeModifyToken(x.id) === req.params.token);
+    if (!r) return res.status(404).json({ error: 'Cancel link is invalid.' });
+    if (['denied','cancelled'].includes(r.status)) return res.status(400).json({ error: `This reservation is already ${r.status}.` });
+
+    const updated = await db.updateReservation(r.id, { status: 'cancelled', processed_at: new Date().toISOString() });
+    await sendEmail(updated, 'cancelled').catch(console.error);
+
+    // Notify manager
+    const base = (process.env.SAFE_URL || process.env.RAILWAY_STATIC_URL || process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/,'');
+    const contact = await require('./src/email').makeModifyLink ? null : null; // just for side-effect
+    sendManagerCancelNotice(updated, base).catch(console.error);
+
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+async function sendManagerCancelNotice(r, base) {
+  const { sendManagerApprovalEmail: _unused, ...emailMod } = require('./src/email');
+  const sgMail = require('@sendgrid/mail');
+  const key = process.env.SENDGRID_API_KEY;
+  if (!key) return;
+  sgMail.setApiKey(key);
+  const FROM = process.env.FROM_EMAIL;
+  const MANAGER = process.env.MANAGER_EMAIL;
+  const dashUrl = `${base}/manager/dashboard`;
+  await sgMail.send({
+    to: MANAGER, from: { email: FROM, name: 'On Top of the Palms Reservations' },
+    subject: `Guest cancelled — ${r.name} · ${r.datetime}`,
+    html: `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f3f4f6;padding:24px"><div style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+      <div style="display:inline-block;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">✕ Cancelled by Guest</div>
+      <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 12px">${r.name} cancelled their reservation</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+        <tr><td style="color:#6b7280;padding:7px 0;border-bottom:1px solid #f3f4f6">Date</td><td style="font-weight:600;text-align:right;padding:7px 0;border-bottom:1px solid #f3f4f6">${r.datetime}</td></tr>
+        <tr><td style="color:#6b7280;padding:7px 0;border-bottom:1px solid #f3f4f6">Party</td><td style="font-weight:600;text-align:right;padding:7px 0;border-bottom:1px solid #f3f4f6">${r.party} guest${r.party===1?'':'s'}</td></tr>
+        <tr><td style="color:#6b7280;padding:7px 0">Email</td><td style="font-weight:600;text-align:right;padding:7px 0">${r.email}</td></tr>
+      </table>
+      <a href="${dashUrl}" style="background:#006747;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">View Dashboard →</a>
+    </div></body></html>`
+  });
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 //  JSON API
