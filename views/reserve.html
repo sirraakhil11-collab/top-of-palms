@@ -315,7 +315,7 @@
     document.getElementById('side-left').innerHTML = `
       <div class="side-card" style="animation-delay:.05s">
         <div class="side-card-title">🌴 About</div>
-        <div class="side-info-row"><span class="icon">📍</span><span><strong>On Top of the Palms</strong><br>USF Tampa Campus</span></div>
+        <div class="side-info-row"><span class="icon">📍</span><span><strong>${(settings.about_name||'On Top of the Palms').replace(/</g,'&lt;')}</strong><br>${(settings.about_location||'USF Tampa Campus').replace(/</g,'&lt;')}</span></div>
         <div class="side-info-row"><span class="icon">🕐</span><span><strong>Hours</strong><br>Mon–Fri ${openLabel} – ${closeLabel}</span></div>
         <div class="side-info-row"><span class="icon">👥</span><span><strong>Party size</strong><br>2 – 15 guests</span></div>
         <div class="side-info-row"><span class="icon">⏱</span><span><strong>Book ahead</strong><br>At least 24 hrs in advance</span></div>

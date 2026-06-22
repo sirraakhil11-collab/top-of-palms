@@ -93,6 +93,7 @@ function confirmedEmail(r, contact) {
 
 function pendingEmail(r, contact) {
   const phone = contact?.phone || PHONE_ENV;
+  const modifyLink = makeModifyLink(r.id);
   return { subject: 'We received your reservation request — Top of the Palms', html: layout(`
     <div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">⏳ Under review</div>
     <h2 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Request received!</h2>
@@ -103,7 +104,8 @@ function pendingEmail(r, contact) {
       ${r.payment_method ? row('Payment', r.payment_method) : ''}
       ${row('Status', '<span style="color:#b45309">Pending manager review</span>', true)}
     </table></div>
-    <p style="color:#374151;font-size:14px">You will receive another email once confirmed. Reply here or call ${phone} with any questions.</p>`, phone) };
+    <p style="color:#374151;font-size:14px">You will receive another email once confirmed. Reply here or call ${phone} with any questions.</p>
+    <p style="margin-top:16px"><a href="${modifyLink}" style="color:#006747;font-size:13px">Need to change or cancel your request? Click here →</a></p>`, phone) };
 }
 
 function deniedEmail(r, contact) {

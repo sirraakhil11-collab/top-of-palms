@@ -214,13 +214,15 @@ app.get('/api/public/settings', async (req, res) => {
   try {
     const s = await db.getAllSettings().catch(() => ({}));
     res.json({
-      announcement:      s.announcement      || '',
-      upcoming_rate:     s.upcoming_rate      || '',
-      upcoming_rate_date:s.upcoming_rate_date || '',
-      direct_bill_rate:  s.direct_bill_rate   || '12.75',
+      announcement:          s.announcement          || '',
+      upcoming_rate:         s.upcoming_rate          || '',
+      upcoming_rate_date:    s.upcoming_rate_date     || '',
+      direct_bill_rate:      s.direct_bill_rate       || '12.75',
       contact_phone:         s.contact_phone          || process.env.RESTAURANT_PHONE || '',
       contact_email:         s.contact_email          || process.env.FROM_EMAIL       || '',
-      announcement_enabled:  s.announcement_enabled !== 'false'
+      announcement_enabled:  s.announcement_enabled !== 'false',
+      about_name:            s.about_name             || 'On Top of the Palms',
+      about_location:        s.about_location         || 'USF Tampa Campus',
     });
   } catch(err) { res.status(500).json({}); }
 });
@@ -1100,7 +1102,8 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
                        'batch_recipient_email','batch_schedule','batch_schedule_time',
                        'batch_schedule_weekday','batch_last_run',
                        'contact_phone','contact_email','announcement','announcement_enabled',
-                       'upcoming_rate','upcoming_rate_date'];
+                       'upcoming_rate','upcoming_rate_date',
+                       'about_name','about_location'];
     const key = req.params.key;
     if (!adminOnly.includes(key) && !managerOk.includes(key))
       return res.status(400).json({ error:'Unknown setting key' });
@@ -1128,7 +1131,7 @@ app.patch('/api/settings/:key', auth.requireManager, async (req, res) => {
       return res.json({ key, value: String(n) });
     }
     // Free-text settings (no format restriction)
-    const freeText = ['contact_phone','contact_email','announcement','upcoming_rate','upcoming_rate_date',
+    const freeText = ['contact_phone','contact_email','announcement','upcoming_rate','upcoming_rate_date','about_name','about_location',
                       'batch_recipient_email','batch_schedule','batch_schedule_time','batch_schedule_weekday','batch_last_run'];
     if (freeText.includes(key)) {
       await db.updateSetting(key, String(value || '').slice(0, 1000));
