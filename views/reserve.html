@@ -15,7 +15,6 @@
     header{background:#006747;padding:20px 24px;text-align:center}
     header h1{color:#fff;font-size:22px;font-weight:800}
     header p{color:#a7d9c2;font-size:13px;margin-top:4px}
-    .container{max-width:580px;margin:28px auto;padding:0 16px 60px}
     .card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
     .card h2{font-size:20px;font-weight:700;color:#111827;margin-bottom:6px}
     .card>p{color:#6b7280;font-size:14px;margin-bottom:16px}
@@ -55,12 +54,28 @@
     .submit-btn:disabled{background:#d1d5db;cursor:default}
     .err-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
     .err-msg.show{display:block}
-    .announce-banner{background:linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 50%,#1e3a5f 100%);color:#fff;padding:0;display:none;position:relative;overflow:hidden}
-    .announce-banner.show{display:block}
-    .announce-inner{max-width:1200px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;z-index:1}
-    .announce-icon{font-size:18px;flex-shrink:0}
-    .announce-text{font-size:14px;font-weight:600;line-height:1.5;text-align:center}
-    .announce-banner::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 1px,transparent 1px,transparent 8px);z-index:0}
+    /* ── Side-panel layout ── */
+    .page-layout{display:grid;grid-template-columns:220px minmax(0,580px) 220px;gap:20px;max-width:1080px;margin:28px auto;padding:0 16px 60px;align-items:start}
+    .container{max-width:none;margin:0;padding:0}
+    .side-panel{display:flex;flex-direction:column;gap:14px}
+    .side-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid #e5e7eb;animation:fadeUp .4s ease both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+    .side-card-title{font-size:10px;font-weight:700;color:#006747;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+    .side-card-title::after{content:'';flex:1;height:1px;background:#e5e7eb}
+    .side-info-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:12px;color:#374151;line-height:1.4}
+    .side-info-row:last-child{border-bottom:none}
+    .side-info-row .icon{font-size:14px;flex-shrink:0;margin-top:1px}
+    .side-step{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:12px;color:#374151;line-height:1.4}
+    .side-step:last-child{border-bottom:none}
+    .side-step .num{width:20px;height:20px;border-radius:50%;background:#006747;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .announce-card{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(29,78,216,.3);animation:fadeUp .5s .1s ease both;opacity:0}
+    .announce-card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.8;margin-bottom:8px}
+    .announce-card-body{font-size:13px;font-weight:500;line-height:1.6}
+    @media(max-width:900px){
+      .page-layout{grid-template-columns:1fr;gap:0;margin:0;padding:0}
+      .side-panel{display:none}
+      .container{max-width:580px;margin:28px auto;padding:0 16px 60px}
+    }
     .capacity-warn{border-radius:8px;padding:10px 14px;font-size:13px;margin-top:6px;display:none}
     .capacity-warn.show{display:block}
     .capacity-warn.partial{background:#fffbeb;border:1px solid #fde68a;color:#b45309}
@@ -99,11 +114,16 @@
   </style>
 </head>
 <body>
-<div class="announce-banner" id="announce-banner"><div class="announce-inner"><span class="announce-icon">📢</span><span class="announce-text" id="announce-text"></span></div></div>
 <header>
   <h1>🌴 On Top of the Palms</h1>
   <p>University of South Florida Dining · Managed by Compass USA</p>
 </header>
+<div class="page-layout">
+
+<!-- LEFT PANEL -->
+<aside class="side-panel" id="side-left"></aside>
+
+<!-- FORM (centre column) -->
 <div class="container">
 <div class="card">
 
@@ -251,6 +271,11 @@
 </div>
 </div>
 
+<!-- RIGHT PANEL -->
+<aside class="side-panel" id="side-right"></aside>
+
+</div><!-- end .page-layout -->
+
 <script>
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // CONFIGURABLE CONSTANTS — easy to adjust
@@ -270,16 +295,65 @@
 
   let upcomingRate = '', upcomingRateDate = '';
 
+  // ── Side-panel renderer (React-style: pure fn of data → DOM) ────────────────
+  function renderSidePanels(settings) {
+    const openLabel  = formatHM(openHour, openMin);
+    const closeLabel = formatHM(closeHour, closeMin);
+
+    // ── LEFT: Restaurant info + How it works ────────────────────────────────
+    document.getElementById('side-left').innerHTML = `
+      <div class="side-card" style="animation-delay:.05s">
+        <div class="side-card-title">🌴 About</div>
+        <div class="side-info-row"><span class="icon">📍</span><span><strong>On Top of the Palms</strong><br>USF Tampa Campus · Compass USA</span></div>
+        <div class="side-info-row"><span class="icon">🕐</span><span><strong>Hours</strong><br>Mon–Fri ${openLabel} – ${closeLabel}</span></div>
+        <div class="side-info-row"><span class="icon">👥</span><span><strong>Party size</strong><br>2 – 15 guests</span></div>
+        <div class="side-info-row"><span class="icon">⏱</span><span><strong>Book ahead</strong><br>At least 24 hrs in advance</span></div>
+      </div>
+      <div class="side-card" style="animation-delay:.12s">
+        <div class="side-card-title">📋 How It Works</div>
+        <div class="side-step"><span class="num">1</span><span>Fill out the form with your details and preferred date</span></div>
+        <div class="side-step"><span class="num">2</span><span>Submit — a manager reviews and approves within a few hours</span></div>
+        <div class="side-step"><span class="num">3</span><span>You receive a confirmation email with your booking details</span></div>
+        <div class="side-step"><span class="num">4</span><span>Arrive on the day — show your confirmation if asked</span></div>
+      </div>`;
+
+    // ── RIGHT: Announcement + payment tips ──────────────────────────────────
+    let rightHTML = '';
+    if (settings.announcement) {
+      rightHTML += `
+        <div class="announce-card">
+          <div class="announce-card-title">📢 Announcement</div>
+          <div class="announce-card-body">${settings.announcement.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        </div>`;
+    }
+    if (settings.upcoming_rate && settings.upcoming_rate_date) {
+      rightHTML += `
+        <div class="side-card" style="animation-delay:.18s;border-left:3px solid #2563eb">
+          <div class="side-card-title">💰 Rate Change</div>
+          <div style="font-size:12px;color:#374151;line-height:1.5">
+            From <strong>${settings.upcoming_rate_date}</strong> the rate changes to
+            <strong style="color:#006747">$${parseFloat(settings.upcoming_rate).toFixed(2)}/person</strong>
+          </div>
+        </div>`;
+    }
+    rightHTML += `
+      <div class="side-card" style="animation-delay:.22s">
+        <div class="side-card-title">💳 Payment</div>
+        <div class="side-info-row"><span class="icon">💳</span><span><strong>Credit Card</strong><br>Visa, Mastercard, Amex</span></div>
+        <div class="side-info-row"><span class="icon">🎓</span><span><strong>USF Card</strong><br>Bull Bucks accepted</span></div>
+        <div class="side-info-row"><span class="icon">📄</span><span><strong>Direct Bill</strong><br>Authorization form required · due within 30 days</span></div>
+      </div>`;
+    document.getElementById('side-right').innerHTML = rightHTML;
+  }
+
   // Load public settings — rate, announcement, upcoming rate
+  let _publicSettings = {};
   (async function loadPublicSettings(){
     try {
       const d = await fetch('/api/public/settings').then(r=>r.json());
+      _publicSettings = d;
       RATE = parseFloat(d.direct_bill_rate) || 12.75;
       document.querySelectorAll('.rate-hint').forEach(el => { el.textContent = `@ $${RATE.toFixed(2)} per guest per day`; });
-      if (d.announcement) {
-        document.getElementById('announce-text').textContent = d.announcement;
-        document.getElementById('announce-banner').classList.add('show');
-      }
       upcomingRate     = d.upcoming_rate     || '';
       upcomingRateDate = d.upcoming_rate_date|| '';
     } catch(e){}
@@ -344,6 +418,7 @@
     } catch(e) {}
     buildTimeSlots();
     loadBlocked();
+    renderSidePanels(_publicSettings);
   }
 
   function formatHM(h, m) {
@@ -673,28 +748,102 @@
       return slots;
     }
 
+    // ── Bot validation helpers (mirrors main form exactly) ──────────────────
+    const BOT_EMAIL_RX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+    function validateBotDate(v) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Please use YYYY-MM-DD (e.g. 2026-06-15) or tap a date above.';
+      const d = new Date(v+'T12:00:00'); if(isNaN(d)) return 'Invalid date.';
+      const day = d.getDay();
+      if (day===0||day===6) return 'We\'re open Mon–Fri only. Please pick a weekday.';
+      if (blockedDatesBot.has(v)) return 'That date is unavailable (holiday or closure). Please choose another.';
+      // Must be at least 24 hours from now (same rule as main form)
+      if (new Date(v+'T23:59:00') < new Date(Date.now() + 24*60*60*1000))
+        return 'Reservations must be made at least 24 hours in advance. Walk-ups welcome on the day!';
+      return null;
+    }
+
+    function validateBotTime(v) {
+      const m = v.match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return `Please use HH:MM format (e.g. ${openHour}:${String(openMin).padStart(2,'0')}).`;
+      const h=parseInt(m[1]), mn=parseInt(m[2]);
+      const afterOpen  = h>openHour || (h===openHour && mn>=openMin);
+      const lastSlotH  = closeMin===0 ? closeHour-1 : closeHour;
+      const lastSlotM  = closeMin===0 ? 45 : closeMin-15;
+      const beforeClose = h<lastSlotH || (h===lastSlotH && mn<=lastSlotM);
+      if (!afterOpen || !beforeClose) return `Please choose a time between ${formatHM(openHour,openMin)} and ${formatHM(lastSlotH,lastSlotM)}.`;
+      return null;
+    }
+
+    // Async capacity check run after date step passes — warns but lets user continue
+    async function checkBotCapacity(date, party) {
+      try {
+        const cap = await fetch(`/api/public/capacity?date=${date}`).then(r=>r.json());
+        if (cap.blocked) {
+          addMsg(`⛔ That date is actually unavailable: ${cap.blocked_reason||'Closed'}. Please go back and pick a different date.`, 'bot');
+          step--; // rewind to date step
+          askStep(step);
+          return false;
+        }
+        const need = party ? parseInt(party) : MIN_PARTY;
+        if (cap.available === 0) {
+          addMsg(`⛔ Sorry — that date is fully booked (${cap.taken}/${cap.limit} guests). Please go back and choose another date.`, 'bot');
+          step--; askStep(step); return false;
+        }
+        if (need > 0 && need > cap.available) {
+          addMsg(`⚠️ Only **${cap.available}** seat${cap.available===1?'':'s'} left on that date. Your party of ${need} may not fit — consider a smaller party or a different date.`, 'bot');
+        }
+        return true;
+      } catch(e) { return true; } // network fail → don't block
+    }
+
     // Build steps dynamically so time message uses live openHour/openMin
     function buildSteps() {
       const closeLabel = formatHM(closeHour - (closeMin===0?1:0), closeMin===0?45:closeMin-15);
       const openLabel  = formatHM(openHour, openMin);
       return [
-        { key:'name',    q:"Hi! I'm your reservation assistant. 👋\n\nWhat's your **full name**?",
-          validate: v => v.length>=2?null:'Please enter your full name.' },
-        { key:'dept',    q:"What **department** are you with?",
-          validate: v => v.length>=2?null:'Please enter your department.' },
-        { key:'uid',     q:"What's your **USF UID**? (9 digits)\nType *skip* to skip.",
-          validate: v => { if(v.toLowerCase()==='skip'||v==='')return null; if(/^\d{9}$/.test(v))return null; return 'UID must be 9 digits, or type "skip".'; } },
-        { key:'email',   q:"What's your **email address**?",
-          validate: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?null:'Please enter a valid email address.' },
-        { key:'type',    q:"Are you **Faculty** or **Student**?", opts:['Faculty','Student'],
-          validate: v => ['faculty','student'].includes(v.toLowerCase())?null:'Please choose Faculty or Student.' },
-        { key:'date',    q:"What **date** would you like to dine?\nChoose from the calendar below or type YYYY-MM-DD.",
+        { key:'name',
+          q:"Hi! I'm your reservation assistant. 👋\n\nWhat's your **full name**?",
+          validate: v => {
+            if (v.length < 2) return 'Please enter your full name.';
+            if (v.length > 100) return 'Name is too long (max 100 characters).';
+            return null;
+          }},
+        { key:'dept',
+          q:"What **department** are you with?",
+          validate: v => {
+            if (v.length < 2) return 'Please enter your department.';
+            if (v.length > 100) return 'Department name is too long (max 100 characters).';
+            return null;
+          }},
+        { key:'uid',
+          q:"What's your **USF UID**? (9 digits)\nType *skip* to skip.",
+          validate: v => {
+            if (v.toLowerCase()==='skip'||v==='') return null;
+            if (/^\d{9}$/.test(v)) return null;
+            return 'USF UID must be exactly 9 digits, or type "skip".';
+          }},
+        { key:'email',
+          q:"What's your **email address**?",
+          validate: v => BOT_EMAIL_RX.test(v) ? null : 'Please enter a valid email address (e.g. name@usf.edu).' },
+        { key:'type',
+          q:"Are you **Faculty** or **Student**?", opts:['Faculty','Student'],
+          validate: v => ['faculty','student'].includes(v.toLowerCase()) ? null : 'Please choose Faculty or Student.' },
+        { key:'date',
+          q:"What **date** would you like to dine?\nChoose from the calendar below or type YYYY-MM-DD.",
           validate: validateBotDate, showCal: true },
-        { key:'time',    q:`What **time** would you prefer?\nWe're open **${openLabel} – ${closeLabel}**.`,
+        { key:'time',
+          q:`What **time** would you prefer?\nWe're open **${openLabel} – ${closeLabel}**.`,
           opts: buildTimeOpts(), validate: validateBotTime },
-        { key:'party',   q:`How many **guests** in your party?\n(Min ${MIN_PARTY}, max ${MAX_PARTY})`,
+        { key:'party',
+          q:`How many **guests** in your party?\n(Min ${MIN_PARTY}, max ${MAX_PARTY})`,
           opts:['2','3','4','5','6','7','8','10','12','15'],
-          validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=MIN_PARTY&&n<=MAX_PARTY)?null:`Please enter ${MIN_PARTY}–${MAX_PARTY}.`; } },
+          validate: v => {
+            const n=parseInt(v);
+            if (isNaN(n)||n<MIN_PARTY) return `Minimum party size is ${MIN_PARTY} guests.`;
+            if (n>MAX_PARTY) return `Maximum party size is ${MAX_PARTY} guests.`;
+            return null;
+          }},
         { key:'days',
           q: (() => {
             if (!ans.date) return `Will you be dining **just this one day**, or across **multiple consecutive weekdays**?`;
@@ -716,34 +865,18 @@
           },
           validate: v => { const n=parseInt(v); return (!isNaN(n)&&n>=1&&n<=MAX_DAYS)?null:`Please enter 1–${MAX_DAYS}.`; },
           normalize: v => String(parseInt(v)) },
-        { key:'payment', q:"How will you be **paying**?", opts:['Credit Card','USF Card','Direct Bill'],
-          validate: v => ['credit card','usf card','direct bill'].includes(v.toLowerCase())?null:'Please choose a payment method.' },
-        { key:'notes',   q:"Any **special requests**? (dietary, accessibility, occasion…)",
-          opts:['Skip'], validate: () => null },
+        { key:'payment',
+          q:"How will you be **paying**?", opts:['Credit Card','USF Card','Direct Bill'],
+          validate: v => ['credit card','usf card','direct bill'].includes(v.toLowerCase()) ? null : 'Please choose a payment method.' },
+        { key:'notes',
+          q:"Any **special requests**? (dietary, accessibility, occasion…)\nMax 500 characters, or tap **Skip**.",
+          opts:['Skip'],
+          validate: v => {
+            if (v.toLowerCase()==='skip'||v==='') return null;
+            if (v.length > 500) return 'Notes are too long (max 500 characters).';
+            return null;
+          }},
       ];
-    }
-
-    function validateBotDate(v) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Please use YYYY-MM-DD (e.g. 2026-06-15) or tap a date above.';
-      const d = new Date(v+'T12:00:00'); if(isNaN(d)) return 'Invalid date.';
-      const day = d.getDay();
-      if (day===0||day===6) return 'We\'re open Mon–Fri only. Please pick a weekday.';
-      if (blockedDatesBot.has(v)) return 'That date is unavailable. Please choose another.';
-      const minDate = new Date(); minDate.setDate(minDate.getDate()+1); minDate.setHours(0,0,0,0);
-      if (d < minDate) return `Please book at least 1 day in advance.`;
-      return null;
-    }
-
-    function validateBotTime(v) {
-      const m = v.match(/^(\d{1,2}):(\d{2})$/);
-      if (!m) return `Please use HH:MM format (e.g. ${openHour}:${String(openMin).padStart(2,'0')}).`;
-      const h=parseInt(m[1]), mn=parseInt(m[2]);
-      const afterOpen  = h>openHour || (h===openHour && mn>=openMin);
-      const lastSlotH  = closeMin===0 ? closeHour-1 : closeHour;
-      const lastSlotM  = closeMin===0 ? 45 : closeMin-15;
-      const beforeClose = h<lastSlotH || (h===lastSlotH && mn<=lastSlotM);
-      if (!afterOpen || !beforeClose) return `Please choose a time between ${formatHM(openHour,openMin)} and ${formatHM(lastSlotH,lastSlotM)}.`;
-      return null;
     }
 
     // ── Calendar widget ──────────────────────────────────────────────────────
@@ -884,9 +1017,28 @@
       // Normalize
       let val = s.normalize ? s.normalize(raw) : raw;
       if (s.key==='uid' && raw.toLowerCase()==='skip') val = '';
+      if (s.key==='notes' && raw.toLowerCase()==='skip') val = '';
       if (s.key==='type') val = raw.charAt(0).toUpperCase()+raw.slice(1).toLowerCase();
       ans[s.key] = val;
       step++;
+
+      // After date is confirmed: async capacity check before moving on
+      if (s.key === 'date') {
+        typing();
+        checkBotCapacity(val, null).then(ok => {
+          if (ok) askStep(step);
+        });
+        return;
+      }
+      // After party is confirmed: re-check capacity with known party size
+      if (s.key === 'party' && ans.date) {
+        typing();
+        checkBotCapacity(ans.date, val).then(ok => {
+          if (ok) askStep(step);
+        });
+        return;
+      }
+
       typing();
       askStep(step);
     };
