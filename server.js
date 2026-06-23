@@ -1309,27 +1309,46 @@ app.post('/api/reserve/modify/:token', async (req, res) => {
     if (!r) return res.status(404).json({ error: 'Modification link is invalid.' });
     if (['denied','cancelled'].includes(r.status)) return res.status(400).json({ error: `This reservation has been ${r.status}.` });
 
-    const { date, time, party, notes, payment_method } = req.body;
+    const { date, time, party, num_days, notes, payment_method } = req.body;
     const partyN = parseInt(party);
     const updates = { notes: (notes || '').trim() };
     if (payment_method !== undefined) updates.payment_method = payment_method;
 
-    const majorChange = (date && date !== r.reservation_date) || (partyN && partyN !== r.party);
+    // Number of days (weekdays) — clamp to 1–7, default to the existing value
+    const origDays = Math.max(1, parseInt(r.num_days || 1, 10));
+    const daysN    = num_days !== undefined ? Math.min(7, Math.max(1, parseInt(num_days || '1', 10))) : origDays;
 
-    if (date) {
-      const d = new Date(date + 'T12:00:00');
+    const majorChange =
+      (date && date !== r.reservation_date) ||
+      (partyN && partyN !== r.party) ||
+      (daysN !== origDays);
+
+    if (date || num_days !== undefined) {
+      const startDate = date || r.reservation_date;
+      const d = new Date(startDate + 'T12:00:00');
       if (d.getDay() === 0 || d.getDay() === 6) return res.status(400).json({ error: 'Please select a weekday.' });
-      if (new Date(date + 'T' + (time||'11:00') + ':00') < new Date(Date.now() + 24*60*60*1000))
+      if (new Date(startDate + 'T' + (time||r.reservation_time||'11:00') + ':00') < new Date(Date.now() + 24*60*60*1000))
         return res.status(400).json({ error: 'Modifications must be made at least 24 hours in advance.' });
-      const bl = await blockedDates.isBlocked(date);
-      if (bl) return res.status(400).json({ error: `${date} is blocked: ${bl.reason}` });
-      const taken = await db.getDailyPeopleCount(date);
+
+      // Validate blocked dates + capacity across every weekday in the booking
+      const allBookingDates = getBookingDates(startDate, daysN);
+      if (!allBookingDates.length) return res.status(400).json({ error: 'No valid weekdays found starting from that date.' });
       const s2    = await db.getAllSettings().catch(() => ({}));
       const limit = parseInt(s2.daily_limit || '60');
-      const need  = partyN || r.party;
-      if (taken + need > limit) return res.status(400).json({ error: `Only ${Math.max(0,limit-taken)} seats available on ${date}.` });
-      updates.reservation_date = date;
-      const displayTime = new Date(`${date}T${time||r.reservation_time||'11:00'}:00`).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+      const need  = (partyN && partyN >= 2 && partyN <= 15) ? partyN : r.party;
+      for (const bd of allBookingDates) {
+        const bl = await blockedDates.isBlocked(bd);
+        if (bl) return res.status(400).json({ error: `${bd} is blocked: ${bl.reason}. Please choose different dates.` });
+        // Don't count this reservation's own existing seats against itself
+        const ownDates = getBookingDates(r.reservation_date, origDays);
+        const ownHere  = ownDates.includes(bd) ? r.party : 0;
+        const taken = (await db.getDailyPeopleCount(bd)) - ownHere;
+        if (taken + need > limit) return res.status(400).json({ error: `Only ${Math.max(0,limit-taken)} seat${(limit-taken)===1?'':'s'} available on ${bd}. Please adjust your dates or party size.` });
+      }
+
+      updates.reservation_date = startDate;
+      updates.num_days = daysN;
+      const displayTime = new Date(`${startDate}T${time||r.reservation_time||'11:00'}:00`).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
       updates.datetime = displayTime;
       updates.reservation_time = time || r.reservation_time;
     }
