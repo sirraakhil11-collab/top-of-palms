@@ -1,4 +1,4 @@
-const CACHE = 'topp-v1';
+const CACHE = 'topp-v2';
 const SHELL = ['/pos', '/reserve', '/manager/dashboard', '/login'];
 
 self.addEventListener('install', e => {

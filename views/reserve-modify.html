@@ -8,6 +8,11 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;min-height:100vh}
+    /* Faint USF-green bull watermark — purely decorative, sits behind all content */
+    body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+      background:radial-gradient(circle at 50% 32%,rgba(0,103,71,.09),transparent 62%),
+        url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20160'%3E%3Cpath%20fill='%23006747'%20d='M100%20150%20C70%20150%2055%20125%2055%20105%20C40%20108%2028%2095%2025%2080%20C36%2086%2048%2084%2055%2082%20C56%2070%2066%2055%20100%2052%20C134%2055%20144%2070%20145%2082%20C152%2084%20164%2086%20175%2080%20C172%2095%20160%20108%20145%20105%20C145%20125%20130%20150%20100%20150%20Z'/%3E%3C/svg%3E") no-repeat center 38% / min(560px,72vw);
+      opacity:.14;filter:blur(1px)}
     header{background:#006747;padding:18px 24px;text-align:center}
     header h1{color:#fff;font-size:20px;font-weight:800}
     header p{color:#a7d9c2;font-size:12px;margin-top:3px}
@@ -48,6 +53,16 @@
     .radio-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
     .radio-opt label{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:#374151;transition:all .15s}
     .radio-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
+
+    /* Number of days selector */
+    .days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:4px}
+    .day-opt{position:relative}
+    .day-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+    .day-opt label{display:flex;align-items:center;justify-content:center;padding:9px 2px;border:1.5px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:#374151;transition:all .15s;text-align:center}
+    .day-opt input:checked+label{border-color:#006747;background:#f0fdf4;color:#006747}
+    .days-summary{margin-top:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13px;color:#166534;line-height:1.5}
+    .days-summary strong{color:#006747}
+    @media(max-width:600px){.days-grid{grid-template-columns:repeat(4,1fr)}}
 
     /* Payment chips */
     .pay-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
@@ -146,24 +161,38 @@
         <div class="info-item"><label>Department</label><span id="info-dept">—</span></div>
         <div class="info-item"><label>Confirmation #</label><span id="info-ref" style="font-family:monospace;color:#006747">—</span></div>
         <div class="info-item"><label>Original Booking</label><span id="info-orig" style="font-size:13px">—</span></div>
+        <div class="info-item full"><label>Days Booked</label><span id="info-days" style="font-size:13px">—</span></div>
       </div>
     </div>
 
     <!-- Editable fields -->
     <div class="card">
       <h3 style="font-size:16px;font-weight:700;color:#111827;margin-bottom:4px">Edit Your Reservation</h3>
-      <p style="font-size:13px;color:#6b7280;margin-bottom:20px">Changing the <strong>date</strong> or <strong>party size</strong> requires manager re-approval.</p>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:20px">Changing the <strong>date</strong>, <strong>number of days</strong>, or <strong>party size</strong> requires manager re-approval.</p>
 
       <div class="sec-title">Date & Time</div>
       <div class="form-row">
         <div class="form-group">
-          <label class="field-lbl">Date</label>
+          <label class="field-lbl">Start Date</label>
           <input type="date" id="inp-date">
         </div>
         <div class="form-group">
           <label class="field-lbl">Time</label>
           <select id="inp-time"></select>
         </div>
+      </div>
+      <div class="form-group">
+        <label class="field-lbl">Number of Days</label>
+        <div class="days-grid" id="days-grid">
+          <div class="day-opt"><input type="radio" name="num_days" id="md-days-1" value="1"><label for="md-days-1">1</label></div>
+          <div class="day-opt"><input type="radio" name="num_days" id="md-days-2" value="2"><label for="md-days-2">2</label></div>
+          <div class="day-opt"><input type="radio" name="num_days" id="md-days-3" value="3"><label for="md-days-3">3</label></div>
+          <div class="day-opt"><input type="radio" name="num_days" id="md-days-4" value="4"><label for="md-days-4">4</label></div>
+          <div class="day-opt"><input type="radio" name="num_days" id="md-days-5" value="5"><label for="md-days-5">5</label></div>
+          <div class="day-opt"><input type="radio" name="num_days" id="md-days-6" value="6"><label for="md-days-6">6</label></div>
+          <div class="day-opt"><input type="radio" name="num_days" id="md-days-7" value="7"><label for="md-days-7">7</label></div>
+        </div>
+        <div class="days-summary" id="days-summary"></div>
       </div>
 
       <div class="sec-title">Party</div>
@@ -202,7 +231,7 @@
         <textarea id="inp-notes" placeholder="Allergies, accessibility needs, special occasions…"></textarea>
       </div>
 
-      <div class="warn-box" id="warn-box">⚠️ Changing the <strong>date</strong> or <strong>party size</strong> will require manager re-approval. You'll get an email once reviewed.</div>
+      <div class="warn-box" id="warn-box">⚠️ Changing the <strong>date</strong>, <strong>number of days</strong>, or <strong>party size</strong> will require manager re-approval. You'll get an email once reviewed.</div>
       <div class="err-msg" id="err-msg"></div>
 
       <button class="btn-save" id="submit-btn" onclick="submitModify()">Save Changes →</button>
@@ -246,9 +275,37 @@
 
 <script>
   const token = window.location.pathname.split('/').pop();
-  let origDate = '', origParty = '';
+  const MAX_DAYS = 7;
+  let origDate = '', origParty = '', origDays = '1';
   let selectedPayments = [];
   let reservationData = null;
+
+  // Compute the consecutive weekday dates for a booking (skips Sat/Sun)
+  function getBookingDates(startIso, numDays) {
+    const dates = [];
+    const cur = new Date(startIso + 'T12:00:00');
+    let safety = 0;
+    while (dates.length < numDays && safety++ < 30) {
+      if (cur.getDay() !== 0 && cur.getDay() !== 6) dates.push(new Date(cur));
+      if (dates.length < numDays) cur.setDate(cur.getDate() + 1);
+    }
+    return dates;
+  }
+
+  // Live "N weekdays: Mon Jun 23 → Fri Jun 27" summary
+  function updateDaysSummary() {
+    const start = document.getElementById('inp-date').value;
+    const days  = parseInt(document.querySelector('input[name="num_days"]:checked')?.value || '1');
+    const box   = document.getElementById('days-summary');
+    if (!start) { box.textContent = 'Select a start date to see your booking days.'; return; }
+    const dates = getBookingDates(start, days);
+    const fmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    if (days === 1) {
+      box.innerHTML = `<strong>1 weekday</strong> · ${fmt(dates[0])}`;
+    } else {
+      box.innerHTML = `<strong>${days} weekdays</strong> · ${fmt(dates[0])} → ${fmt(dates[dates.length-1])} <span style="color:#15803d">(weekends excluded)</span>`;
+    }
+  }
 
   // ── Load reservation ─────────────────────────────────────────────────────────
   async function loadReservation() {
@@ -266,6 +323,18 @@
       document.getElementById('info-ref').textContent   = (data.id || '').slice(0,8).toUpperCase();
       document.getElementById('info-orig').textContent  = data.datetime || '—';
 
+      // Original days-booked range in the summary
+      const od = Math.max(1, parseInt(data.num_days || 1));
+      if (data.reservation_date) {
+        const odates = getBookingDates(data.reservation_date, od);
+        const f = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+        document.getElementById('info-days').textContent = od === 1
+          ? `1 day · ${f(odates[0])}`
+          : `${od} days · ${f(odates[0])} → ${f(odates[odates.length-1])}`;
+      } else {
+        document.getElementById('info-days').textContent = `${od} day${od===1?'':'s'}`;
+      }
+
       // Status badge
       const statusMap = {
         pending_approval: ['st-pending','⏳ Pending approval'],
@@ -280,9 +349,13 @@
       // Pre-fill editable fields
       origDate  = data.reservation_date || '';
       origParty = String(data.party || 1);
+      origDays  = String(Math.max(1, parseInt(data.num_days || 1)));
       document.getElementById('inp-date').value  = origDate;
       document.getElementById('inp-party').value = origParty;
       document.getElementById('inp-notes').value = data.notes || '';
+      const dayRadio = document.getElementById('md-days-' + origDays);
+      if (dayRadio) dayRadio.checked = true;
+      updateDaysSummary();
 
       // Payment chips
       const paidWith = (data.payment_method || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -298,8 +371,10 @@
       await loadHours(data.reservation_time);
 
       // Watch major-change fields
-      document.getElementById('inp-date').addEventListener('change', checkMajor);
+      document.getElementById('inp-date').addEventListener('change', () => { updateDaysSummary(); checkMajor(); });
       document.getElementById('inp-party').addEventListener('change', checkMajor);
+      document.querySelectorAll('input[name="num_days"]').forEach(r =>
+        r.addEventListener('change', () => { updateDaysSummary(); checkMajor(); }));
 
       show('state-form');
       hide('state-loading');
@@ -351,7 +426,8 @@
   function checkMajor() {
     const dateChanged  = document.getElementById('inp-date').value  !== origDate;
     const partyChanged = document.getElementById('inp-party').value !== origParty;
-    document.getElementById('warn-box').classList.toggle('show', dateChanged || partyChanged);
+    const daysChanged  = (document.querySelector('input[name="num_days"]:checked')?.value || '1') !== origDays;
+    document.getElementById('warn-box').classList.toggle('show', dateChanged || partyChanged || daysChanged);
   }
 
   // ── Submit modify ────────────────────────────────────────────────────────────
@@ -364,6 +440,7 @@
       date:           document.getElementById('inp-date').value,
       time:           document.getElementById('inp-time').value,
       party:          parseInt(document.getElementById('inp-party').value),
+      num_days:       parseInt(document.querySelector('input[name="num_days"]:checked')?.value || '1'),
       notes:          document.getElementById('inp-notes').value.trim(),
       payment_method: selectedPayments.join(', ')
     };
@@ -387,7 +464,7 @@
         document.getElementById('success-badge').className   = 'state-badge badge-pending';
         document.getElementById('success-badge').textContent = 'Pending re-approval';
         document.getElementById('success-title').textContent = 'Update Submitted for Review';
-        document.getElementById('success-sub').textContent   = 'Your date or party size changed so your reservation needs manager re-approval. You\'ll receive an email once it\'s reviewed.';
+        document.getElementById('success-sub').textContent   = 'Your date, number of days, or party size changed so your reservation needs manager re-approval. You\'ll receive an email once it\'s reviewed.';
       } else {
         document.getElementById('success-icon').textContent  = '✅';
         document.getElementById('success-badge').className   = 'state-badge badge-done';
